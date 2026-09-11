@@ -1,3 +1,4 @@
+import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -52,6 +53,16 @@ function Button({
 }
 
 export default function DevScreen() {
+  // The More-screen link is __DEV__-guarded, but this file is still a ROUTE:
+  // expo-router bundles it either way, so in a release build it stays
+  // reachable by deep link (spendwise://dev). That is a screen which can
+  // delete every transaction, so the route itself must refuse to render.
+  if (!__DEV__) return <Redirect href="/(tabs)" />;
+
+  return <DevHarness />;
+}
+
+function DevHarness() {
   const [busy, setBusy] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [results, setResults] = useState<BenchResult[] | null>(null);
