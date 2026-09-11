@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens, ported from the web app's globals.css.
+ *
+ * NativeWind reads these as CSS variables and exposes them to the Tailwind
+ * theme, so `bg-background` / `text-foreground` resolve correctly in both
+ * themes without any JS branching. Keep this file the single source of
+ * colour truth — never hardcode a hex value in a component.
+ */
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 160 24% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 160 24% 8%;
+
+    --muted: 150 12% 94%;
+    --muted-foreground: 158 8% 40%;
+
+    --border: 150 10% 87%;
+    --input: 150 10% 87%;
+
+    /* Deep pine — the app's primary. Matches the web accent. */
+    --primary: 165 79% 20%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 150 12% 94%;
+    --secondary-foreground: 160 24% 8%;
+
+    --accent: 150 12% 94%;
+    --accent-foreground: 160 24% 8%;
+
+    /* Semantic — deliberately distinct from --primary so "success" never
+       reads as "this is the brand colour". */
+    --success: 142 71% 29%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 81% 30%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 347 60% 35%;
+    --destructive-foreground: 0 0% 100%;
+
+    --ring: 165 79% 20%;
+    --radius: 0.625rem;
+  }
+
+  .dark:root {
+    --background: 160 18% 6%;
+    --foreground: 150 16% 92%;
+
+    --card: 162 16% 9%;
+    --card-foreground: 150 16% 92%;
+
+    --muted: 162 14% 13%;
+    --muted-foreground: 152 9% 64%;
+
+    --border: 162 13% 18%;
+    --input: 162 13% 18%;
+
+    --primary: 165 49% 58%;
+    --primary-foreground: 165 60% 8%;
+
+    --secondary: 162 14% 13%;
+    --secondary-foreground: 150 16% 92%;
+
+    --accent: 162 14% 13%;
+    --accent-foreground: 150 16% 92%;
+
+    --success: 142 52% 55%;
+    --success-foreground: 142 60% 8%;
+    --warning: 32 72% 62%;
+    --warning-foreground: 32 60% 8%;
+    --destructive: 347 66% 72%;
+    --destructive-foreground: 347 60% 10%;
+
+    --ring: 165 49% 58%;
+  }
+}
