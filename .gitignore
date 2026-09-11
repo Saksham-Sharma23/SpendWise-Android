@@ -31,3 +31,5 @@ local.db
 .env
 .env.local
 gradle-build.log
+gradle-release.log
+prebuild.log
