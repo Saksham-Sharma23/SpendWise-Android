@@ -30,3 +30,4 @@ local.db
 
 .env
 .env.local
+gradle-build.log

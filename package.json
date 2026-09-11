@@ -18,7 +18,9 @@
     "db:pull": "adb exec-out run-as com.spendwise.android cat databases/spendwise.db > ./local.db",
     "build:dev": "eas build --profile development --platform android",
     "build:preview": "eas build --profile preview --platform android",
-    "build:prod": "eas build --profile production --platform android"
+    "build:prod": "eas build --profile production --platform android",
+    "android:local": "expo run:android --device -- -PreactNativeArchitectures=arm64-v8a",
+    "build:local-apk": "cd android && gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a"
   },
   "dependencies": {
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",

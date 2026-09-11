@@ -399,6 +399,9 @@ and ship over the air too.
 - **Three meanings of "back"** — Android back gesture vs sheet dismissal vs the import wizard's step-back. They must not fight.
 - **Notifications die quietly** after a reboot or force-stop. Test both paths explicitly on device.
 - **SQLCipher must be enabled before there is data.** Retrofitting it is a migration nobody wants to write.
+- **Local native builds OOM on this machine at the default ABI set.** Gradle compiles `expo-modules-core` C++ for all four ABIs in parallel; on 8 GB RAM clang is killed mid-compile and reports `clang frontend command failed due to signal`, which reads like a compiler bug but is memory pressure. Build arm64 only: `npm run build:local-apk` (or `-PreactNativeArchitectures=arm64-v8a`). EAS cloud builds are unaffected.
+- **Never pipe Gradle through `tail`.** A shell pipeline returns the *last* command's exit code, so a failed build reports exit 0. Redirect to a log and grep for `BUILD SUCCESSFUL` / `BUILD FAILED`.
+- **`npx expo config` is not the merged Android manifest.** It showed `INTERNET` absent under the production profile while the generated manifest still contained it. Verify every permission claim against `android/app/src/main/AndroidManifest.xml` after a prebuild, and use `android/app/build/outputs/logs/manifest-merger-debug-report.txt` to find which library contributed a permission you never declared.
 
 ---
 
