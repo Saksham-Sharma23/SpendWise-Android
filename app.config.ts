@@ -20,6 +20,36 @@ const ANDROID_PERMISSIONS = [
   ...(IS_DEV ? ['android.permission.INTERNET'] : []),
 ];
 
+/**
+ * Permissions to strip from the merged manifest.
+ *
+ * `android.permissions` above only ADDS to what library manifests declare —
+ * it does not replace them. Omitting INTERNET there is therefore not enough:
+ * `expo-file-system` declares it in its own manifest (it supports remote
+ * downloads; we use it purely for local files), and the manifest merger
+ * pulls it in regardless. Only `blockedPermissions` emits the
+ * `tools:node="remove"` that actually removes it.
+ *
+ * Verified by inspecting android/app/src/main/AndroidManifest.xml after a
+ * production prebuild — see the Phase 1 notes in TASKS.md.
+ */
+const BLOCKED_ALWAYS = [
+  'android.permission.READ_SMS',
+  'android.permission.RECEIVE_SMS',
+  'android.permission.ACCESS_FINE_LOCATION',
+  'android.permission.ACCESS_COARSE_LOCATION',
+  // expo-file-system pulls these in for remote/SAF use we do not have.
+  'android.permission.READ_EXTERNAL_STORAGE',
+  'android.permission.WRITE_EXTERNAL_STORAGE',
+];
+
+const ANDROID_BLOCKED = [
+  ...BLOCKED_ALWAYS,
+  // The whole point of this app: a release build must be unable to reach the
+  // network at all, enforced by Android rather than by convention.
+  ...(IS_DEV ? [] : ['android.permission.INTERNET']),
+];
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'SpendWise',
@@ -42,13 +72,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     allowBackup: true,
     predictiveBackGestureEnabled: false,
     permissions: ANDROID_PERMISSIONS,
-    // Explicitly blocked, to make the intent unmistakable to a future reader.
-    blockedPermissions: [
-      'android.permission.READ_SMS',
-      'android.permission.RECEIVE_SMS',
-      'android.permission.ACCESS_FINE_LOCATION',
-      'android.permission.ACCESS_COARSE_LOCATION',
-    ],
+    blockedPermissions: ANDROID_BLOCKED,
   },
   plugins: [
     'expo-router',
