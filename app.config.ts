@@ -41,6 +41,37 @@ const BLOCKED_ALWAYS = [
   // expo-file-system pulls these in for remote/SAF use we do not have.
   'android.permission.READ_EXTERNAL_STORAGE',
   'android.permission.WRITE_EXTERNAL_STORAGE',
+
+  // --- Pulled in transitively by expo-notifications -------------------
+  // We schedule LOCAL notifications only: no FCM project, no push tokens,
+  // no server. But the library ships the full remote-push stack, and its
+  // manifest brings Firebase Cloud Messaging and Play Install Referrer
+  // with it. Shipping those in an app whose Data Safety form says "no data
+  // collected, nothing transmitted" would make that form wrong.
+  'com.google.android.c2dm.permission.RECEIVE',
+  'com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE',
+  'android.permission.ACCESS_NETWORK_STATE',
+
+  // ShortcutBadger (an expo-notifications dependency) adds ~18 OEM launcher
+  // badge permissions — Samsung, Huawei, OPPO, HTC, Sony and others. We do
+  // not show app-icon badge counts, and a permission list full of vendor
+  // entries reads as invasive on a Play listing for a finance app.
+  'android.permission.READ_APP_BADGE',
+  'com.anddoes.launcher.permission.UPDATE_COUNT',
+  'com.htc.launcher.permission.READ_SETTINGS',
+  'com.htc.launcher.permission.UPDATE_SHORTCUT',
+  'com.huawei.android.launcher.permission.CHANGE_BADGE',
+  'com.huawei.android.launcher.permission.READ_SETTINGS',
+  'com.huawei.android.launcher.permission.WRITE_SETTINGS',
+  'com.majeur.launcher.permission.UPDATE_BADGE',
+  'com.oppo.launcher.permission.READ_SETTINGS',
+  'com.oppo.launcher.permission.WRITE_SETTINGS',
+  'com.sec.android.provider.badge.permission.READ',
+  'com.sec.android.provider.badge.permission.WRITE',
+  'com.sonyericsson.home.permission.BROADCAST_BADGE',
+  'com.sonymobile.home.permission.PROVIDER_INSERT_BADGE',
+  'me.everything.badger.permission.BADGE_COUNT_READ',
+  'me.everything.badger.permission.BADGE_COUNT_WRITE',
 ];
 
 const ANDROID_BLOCKED = [
