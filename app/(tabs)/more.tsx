@@ -3,6 +3,7 @@ import {
   ChevronRight,
   DatabaseBackup,
   FileSpreadsheet,
+  FlaskConical,
   PiggyBank,
   Repeat,
   Settings,
@@ -37,6 +38,17 @@ const ROWS: Row[] = [
   },
   { icon: Settings, label: 'Settings', hint: 'Theme, notifications, data', href: '/settings' },
   { icon: Users, label: 'Groups', hint: 'Split expenses — coming in v1.1', soon: true },
+  // Stripped from release bundles by the __DEV__ guard below.
+  ...(__DEV__
+    ? [
+        {
+          icon: FlaskConical,
+          label: 'Dev harness',
+          hint: 'Seed 50k rows and benchmark queries',
+          href: '/dev',
+        } as Row,
+      ]
+    : []),
 ];
 
 export default function MoreScreen() {

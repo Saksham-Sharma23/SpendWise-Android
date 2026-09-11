@@ -14,8 +14,8 @@
 
 | Phase | Name | Est. | Status |
 |---|---|---|---|
-| 0 | Foundations | 1–2 d | ⬜ Not started |
-| 1 | Database foundation | 3–4 d | ⬜ Not started |
+| 0 | Foundations | 1–2 d | 🟡 Code complete — device pairing pending |
+| 1 | Database foundation | 3–4 d | 🟡 Code complete — on-device timing pending |
 | 2 | Transactions | 4–5 d | ⬜ Not started |
 | 3 | Home dashboard | 3 d | ⬜ Not started |
 | 4 | Budgets & Tracker | 4 d | ⬜ Not started |
@@ -33,23 +33,23 @@ to change later.
 
 ## Phase 0 — Foundations
 **Goal:** An empty but real app on your phone, with the theme and navigation shell in place.
-**Est:** 1–2 days · **Status:** ⬜ Not started
+**Est:** 1–2 days · **Status:** 🟡 Code complete — device pairing pending
 
-- [ ] **Create the Expo app with TypeScript strict and `expo-router`**
+- [x] **Create the Expo app with TypeScript strict and `expo-router`**
   *Why:* File-based routing mirrors the Next.js App Router you already know, so navigation costs no learning time. `strict` matters more than usual here because Drizzle generates types from the schema — strict mode is what turns a renamed column into a compile error instead of a runtime crash.
-- [ ] **Install NativeWind v4 + `react-native-reusables`; port tokens from the web `globals.css`**
+- [x] **Install NativeWind v4 + `react-native-reusables`; port tokens from the web `globals.css`**
   *Why:* Porting tokens now, before any screen exists, means every component is built against the real palette. Retrofitting a theme after twenty screens is a day of tedious diffing.
-- [ ] **Load Plus Jakarta Sans (300–800) via `@expo-google-fonts`, wire `lucide-react-native`**
+- [x] **Load Plus Jakarta Sans (300–800) via `@expo-google-fonts`, wire `lucide-react-native`**
   *Why:* Same typeface and same icon set as the web app, so icon choices port one-to-one and the two clients stay visually identical without sharing code.
-- [ ] **Build the tab shell: Home, Transactions, Insights, More, plus the centre FAB**
+- [x] **Build the tab shell: Home, Transactions, Insights, More, plus the centre FAB**
   *Why:* Navigation shape is the hardest thing to change later — it dictates where every future screen lives. Settle it while it costs nothing.
-- [ ] **Set up `eas.json` with development / preview / production profiles**
+- [x] **Set up `eas.json` with development / preview / production profiles**
   *Why:* The profile split is what later lets the release build exclude Sentry and declare no `INTERNET` permission. Wiring it now avoids a rushed refactor at Phase 9.
 - [ ] **Run the first EAS development build and install it on the phone**
   *Why:* Expo Go cannot load SQLCipher, MMKV, Skia or the widget plugin. Starting there means hitting the wall in Phase 1 and rebuilding the whole testing setup. One 12-minute cloud build now avoids that.
 - [ ] **Pair the phone over wireless debugging, confirm hot reload works**
   *Why:* This is your entire feedback loop for the next six weeks. Prove it works before you depend on it.
-- [ ] **Write `docs/ANDROID_CLAUDE.md`** *(or confirm `CLAUDE.md` covers it)*
+- [x] **Write `docs/ANDROID_CLAUDE.md`** *(or confirm `CLAUDE.md` covers it)*
   *Why:* The web app's context doc is why this plan could be written in such detail. The same investment here makes every future session productive from the first message rather than the tenth.
 
 **Exit criterion:** The app cold-starts on your phone from a QR scan, all four tabs navigate, and an edit to a screen hot-reloads over Wi-Fi.
@@ -61,30 +61,30 @@ to change later.
 
 ## Phase 1 — Database foundation
 **Goal:** Schema, migrations, encryption and the query boundary. Everything else sits on this.
-**Est:** 3–4 days · **Status:** ⬜ Not started
+**Est:** 3–4 days · **Status:** 🟡 Code complete — on-device timing pending
 
 > **Over-invest here.** All four pillars of this phase are expensive to change once there is data
 > on a device you cannot reach.
 
-- [ ] **Write `db/schema.ts`: `categories`, `transactions`, `budgets`, `subscriptions`, `import_batches`, `app_meta`**
+- [x] **Write `db/schema.ts`: `categories`, `transactions`, `budgets`, `subscriptions`, `import_batches`, `app_meta`**
   *Why:* This file is the single source of truth — every type in the app flows from it. Getting the table set right now means the rest of the app is typed correctly by construction.
-- [ ] **Amounts as `INTEGER` paise; dates as `TEXT` `YYYY-MM-DD`; soft delete via `deleted_at`**
+- [x] **Amounts as `INTEGER` paise; dates as `TEXT` `YYYY-MM-DD`; soft delete via `deleted_at`**
   *Why:* SQLite has no decimal and no date type. A `Numeric(12,2)` becomes `REAL`, and floats lose money as one-paise drift that surfaces months later in a total that won't reconcile. `TEXT` dates sort lexicographically and group with `substr()`. `deleted_at` powers undo on both swipe-delete and whole import batches.
-- [ ] **Add indexes: `tx_date_idx`, `tx_cat_idx`, `tx_batch_idx`**
+- [x] **Add indexes: `tx_date_idx`, `tx_cat_idx`, `tx_batch_idx`**
   *Why:* Every analytics query and the entire ledger read through these. Adding them now costs nothing; discovering they're missing at Phase 5 means re-timing every query.
-- [ ] **Configure `drizzle.config.ts` and generate the initial migration**
+- [x] **Configure `drizzle.config.ts` and generate the initial migration**
   *Why:* This is the Alembic analogue and the part you least want to hand-write. Establishing the generate-don't-edit habit on migration zero is how it survives to migration twelve.
-- [ ] **Enable SQLCipher via `useSQLCipher` in `app.config.ts`, key the DB at open**
+- [x] **Enable SQLCipher via `useSQLCipher` in `app.config.ts`, key the DB at open**
   *Why:* **Must happen before there is data.** Retrofitting encryption onto a populated database is a migration nobody wants to write. The DB holds a complete picture of someone's finances and leaves the device twice — via auto-backup and via export.
-- [ ] **Open the DB with `enableChangeListener: true`**
+- [x] **Open the DB with `enableChangeListener: true`**
   *Why:* This single flag is what makes `useLiveQuery` work. Without it, writes don't re-render and you'll reach for a state library you don't need.
-- [ ] **Gate app launch on `useMigrations` behind the splash, with a failure recovery screen**
+- [x] **Gate app launch on `useMigrations` behind the splash, with a failure recovery screen**
   *Why:* A failed migration is a permanently broken install with no server-side fix. The recovery screen offering *Restore from backup* is the difference between a bug report and a lost user.
-- [ ] **Seed system categories on first launch, matching the web app's set**
+- [x] **Seed system categories on first launch, matching the web app's set**
   *Why:* The server used to do this. A brand-new install with no categories can't record a transaction, so it's not optional.
-- [ ] **Write `lib/money.ts`: `toPaise`, `fromPaise`, `formatINR` with ICU assertion + fallback**
+- [x] **Write `lib/money.ts`: `toPaise`, `fromPaise`, `formatINR` with ICU assertion + fallback**
   *Why:* `toLocaleString("en-IN")` fails *silently* to US grouping where ICU is unavailable — `₹124,500.00` instead of `₹1,24,500.00` ships unnoticed. One helper, asserted at boot, unit-tested both ways.
-- [ ] **Build a debug seeder for 50,000 synthetic transactions across four years**
+- [x] **Build a debug seeder for 50,000 synthetic transactions across four years**
   *Why:* You cannot judge query performance on twelve rows. This seeder is the instrument for every performance decision in the plan.
 - [ ] **Time every planned analytics query on the real phone; record the numbers**
   *Why:* Finding a slow trend query in Phase 1 is a five-minute index fix. Finding it in Phase 5 is a redesign of the Analytics screen.
@@ -94,7 +94,10 @@ to change later.
 **Exit criterion:** A populated 50k-row database opens, migrates, and answers a 24-month trend query in under ~50 ms on the actual device.
 
 **Discovered during this phase:**
-- _(none yet)_
+- `react-dom@19.3.0` is hoisted transitively and demands `react@^19.3.0`, conflicting with the SDK's pinned `react@19.2.3`. Fixed with an `overrides: { "react-dom": "19.2.3" }` entry in package.json. It is only a peerOptional here — we build Android, not web — so pinning it is safe. Expect to revisit on the next SDK bump.
+- The blank TypeScript template ships no `babel.config.js`, so `babel-preset-expo` was not a dependency. Adding a Babel config without installing it fails the bundler with a bare `MODULE_NOT_FOUND`. Installed explicitly as a devDependency.
+- `newArchEnabled` is no longer part of `ExpoConfig` in SDK 57 — the New Architecture is default-on, and declaring it is now a type error.
+- Added `db/benchmark.ts` and `app/dev.tsx` beyond the original task list: the exit criterion needed to be runnable on the phone in one tap rather than requiring a code edit. The benchmark also runs `EXPLAIN QUERY PLAN` per query, so it reports full table scans, not just timings — a query that is fast at 50k rows but scanning will not stay fast at 200k.
 
 ---
 
