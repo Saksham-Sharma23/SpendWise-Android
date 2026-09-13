@@ -20,12 +20,13 @@
 | 3 | Home dashboard | 3 d | 🟡 In progress — dashboard UI + queries landed with the redesign |
 | 4 | Budgets & Tracker | 4 d | ⬜ Not started |
 | 5 | Analytics | 3 d | ⬜ Not started |
-| 6 | Excel & CSV import | 5–6 d | ⬜ Not started |
+| 6A | Sheets: import and workspaces | 7–8 d | ⬜ Not started |
+| 6B | Linked sheets | 4–5 d | ⬜ Not started |
 | 7 | Backup & restore | 3–4 d | ⬜ Not started |
 | 8 | Native layer | 3–4 d | ⬜ Not started |
 | 9 | Hardening & Play Store | 4–5 d | ⬜ Not started |
 
-**Total: ~25–33 working days solo.** Phase 1 is the one to over-invest in — schema, migrations,
+**Total: ~31–40 working days solo** (Phase 6 grew from a one-way import into sheets + linking on 2026-09-14). Phase 1 is the one to over-invest in — schema, migrations,
 encryption and the query boundary are what everything else sits on, and all four are expensive
 to change later.
 
@@ -242,35 +243,86 @@ to change later.
 
 ---
 
-## Phase 6 — Excel & CSV import
-**Goal:** The largest new feature. Five client stages, no backend.
-**Est:** 5–6 days · **Status:** ⬜ Not started
+## Phase 6A — Sheets: import and workspaces
+**Goal:** Bring spreadsheets into the app as separate, editable workspaces — not as ledger rows.
+**Est:** 7–8 days · **Status:** ⬜ Not started · **Design:** `CLAUDE.md` → *Sheets — imported and linked spreadsheets*
+
+> **The model, decided 2026-09-14.** Each imported `.csv`/`.xlsx` becomes its own **sheet**: a
+> workspace the user views, edits and exports separately from the app's own transactions. The app
+> edits **its own copy**; the original file is never written to silently. A sheet can opt in to
+> the dashboard/budgets/analytics totals. Linking a sheet to the ledger is Phase 6B.
 
 > Expect this to overrun. The difficulty is never the code — it is that real spreadsheets
 > disagree about dates, signs, and where the amount lives.
 
 - [ ] **Collect five genuinely different real spreadsheets as fixtures — FIRST**
-  *Why:* Writing the parser before seeing real input means designing for imagined problems and missing actual ones. A bank statement, a personal tracker and a Splitwise export disagree in ways you will not predict. **Do this before any parsing code.**
-- [ ] **Pick + parse: document picker, base64 into SheetJS, sheet and header-row detection**
-  *Why:* RN has no `File` or `ArrayBuffer` stream, so the base64 path is mandatory. Header detection matters because bank exports put a logo block above the real header.
-- [ ] **Map: fuzzy header guessing, two-column debit/credit mode, MMKV preset save and match**
-  *Why:* Two-column mode is specifically for bank statements with separate Withdrawal/Deposit columns — without it, half of real-world sheets can't be imported at all. Presets make the *second* import of the same sheet a two-tap operation.
+  *Why:* Writing the parser before seeing real input means designing for imagined problems and missing actual ones. Include at least one **heavily styled** `.xlsx` (colours, merged header, column widths, a formula total), one bank `.xls`, one personal tracker and one CSV. **Do this before any parsing code.**
+- [ ] **Spike: ExcelJS round-trip on the styled fixture, on the real phone (1 day, go/no-go)**
+  *Why:* The user chose "formatting must be preserved". SheetJS Community drops cell styles on write; ExcelJS keeps them but is heavy and depends on Node shims (`Buffer`, streams) under Hermes. Prove it before building on it: load the styled fixture, append 200 rows, write, open the result in Excel and Google Sheets, and check fills, fonts, borders, merged cells, widths, number formats, frozen panes, formulas and conditional formatting. Time a 10k-row write. **If it fails**, choose between a native Apache POI module (APK size cost) and preserving header/column styling only — and record the decision here.
+- [ ] **Schema: `sheets`, `sheet_columns`, `sheet_rows` (+ generated migration)**
+  *Why:* Rows keep their raw cell text **and** normalised `date` / `amount_paise` / `type` / `category_id` columns. Raw text is what gets exported, so nothing the user typed is lost; the normalised columns are what let SQL aggregate a sheet (CLAUDE.md #5) when it is included in totals.
+- [ ] **Store the original file as the export template under `files/sheets/<id>/`**
+  *Why:* Formatting can only be preserved if the original workbook survives as a template. It lives in app storage, not the database — a 5 MB workbook as a BLOB bloats every query and the backup.
+- [ ] **Pick + parse multiple files at once: `File.pickFileAsync({ multipleFiles: true })`, SheetJS for `.xls`/`.xlsx`, papaparse for `.csv`**
+  *Why:* The user imports several files in one go. SheetJS stays the reader because it handles legacy `.xls` (which ExcelJS cannot read); ExcelJS is only the style-preserving writer. The picker already takes a persistable URI grant, which Refresh relies on later.
+- [ ] **Tab picker for multi-tab workbooks; header-row detection**
+  *Why:* One workbook often holds a tab per month. Bank exports put a logo block above the real header, so the header row is detected (first of 15 rows with the most non-numeric cells) and overridable.
+- [ ] **Map columns: fuzzy header guessing, two-column debit/credit mode, extra columns kept as-is**
+  *Why:* Mapping tells the app which columns mean date / amount / type / note / category. Unmapped columns are **kept and editable** — a user's "Paid by" or "Card" column is their data, not noise. Presets saved to MMKV by header fingerprint make re-imports two taps.
 - [ ] **Normalise: Excel serial dates, dd/mm vs mm/dd picker, ₹ and DR/CR parsing straight to paise**
-  *Why:* `03/04/2026` is genuinely ambiguous and guessing wrong silently corrupts a year of data. Show three sample rows and let the user decide. Parse to paise directly — never via a float.
-- [ ] **Review: FlashList preview, per-row errors, fix in place, category mapping**
-  *Why:* This stage is what makes the feature trustworthy. Building it *before* commit means nothing can be written unreviewed.
-- [ ] **Duplicate detection in-file and against the DB via one indexed query**
-  *Why:* Re-importing an overlapping date range is the most common real mistake. Detect and present — never silently drop, because sometimes two identical ₹50 chai purchases are both real.
-- [ ] **Commit: a single `db.transaction()` inserting the batch row and all transactions**
-  *Why:* This is where standalone pays off. One transaction means a crash mid-import rolls back cleanly — there is no partially-imported ledger to recover from, and no chunking, retries or idempotency keys to write.
-- [ ] **Done: summary screen, import history, undo batch via `deleted_at`**
-  *Why:* "I mapped the wrong column" needs an answer better than deleting 800 rows by hand. Keep undo reachable indefinitely, not just as a toast that disappears.
+  *Why:* `03/04/2026` is genuinely ambiguous and guessing wrong silently corrupts a year of data. Show three sample rows and let the user decide. Parse to paise directly — never via a float. Rows that fail normalisation stay in the sheet, flagged, rather than being dropped.
+- [ ] **Map sheet category text to app categories (unknown → Uncategorised, original text kept)**
+  *Why:* Totals by category need `category_id`, but the cell must still export exactly as the user wrote it.
+- [ ] **Sheets list (More → Sheets): name, row count, badges for Linked / In totals / Unexported changes**
+  *Why:* Sheets are now a place, not a one-off wizard, so they need a home. The FAB long-press still jumps straight to import.
+- [ ] **Sheet workspace with THREE view modes, chosen in Settings (per-sheet override)**
+  *Why:* The user wants the choice. **Cards + form** (easiest on a phone), **Grid** (spreadsheet-style, tap a cell to edit), and **Cards with a grid toggle**. All read the same rows through FlashList, so the modes differ only in presentation. Default: cards with grid toggle.
+- [ ] **Row CRUD inside a sheet: add, edit, delete (soft), reorder; search and filter within the sheet**
+  *Why:* "View and edit them individually" is the core ask. Soft delete gives undo, as in the ledger.
+- [ ] **"Include in my totals" toggle per sheet, via a `money_rows` SQL view**
+  *Why:* The view is `transactions` UNION ALL included sheet rows (excluding mirrored rows, which would double count). Moving the dashboard, budget and analytics queries onto the view once, here, is far cheaper than teaching every query about sheets separately.
+- [ ] **Export a sheet: `.csv`, or `.xlsx` rebuilt from the template with styling preserved; via share sheet**
+  *Why:* "App's copy + export" is the chosen model — the updated file only reaches Excel when the user exports it. New rows copy the style of the last data row. Default is "Save a copy"; "Replace the original file" is an explicit option that first checks the original has not changed since import.
+- [ ] **Refresh from file, with review: new / changed / removed rows, per-row accept, app edits kept by default**
+  *Why:* The user will keep editing the original in Excel. Diff by source row position + content hash recorded at the last import or export; show conflicts where both sides changed the same row and let the user choose.
+- [ ] **Chunk parsing and exporting through `InteractionManager` with a progress bar**
+  *Why:* Parsing or writing thousands of rows synchronously freezes the UI thread, and a frozen progress bar reads as a crash.
 - [ ] **Bundle HDFC / ICICI / SBI mapping presets**
-  *Why:* Turns a five-screen wizard into preview-and-confirm for the exports people actually have. The difference between a feature tried once and one used monthly.
-- [ ] **Chunk parsing through `InteractionManager` so the progress bar keeps moving**
-  *Why:* Parsing a few thousand rows synchronously freezes the UI thread, and a frozen progress bar reads as a crash.
+  *Why:* Turns mapping into preview-and-confirm for the exports people actually have.
 
-**Exit criterion:** All five fixture spreadsheets import correctly, a crash mid-import leaves the ledger untouched, and undo cleanly reverses a batch.
+**Exit criterion:** All five fixtures import as separate sheets; rows can be edited in all three view modes; an included sheet changes the dashboard totals and an excluded one does not; the styled fixture exports with its formatting intact in Excel; refresh correctly shows rows changed in Excel.
+
+**Discovered during this phase:**
+- _(none yet)_
+
+---
+
+## Phase 6B — Linked sheets
+**Goal:** Transactions added in the app automatically appear in chosen sheets, in each sheet's own column order and format.
+**Est:** 4–5 days · **Status:** ⬜ Not started · **Depends on:** 6A
+
+- [ ] **Schema: `sheet_links` (rules + field→column mapping + formats) and `sheet_row_links` (transaction ↔ row)**
+  *Why:* `sheet_row_links` is what makes edits and deletes mirrorable. Because the app owns its copy of the sheet, row identity is tracked internally — **no ID column is ever added to the user's sheet**.
+- [ ] **Link setup: pick columns and their order, date format, amount style, type representation, defaults for extra columns — with a live preview row**
+  *Why:* "In a selected order and formatting." Amount styles: plain `1234.50`, grouped `₹1,24,500.00`, negative-for-expense, separate debit/credit columns, or a type column (`Expense`/`Income` or `DR`/`CR`). Date styles: `dd/mm/yyyy`, `yyyy-mm-dd`, `d MMM yyyy`.
+- [ ] **Rules per link: type, categories, optional amount range; many links active at once**
+  *Why:* The user chose rules per sheet and multiple linked sheets. A transaction matching two links lands in both.
+- [ ] **Insert position per link: append at the end, or keep the sheet in date order**
+  *Why:* A running log wants append; a sorted monthly sheet wants date order.
+- [ ] **Mirror on write: create → insert row; edit → update mapped cells; delete → soft-delete row; undo → restore**
+  *Why:* The user chose "mirror all changes". Run inside the same `db.transaction()` as the ledger write, so the ledger and the sheet can never disagree after a crash.
+- [ ] **Re-evaluate rules on edit: a transaction that no longer matches leaves that sheet, with a toast**
+  *Why:* Changing a category from Food to Travel should move it out of the Food sheet — visibly, not silently.
+- [ ] **Add form shows destination chips ("→ Food log.xlsx") with a per-transaction skip**
+  *Why:* Automatic writes into someone's spreadsheet must never be a surprise.
+- [ ] **Backfill on link creation: "Add N existing matching transactions?"**
+  *Why:* Linking a sheet halfway through the year should not leave the first half missing.
+- [ ] **Mirrored rows excluded from totals, always**
+  *Why:* A transaction already counts once in the ledger. If the linked sheet is also included in totals, counting its mirrored rows would double it.
+- [ ] **"Unexported changes" badge and export reminder on linked sheets**
+  *Why:* With the app-copy model the original file goes stale until the user exports. Make that state visible.
+
+**Exit criterion:** With two linked sheets and different rules, adding, editing, re-categorising and deleting transactions in the app produces exactly the right rows in each sheet; an export opens in Excel with the chosen order and formats; totals never double count.
 
 **Discovered during this phase:**
 - _(none yet)_
@@ -290,6 +342,8 @@ to change later.
   *Why:* Readable, diffable, and still restorable if the schema moves on. `.db` is exact but opaque; `.json` is the long-term insurance.
 - [ ] **Optional passphrase on `.db` export, with a clear warning about losing it**
   *Why:* An unencrypted export sitting in a Drive folder undoes the on-device encryption entirely. The warning matters — a forgotten passphrase means the backup is gone.
+- [ ] **Include sheets in backup: the sheet tables AND the template files under `files/sheets/`**
+  *Why:* A sheet restored without its original workbook can still be edited but can no longer export with its formatting. The templates live outside the database, so a `.db`-only backup would silently miss them.
 - [ ] **Restore: validate `schema_version` and row counts before touching anything**
   *Why:* Restoring a corrupt or wrong-version file over good data is the worst possible outcome. Validate first, refuse clearly, change nothing.
 - [ ] **Snapshot the current database before overwriting on restore**
@@ -384,6 +438,8 @@ to change later.
 | **Multi-device sync** | weeks | No server by design | The schema allows it: add a UUID column and `updated_at` per row (both additive migrations), and only `features/*/queries.ts` changes. A real project, not a switch |
 | **Precomputed rollup tables** | 2 d | Premature | Only if a real ledger measurably janks. Every write path gets more complex and rollups drift out of sync. Measure before believing it |
 | **Multi-currency** | 3 d | Web app is INR-only too | Follows the web app's lead |
+| **Copy sheet rows into the ledger** | 1–2 d | Not chosen for v1 — sheets use the per-sheet "include in totals" toggle instead | The dedupe hash and `import_batches` from Phase 1 already support it, so it stays cheap if asked for |
+| **Live Google Sheets sync** | — | Needs the Sheets API, i.e. `INTERNET` | Breaks convention #1. `.xlsx` files stored in Drive work — Drive's own app syncs them |
 | **Receipt photo attachment** | 3 d | Storage and UI cost, no backend to hold blobs | Would need file management and a size story alongside the 25 MB backup cap |
 | **Bank SMS auto-capture** | — | `READ_SMS` is incompatible with Play | Would also break the "no INTERNET, no data collected" story, which is worth more |
 
@@ -395,6 +451,13 @@ Record decisions made mid-build that future sessions need to know. Newest first.
 
 | Date | Decision | Reason |
 |---|---|---|
+| 2026-09-14 | **Imports become Sheets: separate, editable workspaces — not ledger rows** | The user's model: people already track money in spreadsheets and want to keep those files as their own thing. Each file is a sheet, viewed and edited individually |
+| 2026-09-14 | Sheets: the app edits its own copy; the original file changes only on explicit export | Chosen over live write-back. Avoids silent overwrites and conflicts with edits made in Excel; changes made in Excel come back through Refresh with a review step |
+| 2026-09-14 | Sheet rows count in totals only when the sheet opts in; mirrored rows never do | Per-sheet toggle, implemented as a `money_rows` UNION ALL view so dashboard/budget/analytics queries change once |
+| 2026-09-14 | Linked sheets mirror add/edit/delete, with rules per sheet and many links at once | Row identity lives in `sheet_row_links`, so no ID column is ever written into the user's sheet |
+| 2026-09-14 | xlsx formatting must survive export → ExcelJS writer, gated on a spike | SheetJS Community drops styles on write. ExcelJS preserves them but must be proven under Hermes first. SheetJS stays the reader for legacy `.xls` |
+| 2026-09-14 | Sheet view mode is a user setting: cards + form, grid, or cards with grid toggle | The user wants the choice; all three render the same rows |
+| 2026-09-14 | UI redesigned after the web app: dark-only, lime accent, frosted-glass tab bar | User request. Light theme deferred to a Settings toggle |
 | 2026-09-11 | **Standalone, offline-only — not a client for the FastAPI backend** | This is a separate product, not a second client. Removes auth, HTTP, server-state caching, offline queueing and cold starts entirely; adds on-device analytics and backup as new work |
 | 2026-09-11 | SQLite + Drizzle ORM for storage | Real SQL with typed queries and generated migrations. Analytics over a multi-year ledger is the breaking point for any JSON/KV approach |
 | 2026-09-11 | Analytics aggregated in SQL, not JS | 50k rows aggregate to ~24 in the engine. Pulling them into JS to `reduce()` costs hundreds of ms on the UI thread |

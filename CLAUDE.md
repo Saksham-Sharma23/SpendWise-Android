@@ -37,7 +37,7 @@ Axios, storing a JWT, or refreshing a token — it is wrong and predates this de
 
 | Decision | Choice | Consequence |
 |---|---|---|
-| **Architecture** | Standalone, zero network | No auth, no HTTP, no server-state cache, no offline queue, no cold starts. Two doors only: file import in, file backup out |
+| **Architecture** | Standalone, zero network | No auth, no HTTP, no server-state cache, no offline queue, no cold starts. Only files cross the boundary: spreadsheets in and out, backups out |
 | **Storage** | SQLite via `expo-sqlite` + Drizzle ORM | Real SQL, typed queries, generated migrations. `useLiveQuery` replaces TanStack Query entirely |
 | **Analytics** | SQL aggregation on-device | Port the FastAPI aggregations to `GROUP BY` queries. Never `SELECT` rows you intend to sum |
 | **Durability** | Manual export **+** Android auto-backup **+** monthly reminder | All three ship. Each covers a case the others miss. This is the defining risk of a standalone app |
@@ -87,7 +87,7 @@ privacy policy about transmitted data because it transmits none.
 | Toasts | `sonner-native` | Same API as the web's sonner |
 | Sheets | `@gorhom/bottom-sheet` | |
 | Icons · Font | `lucide-react-native` · `@expo-google-fonts/plus-jakarta-sans` | Identical to web |
-| Spreadsheets | `xlsx` (SheetJS) + `papaparse` | Base64 read path |
+| Spreadsheets | `xlsx` (SheetJS) + `papaparse` read · `exceljs` write | SheetJS reads `.xls`/`.xlsx`; ExcelJS writes `.xlsx` preserving formatting (**pending spike**) |
 | Files | `expo-document-picker`, `expo-file-system`, `expo-sharing` | Import in, backup out |
 | Notifications | `expo-notifications` (local) | Renewals, budget alerts, backup nudge |
 | Widget | `react-native-android-widget` | Config plugin → RemoteViews |
@@ -115,7 +115,7 @@ D:\Projects\SpendWise_Android
 │   │   └── more.tsx
 │   ├── budgets/index.tsx
 │   ├── tracker/index.tsx
-│   ├── import/                   # wizard stack: pick · map · review · commit
+│   ├── sheets/                   # list · [id] workspace · import wizard · link setup
 │   ├── backup/index.tsx          # export · restore · history
 │   ├── settings/
 │   ├── (modals)/                 # transaction · budget · subscription
@@ -131,7 +131,7 @@ D:\Projects\SpendWise_Android
 │   ├── analytics/     { queries.ts  components/ }      ← the SQL lives here
 │   ├── tracker/       { queries.ts  renewal.ts  notifications.ts }
 │   ├── dashboard/     { queries.ts  components/ }
-│   ├── import/        { parse.ts  map.ts  normalize.ts  dedupe.ts  commit.ts }
+│   ├── sheets/        { queries.ts  parse.ts  map.ts  normalize.ts  export.ts  refresh.ts  link.ts }
 │   └── backup/        { export.ts  restore.ts  validate.ts }
 ├── components/   ui/ · charts/ · layout/
 ├── lib/          money.ts · dates.ts · storage.ts · theme.ts · notifications/
@@ -203,7 +203,9 @@ export const transactions = sqliteTable("transactions", {
 }));
 ```
 
-Tables: `categories` · `transactions` · `budgets` · `subscriptions` · `import_batches` · `app_meta`.
+Tables: `categories` · `transactions` · `budgets` · `subscriptions` · `import_batches` · `app_meta` —
+plus, in Phase 6, `sheets` · `sheet_columns` · `sheet_rows` · `sheet_links` · `sheet_row_links` and the
+`money_rows` view (see *Sheets*).
 
 ---
 
@@ -253,7 +255,7 @@ five-minute fix; finding it in Phase 5 is a redesign.
    Home          Transactions      Insights        More
    ├ summary     ├ FlashList       ├ trend area    ├ Budgets
    ├ insight     ├ month headers   ├ scrubber      ├ Tracker
-   ├ trend       ├ swipe delete    ├ donut         ├ Import a sheet
+   ├ trend       ├ swipe delete    ├ donut         ├ Sheets
    ├ budgets →   ├ long-press sel. ├ month sel.    ├ Backup & restore
    ├ renewals →  ├ filter chips    └ stat cards    ├ Settings
    └ recent      └ search (LIKE)                   └ Groups (v1.1)
@@ -270,28 +272,106 @@ five-minute fix; finding it in Phase 5 is a redesign.
 
 ---
 
-## Excel / CSV Import
+## Sheets — Imported and Linked Spreadsheets
 
-Same wizard as a networked design; stage 6 collapses from the hardest part to the easiest.
+> **Decided 2026-09-14.** Many people already track their money in spreadsheets. SpendWise does
+> not swallow those files into its ledger — it keeps each one as its own **sheet**: a workspace
+> the user views, edits and exports separately. Optionally, a sheet can be **linked** so that
+> transactions added in the app appear in it automatically, in that sheet's own column order and
+> format. Phases 6A and 6B in [`TASKS.md`](TASKS.md).
+
+### The model
 
 ```
-1 Pick → 2 Parse → 3 Map → 4 Normalise → 5 Review → 6 Commit → 7 Done
-         (SheetJS)  ↕MMKV                           one txn        undo
-                    presets                      all-or-nothing
+   Ledger (transactions)                       Sheets (one per imported file)
+  ┌──────────────────────┐   link rules    ┌───────────────────────────────────┐
+  │ added in the app     │ ───────────────▶│ Food log.xlsx   ← mirrored rows   │
+  │ counts in totals     │  add/edit/del   │ HDFC 2025.xls   ← imported rows   │
+  └──────────┬───────────┘   mirrored      │ Trip.csv        ← edited in app   │
+             │                             └──────────┬───────────┬────────────┘
+             ▼                                        │ include   │ export (.csv / .xlsx,
+      money_rows view  ◀──────────────────────────────┘ in totals │ formatting preserved)
+   (dashboard, budgets, analytics)                                ▼
+                                                    share sheet / replace original
+```
+
+| Decision | Choice | Consequence |
+|---|---|---|
+| **What an import is** | A separate sheet, not ledger rows | Each file is viewed and edited on its own. The ledger stays the app's own data |
+| **Who is written to** | The app edits **its own copy**; the original changes only on explicit **export** | No silent overwrites, no clash with edits made in Excel. The original goes stale until exported — surface that with an "Unexported changes" badge |
+| **Totals** | Per-sheet **"Include in my totals"** toggle | Implemented once as a `money_rows` view (`transactions` UNION ALL included sheet rows). Mirrored rows are **never** included — they would double count |
+| **Linking** | Rules per sheet (type, categories, amount range); many links at once | A transaction matching two links lands in both. The add form shows destination chips with a per-transaction skip |
+| **Sync scope** | Mirror add, edit and delete | Row identity lives in `sheet_row_links`. **No ID column is ever added to the user's sheet** |
+| **Formatting** | Must survive export | ExcelJS rebuilds the `.xlsx` from the stored original as a template. **Gated on a spike** — see Risks |
+| **Refresh** | Re-read the original with a review step | New / changed / removed rows, per-row accept; app edits kept by default; conflicts shown when both sides changed a row |
+| **View mode** | User setting: cards + form · grid · cards with grid toggle | All three render the same rows. Global default in Settings, per-sheet override |
+
+### Data model additions
+
+| Table | Holds | Notes |
+|---|---|---|
+| `sheets` | name, source filename, kind (`csv`/`xlsx`/`xls`), tab name, header row, persisted source URI, source content hash, `include_in_totals`, view-mode override, last imported/exported | The original file is kept as the export template in `files/sheets/<id>/`, **not** as a BLOB |
+| `sheet_columns` | position, header, role (`date`/`amount`/`debit`/`credit`/`type`/`note`/`category`/`extra`), format | Unmapped columns are kept as `extra` and stay editable |
+| `sheet_rows` | raw cells (JSON, exactly as written) **plus** normalised `date`, `amount_paise`, `type`, `category_id`; origin (`file`/`app`/`mirror`); source row index + content hash; `deleted_at` | Raw cells are what export writes; normalised columns are what SQL aggregates. Index `(sheet_id, date, deleted_at)` |
+| `sheet_links` | rules, field→column mapping and order, date/amount/type formats, insert position (append / date order), enabled | One sheet can have one link; many sheets can be linked |
+| `sheet_row_links` | `transaction_id` ↔ `sheet_row_id` per link | Makes edit/delete mirroring exact. Unique `(transaction_id, link_id)` |
+
+### Import pipeline (per file, several files at once)
+
+```
+1 Pick → 2 Parse → 3 Tab → 4 Map → 5 Normalise → 6 Review → 7 Create sheet
+ multi    SheetJS    picker   ↕MMKV    dd/mm picker   flagged rows    one db.transaction()
+ files    papaparse           presets  ₹ · DR/CR→paise kept, not dropped + template saved
 ```
 
 | Stage | Messy reality | Resolution |
 |---|---|---|
-| **2 Parse** | RN has no `File` stream. Multiple tabs. Header often row 4 under a bank logo | `readAsStringAsync` + `EncodingType.Base64` → `XLSX.read(b64, {type:"base64", cellDates:true})`. Header row = first of 15 rows with most non-empty non-numeric cells, overridable |
-| **3 Map** | Columns named `Txn Date`, `Narration`, `Withdrawal Amt.`, `Deposit Amt.` — or just `What` / `How much` | Fuzzy header matching. **Two-column mode** for separate debit/credit. Mapping saved to MMKV under a hash of header names |
-| **4 Normalise** | Excel serial dates. `03/04/2026` ambiguous. Amounts as `"₹ 1,24,500.00"`, `"(2,300)"`, `"2300 DR"` | `cellDates:true` for serials; ambiguous strings trigger a **dd/mm vs mm/dd picker** with 3 sample rows. Strip `₹`/commas; parens and `DR`/`CR` set sign; **parse straight to integer paise, never through a float** |
-| **5 Review** | 6 bad dates, 40 unknown categories, 12 already imported | FlashList preview, per-row status, fix in place or skip. Duplicates found in-file and against the DB in one indexed query, presented never silently dropped |
-| **6 Commit** | — nothing, any more | One `db.transaction()`: insert batch row, insert all transactions, commit. A few thousand rows in well under a second. Cancel = don't commit |
-| **7 Done** | "I mapped the wrong column, 800 wrong rows" | Summary + **Undo this import** — one `UPDATE` setting `deleted_at` for the batch. Reachable indefinitely from import history |
+| **1 Pick** | Several files; files in Drive | `File.pickFileAsync({ multipleFiles: true })` — Android's document picker, with a persistable URI grant used later by Refresh. Drive-hosted `.xlsx`/`.csv` work; **native Google Sheets documents do not** (they need the online API) |
+| **2 Parse** | RN has no `File` stream; legacy bank `.xls` | SheetJS reads `.xls`/`.xlsx` from base64 (`cellDates: true`); papaparse reads CSV |
+| **3 Tab** | One workbook, a tab per month | Tab picker; each chosen tab can become its own sheet |
+| **4 Map** | `Txn Date`, `Narration`, `Withdrawal Amt.`, `Deposit Amt.` — or `What` / `How much` | Fuzzy header matching, two-column debit/credit mode, header-row detection under a bank logo, presets by header fingerprint. HDFC / ICICI / SBI presets bundled |
+| **5 Normalise** | Excel serials, ambiguous `03/04/2026`, `"₹ 1,24,500.00"`, `"(2,300)"`, `"2300 DR"` | dd/mm vs mm/dd picker with three sample rows; parse straight to integer paise via `parseAmountToPaise`, never through a float |
+| **6 Review** | 6 bad dates, 40 unknown categories | Rows that fail normalisation stay in the sheet, flagged. Category text maps to app categories (unknown → Uncategorised); the original text is kept for export |
+| **7 Create** | — | One `db.transaction()` writes the sheet, columns and rows; the original file is copied in as the template |
 
-**Cheap win:** bundle HDFC / ICICI / SBI mapping presets matched by header fingerprint.
+### Linked sheets — the write path
 
----
+```
+createTransaction(input)
+  └─ db.transaction():
+       insert transactions row
+       for each enabled sheet_link whose rules match:
+           format fields per link (column order, date style, amount style, type style)
+           insert sheet_rows (origin = 'mirror') at append / date position
+           insert sheet_row_links
+  ── ledger and sheets can never disagree after a crash
+edit   → update mapped cells; if rules no longer match → remove from that sheet (toast)
+delete → soft-delete mirrored rows;  undo → restore them
+new link → offer backfill of existing matching transactions
+```
+
+Amount styles: plain `1234.50` · grouped `₹1,24,500.00` · negative-for-expense · separate debit/credit
+columns · type column (`Expense`/`Income` or `DR`/`CR`). Date styles: `dd/mm/yyyy` · `yyyy-mm-dd` · `d MMM yyyy`.
+
+### Export
+
+- **`.csv`** — written from raw cells, UTF-8 with BOM so Excel reads ₹ correctly.
+- **`.xlsx`** — ExcelJS loads the stored original as a template, rewrites the data region from
+  `sheet_rows` in order, gives new rows the style of the last existing data row, and keeps widths,
+  merged cells, number formats and formulas. `.xls` sources export as `.xlsx`.
+- Destinations: share sheet (**Save a copy**, the default), or **Replace the original file** through
+  the persisted URI — only after checking its content hash still matches the last import/export.
+- Export records each row's position and hash, so the next Refresh can match rows without an ID column.
+
+### Risks
+
+| Risk | Why it matters | Mitigation |
+|---|---|---|
+| **ExcelJS under Hermes** | Heavy; expects Node `Buffer`/streams. "Must preserve formatting" depends on it | 1-day spike on a styled real fixture on the phone, before any 6A code. Fallbacks: native Apache POI (APK size) or header/column styles only |
+| **Row matching on Refresh without an ID column** | Rows edited in Excel and reordered can mis-match | Position + content hash from the last import/export; ambiguous matches go to the review screen, never auto-applied |
+| **Template files and the 25 MB auto-backup cap** | Large workbooks count against it | Show sheet storage in Settings; Phase 7 backup includes `files/sheets/` explicitly |
+| **Double counting** | A linked sheet that is also "in totals" contains copies of ledger rows | `money_rows` excludes `origin = 'mirror'` unconditionally |
+| **Parse/export on the JS thread** | Thousands of rows freeze the UI | Chunk through `InteractionManager` with a progress bar |
 
 ## Backup & Restore
 
@@ -419,14 +499,15 @@ Full detail with checkboxes in [`TASKS.md`](TASKS.md) and the [live plan](https:
 | 3 | Home dashboard | 3 d |
 | 4 | Budgets & Tracker | 4 d |
 | 5 | Analytics | 3 d |
-| 6 | Excel & CSV import | 5–6 d |
+| 6A | Sheets: import and workspaces | 7–8 d |
+| 6B | Linked sheets | 4–5 d |
 | 7 | **Backup & restore** | 3–4 d |
 | 8 | Native layer | 3–4 d |
 | 9 | Hardening & Play Store | 4–5 d |
 
-**Total: ~25–33 working days solo** (5–7 weeks of evenings and weekends) — shorter than a
-networked plan despite adding the analytics port and the whole backup feature, because auth,
-HTTP, caching and offline queueing all disappeared.
+**Total: ~31–40 working days solo** (6–8 weeks of evenings and weekends). Phase 6 grew on
+2026-09-14 from a one-way import into sheets + linking; auth, HTTP, caching and offline queueing
+still account for everything the standalone design removed.
 
 Phase 1 is the one to over-invest in: schema, migrations, encryption and the query boundary are
 what everything else sits on, and all four are expensive to change later.
@@ -441,6 +522,8 @@ what everything else sits on, and all four are expensive to change later.
 | **Multi-device sync** | No server by design | A real project, not a switch. The schema allows it: add a UUID column and `updated_at` per row (both additive), and only `features/*/queries.ts` changes |
 | **Precomputed rollup tables** | Premature | Only if a real ledger measurably janks. Measure before believing it |
 | **Multi-currency** | Web app is INR-only too | Follows the web app's lead |
+| **Live Google Sheets sync** | Needs the Sheets API, i.e. `INTERNET` | Breaks convention #1. `.xlsx` files stored in Drive already work — Drive's own app syncs them |
+| **Copy sheet rows into the ledger** | Not chosen for v1 — sheets use "include in totals" | Cheap later: the dedupe hash and `import_batches` already exist |
 | **Bank SMS auto-capture** | `READ_SMS` is incompatible with Play | Would also break the "no INTERNET, no data collected" story |
 
 ---
