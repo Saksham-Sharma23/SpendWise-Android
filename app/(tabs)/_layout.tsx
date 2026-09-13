@@ -1,6 +1,7 @@
 import { Tabs, useRouter } from 'expo-router';
 import { BarChart3, Grid3x3, House, Plus, Receipt } from 'lucide-react-native';
 import { Pressable, View, useColorScheme } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /**
  * Four tabs and one action.
@@ -53,6 +54,9 @@ function AddButton() {
 export default function TabsLayout() {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
+  // Android draws edge-to-edge, so a fixed-height bar sits UNDER the system
+  // navigation buttons. Grow the bar by the bottom inset instead.
+  const { bottom } = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -63,8 +67,8 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: isDark ? '#141B18' : '#FFFFFF',
           borderTopColor: isDark ? '#28322D' : '#D3DAD5',
-          height: 62,
-          paddingBottom: 8,
+          height: 62 + bottom,
+          paddingBottom: 8 + bottom,
           paddingTop: 6,
         },
         tabBarLabelStyle: {

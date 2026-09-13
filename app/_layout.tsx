@@ -134,10 +134,9 @@ function MigratedApp() {
           }}
         >
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen
-            name="(modals)"
-            options={{ presentation: 'modal', headerShown: false }}
-          />
+          {/* A group is not a route: each modal is registered by its full name. */}
+          <Stack.Screen name="(modals)/transaction" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="(modals)/filters" options={{ presentation: 'modal' }} />
         </Stack>
         <Toaster position="bottom-center" richColors />
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
