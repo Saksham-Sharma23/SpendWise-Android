@@ -1,86 +1,255 @@
 import { useRouter, type Tabs } from 'expo-router';
 import { ChartColumn, House, LayoutGrid, Plus, Receipt, type LucideIcon } from 'lucide-react-native';
-import { useEffect, type ComponentProps } from 'react';
-import { Text, View } from 'react-native';
+import { useCallback, useEffect, useState, type ComponentProps } from 'react';
+import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
-  interpolateColor,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { colors, fonts, springs } from '../../lib/theme';
 import { PressableScale } from '../ui/PressableScale';
+import { BLUR_AVAILABLE, GlassBlur } from './glass';
 
 // expo-router vendors react-navigation and does not re-export the tab bar
 // prop type, so derive it from the Tabs component itself.
 type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 
-const ICONS: Record<string, { icon: LucideIcon; label: string }> = {
-  index: { icon: House, label: 'Home' },
-  transactions: { icon: Receipt, label: 'Activity' },
-  insights: { icon: ChartColumn, label: 'Insights' },
-  more: { icon: LayoutGrid, label: 'More' },
+const TABS: Record<string, { icon: LucideIcon; label: string; slot: number }> = {
+  index: { icon: House, label: 'Home', slot: 0 },
+  transactions: { icon: Receipt, label: 'Activity', slot: 1 },
+  insights: { icon: ChartColumn, label: 'Insights', slot: 3 },
+  more: { icon: LayoutGrid, label: 'More', slot: 4 },
 };
 
+const SLOTS = 5; // four tabs + the centre add button in slot 2
+const TAB_SLOTS = [0, 1, 3, 4];
+const BAR_HEIGHT = 70;
+const PAD = 6;
+const PILL_HEIGHT = BAR_HEIGHT - PAD * 2;
+
+/** The droplet's two springs: a quick leading edge and a lazy trailing one. */
+const LEAD = { damping: 22, stiffness: 420, mass: 0.8 };
+const TRAIL = { damping: 20, stiffness: 150, mass: 1 };
+
 /**
- * A floating tab bar: four destinations and one action.
+ * A liquid-glass tab bar.
  *
- * The active tab grows a lime-tinted pill with its label; inactive tabs are
- * icon-only, which keeps the bar calm. The centre button is not a tab — it
- * opens the add form and dismisses back to wherever you were.
+ * Three layers make the glass: a real backdrop blur (when the native module
+ * is in the build), a translucent tint, and a soft white sheen with a bright
+ * top edge — the highlight that reads as a curved glass surface.
+ *
+ * The selection is one "droplet" rather than a pill per tab. Its two edges
+ * run on different springs, so as it travels it stretches out and thins,
+ * then snaps back into shape when it lands. Drag along the bar and the
+ * droplet follows your finger, swelling like a lens, and selects the tab you
+ * release on.
  */
 export function TabBar({ state, navigation }: BottomTabBarProps) {
   const { bottom } = useSafeAreaInsets();
-  const routes = state.routes.filter((r) => r.name !== 'add');
-  const activeName = state.routes[state.index]?.name;
+  const [width, setWidth] = useState(0);
 
-  const left = routes.slice(0, 2);
-  const right = routes.slice(2);
+  const activeName = state.routes[state.index]?.name ?? 'index';
+  const activeSlot = TABS[activeName]?.slot ?? 0;
 
-  const renderTab = (route: (typeof routes)[number]) => {
-    const meta = ICONS[route.name];
-    if (!meta) return null;
-    const focused = route.name === activeName;
-    return (
-      <Tab
-        key={route.key}
-        icon={meta.icon}
-        label={meta.label}
-        focused={focused}
-        onPress={() => {
-          const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-          if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
-        }}
-      />
-    );
-  };
+  const inner = Math.max(0, width - PAD * 2);
+  const slotWidth = inner / SLOTS;
+  const pillWidth = slotWidth - 4;
+  const centerOf = useCallback((slot: number) => PAD + slotWidth * (slot + 0.5), [slotWidth]);
+
+  const lead = useSharedValue(0);
+  const trail = useSharedValue(0);
+  const dragging = useSharedValue(0);
+  const ready = useSharedValue(0);
+
+  // Glide to the active tab whenever it changes (tap, drag or deep link).
+  useEffect(() => {
+    if (width === 0) return;
+    const x = centerOf(activeSlot);
+    if (ready.value === 0) {
+      lead.value = x;
+      trail.value = x;
+      ready.value = withTiming(1, { duration: 250 });
+    } else {
+      lead.value = withSpring(x, LEAD);
+      trail.value = withSpring(x, TRAIL);
+    }
+  }, [activeSlot, width, centerOf, lead, trail, ready]);
+
+  const goToSlot = useCallback(
+    (slot: number) => {
+      const route = state.routes.find((r) => TABS[r.name]?.slot === slot);
+      if (!route) return;
+      const focused = route.name === activeName;
+      const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+      if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
+    },
+    [state.routes, activeName, navigation],
+  );
+
+  const pan = Gesture.Pan()
+    .activeOffsetX([-12, 12])
+    .onBegin(() => {
+      dragging.value = withSpring(1, springs.press);
+    })
+    .onUpdate((e) => {
+      const min = PAD + slotWidth * 0.5;
+      const max = PAD + slotWidth * (SLOTS - 0.5);
+      const x = Math.min(max, Math.max(min, e.x));
+      lead.value = x;
+      trail.value = withSpring(x, TRAIL);
+    })
+    .onEnd((e) => {
+      const raw = Math.floor((e.x - PAD) / slotWidth);
+      // Nearest real tab — the centre slot is the add button, not a tab.
+      let best = TAB_SLOTS[0]!;
+      for (const s of TAB_SLOTS) if (Math.abs(s - raw) < Math.abs(best - raw)) best = s;
+      const x = PAD + slotWidth * (best + 0.5);
+      lead.value = withSpring(x, LEAD);
+      trail.value = withSpring(x, TRAIL);
+      scheduleOnRN(goToSlot, best);
+    })
+    .onFinalize(() => {
+      dragging.value = withSpring(0, springs.settle);
+    });
+
+  const stretch = useDerivedValue(() => Math.abs(lead.value - trail.value));
+
+  const droplet = useAnimatedStyle(() => {
+    const left = Math.min(lead.value, trail.value) - pillWidth / 2;
+    const s = slotWidth > 0 ? stretch.value / slotWidth : 0;
+    return {
+      opacity: ready.value,
+      width: pillWidth + stretch.value,
+      transform: [
+        { translateX: left },
+        // Thins as it stretches, swells while dragged — surface tension.
+        { scaleY: 1 - Math.min(0.22, s * 0.28) + dragging.value * 0.1 },
+        { scaleX: 1 + dragging.value * 0.06 },
+      ],
+    };
+  });
+
+  const barScale = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + dragging.value * 0.015 }],
+  }));
 
   return (
     <View
       pointerEvents="box-none"
       style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingBottom: bottom + 10 }}
     >
+      <GestureDetector gesture={pan}>
+        <Animated.View
+          onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
+          className="mx-4"
+          style={[{ height: BAR_HEIGHT, borderRadius: BAR_HEIGHT / 2 }, barScale]}
+        >
+          <GlassSurface radius={BAR_HEIGHT / 2} />
+
+          {width > 0 ? (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                {
+                  position: 'absolute',
+                  top: PAD,
+                  left: 0,
+                  height: PILL_HEIGHT,
+                  borderRadius: PILL_HEIGHT / 2,
+                  overflow: 'hidden',
+                  backgroundColor: 'rgba(212, 245, 94, 0.13)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(212, 245, 94, 0.32)',
+                },
+                droplet,
+              ]}
+            >
+              <Sheen id="drop" top={0.22} />
+            </Animated.View>
+          ) : null}
+
+          <View className="flex-1 flex-row items-center" style={{ paddingHorizontal: PAD }}>
+            {[0, 1, 2, 3, 4].map((slot) => {
+              if (slot === 2) return <AddButton key="add" />;
+              const route = state.routes.find((r) => TABS[r.name]?.slot === slot);
+              const meta = route ? TABS[route.name] : undefined;
+              if (!route || !meta) return <View key={slot} className="flex-1" />;
+              return (
+                <Tab
+                  key={route.key}
+                  icon={meta.icon}
+                  label={meta.label}
+                  focused={route.name === activeName}
+                  onPress={() => goToSlot(slot)}
+                />
+              );
+            })}
+          </View>
+        </Animated.View>
+      </GestureDetector>
+    </View>
+  );
+}
+
+/** Blur + tint + sheen + edge highlights, clipped to the bar's shape. */
+function GlassSurface({ radius }: { radius: number }) {
+  return (
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]}>
+      <GlassBlur intensity={50} />
+      {/* Without a real blur the tint does all the work, so it is denser. */}
       <View
-        className="mx-4 flex-row items-center rounded-full border px-2"
-        style={{
-          height: 68,
-          backgroundColor: 'rgba(21, 22, 25, 0.97)',
-          borderColor: colors.border,
-          shadowColor: '#000',
-          shadowOpacity: 0.5,
-          shadowRadius: 24,
-          shadowOffset: { width: 0, height: 10 },
-          elevation: 18,
-        }}
-      >
-        <View className="flex-1 flex-row items-center justify-around">{left.map(renderTab)}</View>
-        <AddButton />
-        <View className="flex-1 flex-row items-center justify-around">{right.map(renderTab)}</View>
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: BLUR_AVAILABLE ? 'rgba(16, 17, 20, 0.42)' : 'rgba(22, 23, 27, 0.86)' },
+        ]}
+      />
+      <Sheen id="bar" top={0.1} />
+      {/* The bright top rim — light catching the curved edge of the glass. */}
+      <View style={{ position: 'absolute', top: 0, left: radius * 0.6, right: radius * 0.6, height: 1 }}>
+        <Svg width="100%" height="100%">
+          <Defs>
+            <LinearGradient id="rim" x1="0" y1="0" x2="1" y2="0">
+              <Stop offset="0" stopColor="#fff" stopOpacity={0} />
+              <Stop offset="0.5" stopColor="#fff" stopOpacity={0.5} />
+              <Stop offset="1" stopColor="#fff" stopOpacity={0} />
+            </LinearGradient>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#rim)" />
+        </Svg>
       </View>
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          { borderRadius: radius, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.09)' },
+        ]}
+      />
+    </View>
+  );
+}
+
+/** A soft white gradient from the top edge, fading out by the middle. */
+function Sheen({ id, top }: { id: string; top: number }) {
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Svg width="100%" height="100%">
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#fff" stopOpacity={top} />
+            <Stop offset="0.55" stopColor="#fff" stopOpacity={0} />
+          </LinearGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill={`url(#${id})`} />
+      </Svg>
     </View>
   );
 }
@@ -96,23 +265,20 @@ function Tab({
   focused: boolean;
   onPress: () => void;
 }) {
-  const progress = useSharedValue(focused ? 1 : 0);
-  useEffect(() => {
-    progress.value = withTiming(focused ? 1 : 0, { duration: 220 });
-  }, [focused, progress]);
+  const bounce = useSharedValue(1);
+  const on = useSharedValue(focused ? 1 : 0);
 
-  // interpolateColor, not a template string: near the end of a timing curve
-  // the alpha becomes e.g. 2.1e-7, and Reanimated rejects exponent notation.
-  const pill = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(progress.value, [0, 1], ['rgba(212,245,94,0)', 'rgba(212,245,94,0.12)']),
-    borderColor: interpolateColor(progress.value, [0, 1], ['rgba(212,245,94,0)', 'rgba(212,245,94,0.3)']),
-    paddingHorizontal: interpolate(progress.value, [0, 1], [12, 14]),
+  useEffect(() => {
+    on.value = withTiming(focused ? 1 : 0, { duration: 240 });
+    if (focused) {
+      bounce.value = withSequence(withTiming(0.82, { duration: 90 }), withSpring(1, { damping: 9, stiffness: 260 }));
+    }
+  }, [focused, on, bounce]);
+
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: bounce.value }, { translateY: interpolate(on.value, [0, 1], [0, -1]) }],
   }));
-  const labelStyle = useAnimatedStyle(() => ({
-    opacity: progress.value,
-    maxWidth: interpolate(progress.value, [0, 1], [0, 80]),
-    marginLeft: interpolate(progress.value, [0, 1], [0, 6]),
-  }));
+  const labelStyle = useAnimatedStyle(() => ({ opacity: interpolate(on.value, [0, 1], [0.55, 1]) }));
 
   return (
     <PressableScale
@@ -120,19 +286,25 @@ function Tab({
       accessibilityLabel={label}
       accessibilityState={{ selected: focused }}
       onPress={onPress}
-      scaleTo={0.88}
-      hitSlop={6}
+      scaleTo={0.9}
+      className="flex-1 items-center justify-center"
+      style={{ height: PILL_HEIGHT }}
     >
-      <Animated.View
-        className="flex-row items-center rounded-full border"
-        style={[{ height: 42 }, pill]}
-      >
-        <Icon size={20} color={focused ? colors.primary : colors.muted} strokeWidth={focused ? 2.3 : 2} />
-        <Animated.View style={[{ overflow: 'hidden' }, labelStyle]}>
-          <Text numberOfLines={1} style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 12 }}>
-            {label}
-          </Text>
-        </Animated.View>
+      <Animated.View style={iconStyle}>
+        <Icon size={21} color={focused ? colors.primary : colors.foreground} strokeWidth={focused ? 2.3 : 1.9} />
+      </Animated.View>
+      <Animated.View style={labelStyle}>
+        <Text
+          numberOfLines={1}
+          style={{
+            color: focused ? colors.primary : colors.foreground,
+            fontFamily: focused ? fonts.semibold : fonts.medium,
+            fontSize: 10,
+            marginTop: 3,
+          }}
+        >
+          {label}
+        </Text>
       </Animated.View>
     </PressableScale>
   );
@@ -144,36 +316,37 @@ function AddButton() {
   const spin = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value * 90}deg` }] }));
 
   return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel="Add transaction"
-      accessibilityHint="Opens the add transaction form. Long press to import a spreadsheet."
-      scaleTo={0.86}
-      onPressIn={() => {
-        turn.value = withSpring(1, springs.press);
-      }}
-      onPressOut={() => {
-        turn.value = withSpring(0, springs.settle);
-      }}
-      onPress={() => router.push('/(modals)/transaction')}
-      onLongPress={() => router.push('/import/pick')}
-      style={{
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        marginHorizontal: 6,
-        backgroundColor: colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        // No coloured shadow: Android renders it as a blurry lime halo that
-        // leaks into the bar. A dark ring separates the button instead.
-        borderWidth: 3,
-        borderColor: colors.background,
-      }}
-    >
-      <Animated.View style={spin}>
-        <Plus size={26} color={colors.onPrimary} strokeWidth={2.6} />
-      </Animated.View>
-    </PressableScale>
+    <View className="flex-1 items-center justify-center">
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel="Add transaction"
+        accessibilityHint="Opens the add transaction form. Long press to import a spreadsheet."
+        scaleTo={0.86}
+        onPressIn={() => {
+          turn.value = withSpring(1, springs.press);
+        }}
+        onPressOut={() => {
+          turn.value = withSpring(0, springs.settle);
+        }}
+        onPress={() => router.push('/(modals)/transaction')}
+        onLongPress={() => router.push('/import/pick')}
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          overflow: 'hidden',
+          backgroundColor: colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          // No coloured shadow — Android renders it as a halo that leaks
+          // into the glass around it.
+        }}
+      >
+        <Sheen id="fab" top={0.45} />
+        <Animated.View style={spin}>
+          <Plus size={25} color={colors.onPrimary} strokeWidth={2.6} />
+        </Animated.View>
+      </PressableScale>
+    </View>
   );
 }

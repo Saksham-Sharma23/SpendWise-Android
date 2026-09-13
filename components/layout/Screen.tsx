@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fonts } from '../../lib/theme';
 import { PressableScale } from '../ui/PressableScale';
+import { BlurTarget } from './glass';
 
 interface ScreenProps {
   title?: string;
@@ -84,11 +85,16 @@ export function Screen({
       </Animated.View>
     ) : null;
 
+  // Tab screens sit under the glass tab bar, so they are its blur target.
+  // Stack screens (back=true) have no bar over them.
+  const Root = back ? View : BlurTarget;
+  const rootStyle = { flex: 1, paddingTop: insets.top, backgroundColor: colors.background };
+
   // A scrolling screen scrolls its title away with the content; a list screen
   // keeps it pinned above the list, which owns its own scrolling.
   if (scroll) {
     return (
-      <View className="flex-1" style={{ paddingTop: insets.top, backgroundColor: colors.background }}>
+      <Root style={rootStyle}>
         <ScrollView
           contentContainerStyle={{ paddingBottom: (back ? 40 : TAB_BAR_CLEARANCE) + insets.bottom }}
           showsVerticalScrollIndicator={false}
@@ -96,14 +102,14 @@ export function Screen({
           {header}
           {children}
         </ScrollView>
-      </View>
+      </Root>
     );
   }
 
   return (
-    <View className="flex-1" style={{ paddingTop: insets.top, backgroundColor: colors.background }}>
+    <Root style={rootStyle}>
       {header}
       <View className="flex-1">{children}</View>
-    </View>
+    </Root>
   );
 }
