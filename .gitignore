@@ -34,3 +34,9 @@ gradle-build.log
 gradle-release.log
 prebuild.log
 bundle.log
+gradle-arm.log
+gradle-x86.log
+emulator.log
+emu-out.log
+emu-err.log
+sdk-install.log
