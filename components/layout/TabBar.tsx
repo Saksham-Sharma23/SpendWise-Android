@@ -13,7 +13,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { colors, fonts, springs } from '../../lib/theme';
@@ -42,11 +41,11 @@ const LEAD = { damping: 22, stiffness: 420, mass: 0.8 };
 const TRAIL = { damping: 20, stiffness: 150, mass: 1 };
 
 /**
- * A liquid-glass tab bar.
+ * A frosted-glass tab bar.
  *
- * Three layers make the glass: a real backdrop blur (when the native module
- * is in the build), a translucent tint, and a soft white sheen with a bright
- * top edge — the highlight that reads as a curved glass surface.
+ * The surface is glassmorphism: a real backdrop blur (when the native module
+ * is in the build), a translucent tint, an even white frost and a thin light
+ * border. No gloss or specular highlights — those belong to "liquid glass".
  *
  * The selection is one "droplet" rather than a pill per tab. Its two edges
  * run on different springs, so as it travels it stretches out and thins,
@@ -173,9 +172,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                 },
                 droplet,
               ]}
-            >
-              <Sheen id="drop" top={0.22} />
-            </Animated.View>
+            />
           ) : null}
 
           <View className="flex-1 flex-row items-center" style={{ paddingHorizontal: PAD }}>
@@ -201,55 +198,30 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
   );
 }
 
-/** Blur + tint + sheen + edge highlights, clipped to the bar's shape. */
+/**
+ * Frosted glass (glassmorphism): heavy blur, a flat milky white tint and a
+ * thin light border. Deliberately no gloss — no sheen, no specular rim —
+ * which is what separates it from the glossy "liquid glass" look.
+ */
 function GlassSurface({ radius }: { radius: number }) {
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]}>
-      <GlassBlur intensity={50} />
+      <GlassBlur intensity={70} />
       {/* Without a real blur the tint does all the work, so it is denser. */}
       <View
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: BLUR_AVAILABLE ? 'rgba(16, 17, 20, 0.42)' : 'rgba(22, 23, 27, 0.86)' },
+          { backgroundColor: BLUR_AVAILABLE ? 'rgba(20, 21, 25, 0.35)' : 'rgba(24, 25, 30, 0.80)' },
         ]}
       />
-      <Sheen id="bar" top={0.1} />
-      {/* The bright top rim — light catching the curved edge of the glass. */}
-      <View style={{ position: 'absolute', top: 0, left: radius * 0.6, right: radius * 0.6, height: 1 }}>
-        <Svg width="100%" height="100%">
-          <Defs>
-            <LinearGradient id="rim" x1="0" y1="0" x2="1" y2="0">
-              <Stop offset="0" stopColor="#fff" stopOpacity={0} />
-              <Stop offset="0.5" stopColor="#fff" stopOpacity={0.5} />
-              <Stop offset="1" stopColor="#fff" stopOpacity={0} />
-            </LinearGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#rim)" />
-        </Svg>
-      </View>
+      {/* The frost: an even white wash over the whole panel. */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.06)' }]} />
       <View
         style={[
           StyleSheet.absoluteFill,
-          { borderRadius: radius, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.09)' },
+          { borderRadius: radius, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.16)' },
         ]}
       />
-    </View>
-  );
-}
-
-/** A soft white gradient from the top edge, fading out by the middle. */
-function Sheen({ id, top }: { id: string; top: number }) {
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <Svg width="100%" height="100%">
-        <Defs>
-          <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#fff" stopOpacity={top} />
-            <Stop offset="0.55" stopColor="#fff" stopOpacity={0} />
-          </LinearGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill={`url(#${id})`} />
-      </Svg>
     </View>
   );
 }
@@ -342,7 +314,6 @@ function AddButton() {
           // into the glass around it.
         }}
       >
-        <Sheen id="fab" top={0.45} />
         <Animated.View style={spin}>
           <Plus size={25} color={colors.onPrimary} strokeWidth={2.6} />
         </Animated.View>
