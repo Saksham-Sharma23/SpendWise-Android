@@ -165,11 +165,10 @@ function AddButton() {
         backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: colors.primary,
-        shadowOpacity: 0.55,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 10,
+        // No coloured shadow: Android renders it as a blurry lime halo that
+        // leaks into the bar. A dark ring separates the button instead.
+        borderWidth: 3,
+        borderColor: colors.background,
       }}
     >
       <Animated.View style={spin}>
