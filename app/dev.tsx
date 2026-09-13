@@ -6,7 +6,7 @@ import { Screen } from '../components/layout/Screen';
 import { colors } from '../lib/theme';
 import { databaseSizeBytes, countTransactions, runAnalyticsBenchmark } from '../db/benchmark';
 import type { BenchResult } from '../db/benchmark';
-import { devClearTransactions, devSeedTransactions } from '../db/devSeed';
+import { devClearTransactions, devExportDecryptedCopy, devSeedTransactions } from '../db/devSeed';
 
 /**
  * Development-only harness for the Phase 1 exit criterion.
@@ -110,6 +110,19 @@ function DevHarness() {
     }
   }
 
+  function onExportPlain() {
+    setBusy('export');
+    try {
+      const path = devExportDecryptedCopy();
+      say(`Decrypted copy written: ${path.split('/').slice(-2).join('/')}`);
+      say('Pull with: npm run db:pull   then: npm run db:studio');
+    } catch (e) {
+      say(`Export failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function onClear() {
     setBusy('clear');
     try {
@@ -154,6 +167,11 @@ function DevHarness() {
 
           <Button label="Seed 50,000 transactions" onPress={onSeed} busy={busy === 'seed'} />
           <Button label="Run analytics benchmark" onPress={onBench} busy={busy === 'bench'} />
+          <Button
+            label="Export decrypted copy (for Drizzle Studio)"
+            onPress={onExportPlain}
+            busy={busy === 'export'}
+          />
           <Button
             label="Clear all transactions"
             onPress={onClear}

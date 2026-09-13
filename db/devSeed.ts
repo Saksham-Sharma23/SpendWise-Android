@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { File } from 'expo-file-system';
 import { db, sqliteDb } from './client';
 import { categories, transactions } from './schema';
 import { addDays, toISODate } from '../lib/dates';
@@ -115,6 +116,39 @@ export async function devSeedTransactions(
     fromDate: startISO,
     toDate: toISODate(today),
   };
+}
+
+/**
+ * Write an UNENCRYPTED copy of the database next to the real one, for
+ * inspection with Drizzle Studio.
+ *
+ * The on-device file is SQLCipher-encrypted with a per-install key held in
+ * the Keystore, so a raw `adb` pull is unreadable — that is the point of the
+ * encryption, and it also means the "pull the DB and open it" workflow cannot
+ * work on the real file. `sqlcipher_export` into an attached database with an
+ * empty key produces a plain SQLite copy. Development builds only: shipping
+ * this would undo the encryption entirely.
+ *
+ * Pull it with:  npm run db:pull   then:  npm run db:studio
+ */
+export function devExportDecryptedCopy(): string {
+  if (!__DEV__) {
+    throw new Error('devExportDecryptedCopy is a development-only utility.');
+  }
+  const plainPath = sqliteDb.databasePath.replace(/[^/]+$/, 'spendwise-plain.db');
+
+  // sqlcipher_export refuses to write into a non-empty database, so a copy
+  // from a previous run must go first.
+  const previous = new File(`file://${plainPath}`);
+  if (previous.exists) previous.delete();
+
+  sqliteDb.execSync(`ATTACH DATABASE '${plainPath.replace(/'/g, "''")}' AS plaintext KEY ''`);
+  try {
+    sqliteDb.getFirstSync(`SELECT sqlcipher_export('plaintext')`);
+  } finally {
+    sqliteDb.execSync('DETACH DATABASE plaintext');
+  }
+  return plainPath;
 }
 
 /** Remove every dev-seeded row. Leaves categories and app_meta intact. */

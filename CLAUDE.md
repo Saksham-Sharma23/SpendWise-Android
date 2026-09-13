@@ -452,11 +452,13 @@ npx expo start --dev-client --tunnel # hostile Wi-Fi / client isolation
 ### Inspecting the database — the primary debugging tool
 With no API to curl and no network tab to read, the database **is** the system.
 
-```bash
-# Pull the live DB off the device
-adb exec-out run-as com.yourname.spendwise cat databases/spendwise.db > ./local.db
+The on-device file (`files/SQLite/spendwise.db`) is **SQLCipher-encrypted** with a per-install
+Keystore key, so a raw pull is unreadable. Inspect a decrypted copy instead:
 
-npx drizzle-kit studio     # browse and edit tables live
+```bash
+# 1. On the phone: More → Dev harness → "Export decrypted copy"  (dev builds only)
+npm run db:pull            # copies files/SQLite/spendwise-plain.db → ./local.db (gitignored)
+npm run db:studio          # Drizzle Studio via drizzle.studio.config.ts
 npx drizzle-kit generate   # regenerate migrations after editing db/schema.ts
 ```
 
