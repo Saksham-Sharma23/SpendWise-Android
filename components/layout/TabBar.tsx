@@ -1,8 +1,7 @@
 import { useRouter, type Tabs } from 'expo-router';
 import { ChartColumn, House, LayoutGrid, Plus, Receipt, type LucideIcon } from 'lucide-react-native';
 import { useEffect, type ComponentProps } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { Text, View } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -63,27 +62,13 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
   return (
     <View
       pointerEvents="box-none"
-      style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 28, paddingBottom: bottom + 10 }}
+      style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingBottom: bottom + 10 }}
     >
-      {/* Content scrolling beneath the bar fades to the background instead of
-          showing through behind the floating bar and the system nav buttons. */}
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        <Svg width="100%" height="100%">
-          <Defs>
-            <LinearGradient id="tabfade" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={colors.background} stopOpacity={0} />
-              <Stop offset="0.3" stopColor={colors.background} stopOpacity={0.95} />
-              <Stop offset="0.5" stopColor={colors.background} stopOpacity={1} />
-            </LinearGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#tabfade)" />
-        </Svg>
-      </View>
       <View
         className="mx-4 flex-row items-center rounded-full border px-2"
         style={{
           height: 68,
-          backgroundColor: colors.card,
+          backgroundColor: 'rgba(21, 22, 25, 0.97)',
           borderColor: colors.border,
           shadowColor: '#000',
           shadowOpacity: 0.5,
@@ -180,10 +165,11 @@ function AddButton() {
         backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        // A dark ring instead of a glow. Android renders a coloured elevation
-        // shadow as a blurry lime halo that bleeds into the bar around it.
-        borderWidth: 3,
-        borderColor: colors.background,
+        shadowColor: colors.primary,
+        shadowOpacity: 0.55,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 10,
       }}
     >
       <Animated.View style={spin}>

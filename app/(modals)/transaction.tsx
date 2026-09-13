@@ -355,7 +355,13 @@ export default function TransactionModal() {
           disabled={isSubmitting}
           onPress={handleSubmit(onSubmit)}
           className="items-center rounded-full py-4"
-          style={{ backgroundColor: colors.primary }}
+          style={{
+            backgroundColor: colors.primary,
+            shadowColor: colors.primary,
+            shadowOpacity: 0.35,
+            shadowRadius: 14,
+            elevation: 6,
+          }}
         >
           <Text style={{ color: colors.onPrimary, fontFamily: fonts.bold, fontSize: 16 }}>
             {editingId != null ? 'Save changes' : isIncome ? 'Add income' : 'Add expense'}
