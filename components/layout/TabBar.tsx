@@ -13,6 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Pattern, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { colors, fonts, springs } from '../../lib/theme';
@@ -153,7 +154,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
           className="mx-4"
           style={[{ height: BAR_HEIGHT, borderRadius: BAR_HEIGHT / 2 }, barScale]}
         >
-          <GlassSurface radius={BAR_HEIGHT / 2} />
+          <GlassSurface radius={BAR_HEIGHT / 2} width={width} height={BAR_HEIGHT} />
 
           {width > 0 ? (
             <Animated.View
@@ -166,9 +167,10 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                   height: PILL_HEIGHT,
                   borderRadius: PILL_HEIGHT / 2,
                   overflow: 'hidden',
-                  backgroundColor: 'rgba(212, 245, 94, 0.13)',
+                  // Frosted lime: the tint plus a little of the panel's milkiness.
+                  backgroundColor: 'rgba(222, 248, 130, 0.16)',
                   borderWidth: 1,
-                  borderColor: 'rgba(212, 245, 94, 0.32)',
+                  borderColor: 'rgba(225, 250, 140, 0.38)',
                 },
                 droplet,
               ]}
@@ -199,29 +201,86 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
 }
 
 /**
- * Frosted glass (glassmorphism): heavy blur, a flat milky white tint and a
- * thin light border. Deliberately no gloss — no sheen, no specular rim —
- * which is what separates it from the glossy "liquid glass" look.
+ * A static grain tile: deterministic pseudo-random light and dark specks.
+ * Frosted glass is etched, not smooth — the grain is what stops the panel
+ * reading as flat grey plastic, and it breaks up whatever shows through.
  */
-function GlassSurface({ radius }: { radius: number }) {
+const GRAIN_TILE = 48;
+const GRAIN = (() => {
+  let seed = 0x5eed;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  // Many faint specks, not a few strong ones: strong grain reads as sandpaper.
+  return Array.from({ length: 220 }, () => ({
+    x: Math.floor(rand() * GRAIN_TILE),
+    y: Math.floor(rand() * GRAIN_TILE),
+    light: rand() > 0.5,
+    o: 0.018 + rand() * 0.032,
+  }));
+})();
+
+/**
+ * Frosted glass (glassmorphism), built in layers from the back:
+ *   1. real backdrop blur, when the native module is in the build
+ *   2. a smoked tint, denser when there is no blur to hide the content
+ *   3. an even milky frost
+ *   4. diffuse light spreading down from the top — soft, never a gloss line
+ *   5. etched grain
+ *   6. an edge that catches light at the top and fades toward the bottom
+ */
+function GlassSurface({ radius, width, height }: { radius: number; width: number; height: number }) {
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]}>
-      <GlassBlur intensity={70} />
-      {/* Without a real blur the tint does all the work, so it is denser. */}
+      <GlassBlur intensity={90} />
       <View
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: BLUR_AVAILABLE ? 'rgba(20, 21, 25, 0.35)' : 'rgba(24, 25, 30, 0.80)' },
+          { backgroundColor: BLUR_AVAILABLE ? 'rgba(22, 23, 28, 0.30)' : 'rgba(26, 27, 33, 0.84)' },
         ]}
       />
-      {/* The frost: an even white wash over the whole panel. */}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.06)' }]} />
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          { borderRadius: radius, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.16)' },
-        ]}
-      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.075)' }]} />
+      {width > 0 ? (
+        <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
+          <Defs>
+            <RadialGradient id="diffuse" cx="50%" cy="0%" rx="65%" ry="130%">
+              <Stop offset="0" stopColor="#fff" stopOpacity={0.11} />
+              <Stop offset="1" stopColor="#fff" stopOpacity={0} />
+            </RadialGradient>
+            <Pattern id="grain" width={GRAIN_TILE} height={GRAIN_TILE} patternUnits="userSpaceOnUse">
+              {GRAIN.map((g, i) => (
+                <Rect
+                  key={i}
+                  x={g.x}
+                  y={g.y}
+                  width={1}
+                  height={1}
+                  fill={g.light ? '#fff' : '#000'}
+                  fillOpacity={g.o}
+                />
+              ))}
+            </Pattern>
+            <LinearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#fff" stopOpacity={0.3} />
+              <Stop offset="0.5" stopColor="#fff" stopOpacity={0.08} />
+              <Stop offset="1" stopColor="#fff" stopOpacity={0.14} />
+            </LinearGradient>
+          </Defs>
+          <Rect width={width} height={height} fill="url(#diffuse)" />
+          <Rect width={width} height={height} fill="url(#grain)" />
+          <Rect
+            x={0.5}
+            y={0.5}
+            width={width - 1}
+            height={height - 1}
+            rx={radius - 0.5}
+            fill="none"
+            stroke="url(#edge)"
+            strokeWidth={1}
+          />
+        </Svg>
+      ) : null}
     </View>
   );
 }
