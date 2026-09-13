@@ -14,10 +14,10 @@
 
 | Phase | Name | Est. | Status |
 |---|---|---|---|
-| 0 | Foundations | 1–2 d | 🟡 Code complete — device pairing pending |
-| 1 | Database foundation | 3–4 d | 🟡 Code complete — on-device timing pending |
+| 0 | Foundations | 1–2 d | ✅ Done — verified on the phone 2026-09-13 |
+| 1 | Database foundation | 3–4 d | 🟡 50k rows seeded on device — benchmark tap + DB pull pending |
 | 2 | Transactions | 4–5 d | 🟡 In progress — list, form, filters done |
-| 3 | Home dashboard | 3 d | ⬜ Not started |
+| 3 | Home dashboard | 3 d | 🟡 In progress — dashboard UI + queries landed with the redesign |
 | 4 | Budgets & Tracker | 4 d | ⬜ Not started |
 | 5 | Analytics | 3 d | ⬜ Not started |
 | 6 | Excel & CSV import | 5–6 d | ⬜ Not started |
@@ -33,7 +33,7 @@ to change later.
 
 ## Phase 0 — Foundations
 **Goal:** An empty but real app on your phone, with the theme and navigation shell in place.
-**Est:** 1–2 days · **Status:** 🟡 Code complete — device pairing pending
+**Est:** 1–2 days · **Status:** ✅ Done
 
 - [x] **Create the Expo app with TypeScript strict and `expo-router`**
   *Why:* File-based routing mirrors the Next.js App Router you already know, so navigation costs no learning time. `strict` matters more than usual here because Drizzle generates types from the schema — strict mode is what turns a renamed column into a compile error instead of a runtime crash.
@@ -45,9 +45,9 @@ to change later.
   *Why:* Navigation shape is the hardest thing to change later — it dictates where every future screen lives. Settle it while it costs nothing.
 - [x] **Set up `eas.json` with development / preview / production profiles**
   *Why:* The profile split is what later lets the release build exclude Sentry and declare no `INTERNET` permission. Wiring it now avoids a rushed refactor at Phase 9.
-- [ ] **Run the first EAS development build and install it on the phone**
+- [x] **Run the first EAS development build and install it on the phone** *(done as a local arm64 Gradle build instead of EAS)*
   *Why:* Expo Go cannot load SQLCipher, MMKV, Skia or the widget plugin. Starting there means hitting the wall in Phase 1 and rebuilding the whole testing setup. One 12-minute cloud build now avoids that.
-- [ ] **Pair the phone over wireless debugging, confirm hot reload works**
+- [x] **Pair the phone over wireless debugging, confirm hot reload works** *(verified: a tab-bar edit hot-reloaded over Wi-Fi)*
   *Why:* This is your entire feedback loop for the next six weeks. Prove it works before you depend on it.
 - [x] **Write `docs/ANDROID_CLAUDE.md`** *(or confirm `CLAUDE.md` covers it)*
   *Why:* The web app's context doc is why this plan could be written in such detail. The same investment here makes every future session productive from the first message rather than the tenth.
@@ -55,7 +55,9 @@ to change later.
 **Exit criterion:** The app cold-starts on your phone from a QR scan, all four tabs navigate, and an edit to a screen hot-reloads over Wi-Fi.
 
 **Discovered during this phase:**
-- _(none yet)_
+- **A memory-starved local build can produce a corrupt APK that still installs.** The first debug APK passed signature verification and installed, but crashed on launch with `Bad checksum` on `classes.dex` → `ClassNotFoundException: MainApplication`. The dex merge had run under memory pressure. Fix: stop Metro, delete `android/app/build`, rebuild with `--max-workers=1`, and check the zip CRC and each dex's adler32 before installing.
+- **Launching the dev client:** `adb reverse tcp:8081 tcp:8081`, then `adb shell am start -a android.intent.action.VIEW -d "spendwise://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081"`. Start Metro with `CI` unset, or Fast Refresh is disabled.
+- **Edge-to-edge Android draws a fixed-height tab bar under the system navigation buttons.** The bar must grow by the bottom safe-area inset.
 
 ---
 
@@ -106,6 +108,8 @@ to change later.
 - - **A local native build OOMs on this machine at the default ABI set.** `./gradlew assembleDebug` compiles `expo-modules-core` C++ for all four ABIs (armeabi-v7a, arm64-v8a, x86, x86_64) in parallel; on 8 GB RAM clang gets killed mid-compile and reports `clang frontend command failed due to signal`. That message reads like a compiler bug but is memory pressure. Fix: `./gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a` — the only ABI a modern physical phone uses. Added as the `android:local` npm script. EAS cloud builds are unaffected (they build on larger machines).
 - **A shell pipeline hides Gradle's exit code.** `./gradlew ... | tail -30` returns `tail`'s status, so a failed build reported exit 0 and was briefly believed to have succeeded. Always redirect to a log and check the exit code separately, or read `BUILD SUCCESSFUL` / `BUILD FAILED` from the log itself.
 - - **A stale `android/` folder silently ships the old permission policy.** After adding the FCM/badge blocks to `app.config.ts`, the debug APK still contained every one of them — because it was built from an `android/` directory generated *before* the edit. `blockedPermissions` only takes effect at prebuild. This was the third time in this phase that a proxy disagreed with the artifact (after `expo config` vs the manifest, and a shell pipeline hiding Gradle's exit code). **Standing rule: `rm -rf android && expo prebuild`, then verify with `aapt2 dump permissions` on the actual APK.**
+- **SQLCipher ordering bug, found on device (fixed in `f8e3e21`).** `useMigrations` ran in the same component as the async SecureStore key read, so its effect fired first and created an **unencrypted** database; the later `PRAGMA key` then failed with `file is not a database`. Jest could not catch this (better-sqlite3 has no SQLCipher). Migrations now mount only after the key is applied; confirmed on the phone that the file header is ciphertext, not `SQLite format 3`.
+- 50,000 rows seeded on the phone through the dev harness (≈13 MB). In a debug build the seed takes minutes, not seconds — JS is unoptimised and every chunk fires the change listener.
 - - Added `db/benchmark.ts` and `app/dev.tsx` beyond the original task list: the exit criterion needed to be runnable on the phone in one tap rather than requiring a code edit. The benchmark also runs `EXPLAIN QUERY PLAN` per query, so it reports full table scans, not just timings — a query that is fast at 50k rows but scanning will not stay fast at 200k.
 
 ---
@@ -148,17 +152,17 @@ to change later.
 **Goal:** The dashboard re-composed for one column, with the first real chart.
 **Est:** 3 days · **Status:** ⬜ Not started
 
-- [ ] **`features/dashboard/queries.ts`: summary, recent, 12-month trend**
+- [x] **`features/dashboard/queries.ts`: summary, recent, 12-month trend** *(plus this-vs-last-month in one query, and top categories)*
   *Why:* Home fires the most queries of any screen. Writing them together makes it obvious where they overlap and can share.
 - [ ] **`components/charts/TrendChart` on victory-native with a Bar/Line toggle**
   *Why:* First Skia chart — build it as a reusable wrapper, because Analytics reuses it in Phase 5. If charts ever need swapping, the change stays contained to these wrappers.
 - [ ] **Summary cards and the dynamic `FinancialInsight` banner**
   *Why:* The banner is what makes the dashboard feel like it's paying attention rather than just reporting.
-- [ ] **Budget overview card that deep-links to Budgets**
+- [x] **Budget overview card that deep-links to Budgets** *(empty-state card for now — real progress needs Phase 4)*
   *Why:* This is *the* reason Budgets can live under More instead of taking a permanent tab slot.
 - [ ] **Upcoming renewals card that deep-links to Tracker**
   *Why:* Same argument for Tracker, and it's the in-app half of the reminder system built in Phase 8.
-- [ ] **Recent transactions section**
+- [x] **Recent transactions section**
   *Why:* Most sessions are "what did I just spend" — answering it on Home saves a tab switch.
 - [ ] **First-run onboarding: add first transaction · import a sheet · restore a backup**
   *Why:* There is no account with data to sync down. A new install is genuinely blank, and an empty dashboard with no next step reads as broken.
@@ -168,7 +172,10 @@ to change later.
 **Exit criterion:** Home paints in a single frame on the 50k-row database, and a new install shows a useful empty state rather than a blank screen.
 
 **Discovered during this phase:**
-- _(none yet)_
+- **UI redesign (`8d80682`) pulled part of this phase forward.** The user asked for the app to match the web version's look (near-black, graphite cards, lime accent). Home became a real dashboard in the process.
+- **Decision: the trend chart uses Reanimated views, not victory-native.** Bars are animated `View`s. That needs no new native module (no APK rebuild) and handles 6–12 bars easily. Revisit victory-native/Skia in Phase 5, where the 24-month scrubbable area chart genuinely needs it.
+- **Reanimated rejects exponent notation in colour strings.** An animated `rgba(…, ${alpha})` template produced `2.1e-7` near the end of a timing curve and threw `Invalid color value`. Use `interpolateColor` instead.
+- **The design is dark-only for now,** matching the web app. A theme toggle belongs in Settings (Phase 9).
 
 ---
 
