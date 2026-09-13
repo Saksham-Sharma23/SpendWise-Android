@@ -16,7 +16,7 @@
 |---|---|---|---|
 | 0 | Foundations | 1–2 d | 🟡 Code complete — device pairing pending |
 | 1 | Database foundation | 3–4 d | 🟡 Code complete — on-device timing pending |
-| 2 | Transactions | 4–5 d | ⬜ Not started |
+| 2 | Transactions | 4–5 d | 🟡 In progress — list, form, filters done |
 | 3 | Home dashboard | 3 d | ⬜ Not started |
 | 4 | Budgets & Tracker | 4 d | ⬜ Not started |
 | 5 | Analytics | 3 d | ⬜ Not started |
@@ -112,25 +112,25 @@ to change later.
 
 ## Phase 2 — Transactions
 **Goal:** Full CRUD over the local ledger, in mobile idioms.
-**Est:** 4–5 days · **Status:** ⬜ Not started
+**Est:** 4–5 days · **Status:** 🟡 In progress
 
-- [ ] **`features/transactions/queries.ts`: list, create, update, soft delete, search**
+- [x] **`features/transactions/queries.ts`: list, create, update, soft delete, search**
   *Why:* Establishes the query-boundary pattern the whole app follows. Screens call typed functions and never see a table name — this is the boundary the API used to give you for free.
-- [ ] **FlashList v2 over a windowed live query with `LIMIT`/`OFFSET` pagination**
+- [x] **FlashList v2 over a windowed live query with `LIMIT`/`OFFSET` pagination**
   *Why:* Virtualising the list is not enough — paginate the *query* too. Loading 20,000 rows into memory to show twelve is the mistake that makes the app feel heavy.
-- [ ] **Sticky month header separators and pull-to-refresh**
+- [x] **Sticky month header separators and pull-to-refresh**
   *Why:* A ledger without date grouping is unreadable at scroll speed. Pull-to-refresh is muscle memory even when data is local.
-- [ ] **Add/edit modal with the segmented Expense/Income toggle at the top**
+- [x] **Add/edit modal with the segmented Expense/Income toggle at the top**
   *Why:* Direct port of the web app's most-used interaction. Type is the first decision, so it belongs at the top where the thumb lands.
 - [ ] **Port Zod schemas from the web repo; parse amounts to paise at the boundary**
   *Why:* Schemas port verbatim — free correctness. Converting to paise at the form boundary means nothing downstream ever handles a float.
 - [ ] **Swipe-to-delete with an undo toast**
   *Why:* Swipe is the mobile idiom replacing a row menu. Undo is what makes an irreversible-feeling gesture safe, and `deleted_at` already supports it.
-- [ ] **Long-press multi-select and bulk delete**
+- [x] **Long-press multi-select and bulk delete**
   *Why:* Replaces the web table's row-selection checkboxes, which have no touch equivalent.
 - [ ] **Filters bottom sheet compiling to SQL `WHERE` clauses; chips summarise active filters**
   *Why:* Filtering in SQL rather than in JS keeps it fast at any ledger size. Chips exist so the user can see *why* the list looks empty.
-- [ ] **Search over note and category name**
+- [x] **Search over note and category name**
   *Why:* Replaces the web app's global search. A `LIKE` against an indexed column is instant at this scale.
 - [ ] **CSV export via `expo-file-system` + share sheet**
   *Why:* Parity with the web app, and it doubles as a crude escape hatch before Phase 7's real backup exists.

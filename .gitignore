@@ -33,3 +33,4 @@ local.db
 gradle-build.log
 gradle-release.log
 prebuild.log
+bundle.log
