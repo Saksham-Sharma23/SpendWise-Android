@@ -1,11 +1,18 @@
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
-import { Search, SlidersHorizontal, X } from 'lucide-react-native';
+import { Receipt, Search, SearchX, SlidersHorizontal, X } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
-import { Screen } from '../../components/layout/Screen';
+import { Screen, TAB_BAR_CLEARANCE } from '../../components/layout/Screen';
+import { AnimatedAmount } from '../../components/ui/AnimatedAmount';
+import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PressableScale } from '../../components/ui/PressableScale';
+import { Segmented } from '../../components/ui/Segmented';
 import { TransactionRowItem } from '../../features/transactions/components/TransactionRow';
 import { useFilterStore } from '../../features/transactions/filterStore';
 import {
@@ -18,7 +25,8 @@ import {
   type TransactionFilters,
   type TransactionRow,
 } from '../../features/transactions/queries';
-import { formatINR } from '../../lib/money';
+import { formatDayMonth, formatMonthYear } from '../../lib/dates';
+import { colors, fonts } from '../../lib/theme';
 
 /**
  * The ledger.
@@ -42,34 +50,29 @@ function withMonthHeaders(rows: TransactionRow[]): ListItem[] {
     const key = row.date.slice(0, 7);
     if (key !== current) {
       current = key;
-      const d = new Date(`${key}-01T00:00:00`);
-      out.push({
-        kind: 'month',
-        key,
-        label: d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
-      });
+      out.push({ kind: 'month', key, label: formatMonthYear(key) });
     }
     out.push({ kind: 'row', row });
   }
   return out;
 }
 
+type TypeFilter = 'all' | 'income' | 'expense';
+
 export default function TransactionsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   // Filters live in a store because the filter sheet is a separate ROUTE and
   // cannot share component state with this screen. Search stays local: it
   // changes on every keystroke, and routing that through a shared store would
   // re-render the sheet on every character.
   const sheetFilters = useFilterStore((s) => s.filters);
+  const patch = useFilterStore((s) => s.patch);
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(PAGE);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  const filters: TransactionFilters = useMemo(
-    () => ({ ...sheetFilters, search }),
-    [sheetFilters, search],
-  );
+  const filters: TransactionFilters = useMemo(() => ({ ...sheetFilters, search }), [sheetFilters, search]);
 
   const { data: rows = [] } = useTransactions(filters, limit);
   const { data: summaryRows = [] } = useTransactionSummary(filters);
@@ -124,113 +127,183 @@ export default function TransactionsScreen() {
     useFilterStore.getState().reset();
     setSearch('');
     setLimit(PAGE);
-    setSearchOpen(false);
   };
 
   const active = hasActiveFilters(filters);
+  // Filters the sheet owns beyond type — shown as a count on the filter button.
+  const sheetCount =
+    (sheetFilters.categoryIds?.length ? 1 : 0) + (sheetFilters.dateFrom || sheetFilters.dateTo ? 1 : 0);
+  const net = (summary?.incomePaise ?? 0) - (summary?.expensePaise ?? 0);
 
   return (
     <Screen
+      eyebrow={selectionMode ? 'Selection' : undefined}
       title={selectionMode ? `${selected.size} selected` : 'Transactions'}
       subtitle={
         selectionMode
-          ? undefined
-          : total > 0
-            ? `${total.toLocaleString('en-IN')} ${total === 1 ? 'entry' : 'entries'}`
-            : undefined
+          ? 'Tap rows to add or remove them'
+          : `${total.toLocaleString('en-IN')} ${total === 1 ? 'entry' : 'entries'}${active ? ' · filtered' : ''}`
       }
       scroll={false}
       right={
         selectionMode ? (
           <View className="flex-row gap-2">
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel="Clear selection"
               onPress={() => setSelected(new Set())}
-              className="rounded-lg bg-muted px-3 py-2"
+              className="rounded-full border px-4 py-2.5"
+              style={{ borderColor: colors.border, backgroundColor: colors.card }}
             >
-              <Text className="text-sm text-foreground">Cancel</Text>
-            </Pressable>
-            <Pressable
+              <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 13 }}>Cancel</Text>
+            </PressableScale>
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel="Delete selected"
               onPress={deleteSelected}
-              className="rounded-lg bg-destructive px-3 py-2"
+              className="rounded-full px-4 py-2.5"
+              style={{ backgroundColor: colors.expense }}
             >
-              <Text className="text-sm text-destructive-foreground">Delete</Text>
-            </Pressable>
+              <Text style={{ color: colors.background, fontFamily: fonts.semibold, fontSize: 13 }}>Delete</Text>
+            </PressableScale>
           </View>
         ) : (
-          <View className="flex-row gap-2">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Search"
-              onPress={() => setSearchOpen((s) => !s)}
-              className="h-10 w-10 items-center justify-center rounded-lg bg-muted"
-            >
-              <Search size={18} color="#6B7280" />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Filters"
-              onPress={() => router.push('/(modals)/filters')}
-              className="h-10 w-10 items-center justify-center rounded-lg bg-muted"
-            >
-              <SlidersHorizontal size={18} color={active ? '#0B5C4B' : '#6B7280'} />
-            </Pressable>
-          </View>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="Filters"
+            onPress={() => router.push('/(modals)/filters')}
+            scaleTo={0.9}
+            className="h-11 w-11 items-center justify-center rounded-full border"
+            style={{
+              backgroundColor: sheetCount > 0 ? colors.primarySoft : colors.card,
+              borderColor: sheetCount > 0 ? colors.primaryBorder : colors.border,
+            }}
+          >
+            <SlidersHorizontal size={18} color={sheetCount > 0 ? colors.primary : colors.foreground} />
+            {sheetCount > 0 ? (
+              <View
+                className="absolute -right-0.5 -top-0.5 h-4 w-4 items-center justify-center rounded-full"
+                style={{ backgroundColor: colors.primary }}
+              >
+                <Text style={{ color: colors.onPrimary, fontFamily: fonts.bold, fontSize: 9 }}>{sheetCount}</Text>
+              </View>
+            ) : null}
+          </PressableScale>
         )
       }
     >
-      {searchOpen ? (
-        <View className="px-5 pb-2">
-          <TextInput
-            autoFocus
-            placeholder="Search notes and categories"
-            placeholderTextColor="#9CA3AF"
-            value={search}
-            onChangeText={(t) => {
-              setSearch(t);
+      <View className="gap-3 px-5 pb-2">
+        <Animated.View entering={FadeInDown.delay(40).duration(400)}>
+          <Card className="flex-row py-4">
+            <SummaryFigure label="Income" paise={summary?.incomePaise ?? 0} color={colors.income} />
+            <View style={{ width: 1, backgroundColor: colors.border }} />
+            <SummaryFigure label="Expenses" paise={summary?.expensePaise ?? 0} color={colors.expense} />
+            <View style={{ width: 1, backgroundColor: colors.border }} />
+            <SummaryFigure label="Net" paise={net} color={net < 0 ? colors.expense : colors.primary} />
+          </Card>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(90).duration(400)} className="gap-3">
+          <View
+            className="flex-row items-center rounded-full border px-4"
+            style={{ backgroundColor: colors.card, borderColor: colors.border, height: 48 }}
+          >
+            <Search size={17} color={colors.muted} />
+            <TextInput
+              placeholder="Search notes and categories"
+              placeholderTextColor={colors.subtle}
+              value={search}
+              onChangeText={(t) => {
+                setSearch(t);
+                setLimit(PAGE);
+              }}
+              returnKeyType="search"
+              className="ml-2.5 flex-1"
+              style={{ color: colors.foreground, fontFamily: fonts.regular, fontSize: 14 }}
+            />
+            {search ? (
+              <PressableScale accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setSearch('')} scaleTo={0.85} hitSlop={10}>
+                <X size={17} color={colors.muted} />
+              </PressableScale>
+            ) : null}
+          </View>
+
+          <Segmented<TypeFilter>
+            value={(sheetFilters.type ?? 'all') as TypeFilter}
+            onChange={(t) => {
+              patch({ type: t });
               setLimit(PAGE);
             }}
-            className="rounded-lg border border-border bg-card px-3 py-2.5 text-foreground"
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'income', label: 'Income', tint: colors.income, onTint: colors.background },
+              { value: 'expense', label: 'Expense', tint: colors.expense, onTint: colors.background },
+            ]}
           />
-        </View>
-      ) : null}
+        </Animated.View>
 
-      {active ? (
-        <View className="flex-row items-center gap-2 px-5 pb-2">
-          <Text className="flex-1 text-xs text-muted-foreground">
-            Showing {total.toLocaleString('en-IN')} filtered
-            {summary
-              ? ` · ${formatINR(summary.expensePaise, { whole: true })} out`
-              : ''}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={clearFilters}
-            className="flex-row items-center gap-1 rounded-full bg-muted px-2.5 py-1"
-          >
-            <X size={12} color="#6B7280" />
-            <Text className="text-xs text-muted-foreground">Clear</Text>
-          </Pressable>
-        </View>
-      ) : null}
+        {active ? (
+          <Animated.View entering={FadeIn} className="flex-row items-center justify-between">
+            <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12 }}>
+              {filters.dateFrom ? `${formatDayMonth(filters.dateFrom)} – ${formatDayMonth(filters.dateTo ?? filters.dateFrom)}` : 'All time'}
+              {sheetFilters.categoryIds?.length ? ` · ${sheetFilters.categoryIds.length} categories` : ''}
+            </Text>
+            <PressableScale
+              accessibilityRole="button"
+              onPress={clearFilters}
+              className="flex-row items-center gap-1 rounded-full px-3 py-1.5"
+              style={{ backgroundColor: colors.elevated }}
+            >
+              <X size={12} color={colors.foreground} />
+              <Text style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 12 }}>Clear all</Text>
+            </PressableScale>
+          </Animated.View>
+        ) : null}
+      </View>
 
       {items.length === 0 ? (
-        <EmptyState filtered={active} onClear={clearFilters} />
+        <View className="flex-1 px-5 pt-2">
+          {active ? (
+            <EmptyState
+              icon={SearchX}
+              title="Nothing matches"
+              description="Try widening the date range or clearing the filters."
+              action={{ label: 'Clear filters', onPress: clearFilters }}
+            />
+          ) : (
+            <EmptyState
+              icon={Receipt}
+              title="No transactions yet"
+              description="Add your first one, or import a spreadsheet you already keep."
+              action={{ label: 'Add a transaction', onPress: () => router.push('/(modals)/transaction') }}
+              secondary={{ label: 'Import a sheet', onPress: () => router.push('/import/pick') }}
+            />
+          )}
+        </View>
       ) : (
         <FlashList
           data={items}
           extraData={selected}
           keyExtractor={(item) => (item.kind === 'month' ? `m${item.key}` : `t${item.row.id}`)}
+          getItemType={(item) => item.kind}
           onEndReached={onEndReached}
           onEndReachedThreshold={0.6}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE + insets.bottom }}
           renderItem={({ item }) =>
             item.kind === 'month' ? (
-              <View className="bg-background px-5 pb-1 pt-4">
-                <Text className="text-xs uppercase tracking-wider text-muted-foreground">
+              <View className="px-5 pb-1 pt-5">
+                <Text
+                  style={{
+                    color: colors.muted,
+                    fontFamily: fonts.semibold,
+                    fontSize: 12,
+                    letterSpacing: 1,
+                    textTransform: 'uppercase',
+                  }}
+                >
                   {item.label}
                 </Text>
               </View>
@@ -251,48 +324,15 @@ export default function TransactionsScreen() {
   );
 }
 
-/**
- * Two genuinely different empty states. A brand-new install has never had a
- * transaction; a filtered view has hidden them. Offering "clear filters" to
- * someone with an empty ledger would be nonsense, and offering "add one" to
- * someone who just over-filtered is equally unhelpful.
- */
-function EmptyState({ filtered, onClear }: { filtered: boolean; onClear: () => void }) {
-  const router = useRouter();
+function SummaryFigure({ label, paise, color }: { label: string; paise: number; color: string }) {
   return (
-    <View className="flex-1 items-center justify-center px-10">
-      <Text
-        className="text-center text-base text-foreground"
-        style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}
-      >
-        {filtered ? 'Nothing matches' : 'No transactions yet'}
-      </Text>
-      <Text className="mt-1 text-center text-sm text-muted-foreground">
-        {filtered
-          ? 'Try widening the date range or clearing the filters.'
-          : 'Add your first one, or import a spreadsheet you already keep.'}
-      </Text>
-      <Pressable
-        accessibilityRole="button"
-        onPress={filtered ? onClear : () => router.push('/(modals)/transaction')}
-        className="mt-4 rounded-lg bg-primary px-4 py-2.5"
-      >
-        <Text
-          className="text-primary-foreground"
-          style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}
-        >
-          {filtered ? 'Clear filters' : 'Add a transaction'}
-        </Text>
-      </Pressable>
-      {filtered ? null : (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push('/import/pick')}
-          className="mt-2 px-4 py-2"
-        >
-          <Text className="text-sm text-primary">Import a sheet</Text>
-        </Pressable>
-      )}
+    <View className="flex-1 items-center px-1">
+      <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>{label}</Text>
+      <AnimatedAmount
+        paise={paise}
+        options={{ whole: true }}
+        style={{ color, fontFamily: fonts.bold, fontSize: 16, marginTop: 4 }}
+      />
     </View>
   );
 }

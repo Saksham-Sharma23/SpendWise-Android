@@ -1,15 +1,19 @@
-import { Text, View } from 'react-native';
+import { FileSpreadsheet } from 'lucide-react-native';
+import { View } from 'react-native';
+
 import { Screen } from '../../components/layout/Screen';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function ImportPickScreen() {
   return (
-    <Screen title="Import a sheet" subtitle="Step 1 of 4">
+    <Screen back eyebrow="Step 1 of 4" title="Import a sheet" subtitle="Excel or CSV, from any bank or your own tracker">
       <View className="px-5">
-        <View className="rounded-lg border border-dashed border-border p-6">
-          <Text className="text-center text-sm text-muted-foreground">
-            Phase 6 builds the wizard: pick, map columns, review, then commit in a single database transaction.
-          </Text>
-        </View>
+        <EmptyState
+          icon={FileSpreadsheet}
+          title="Bring your spreadsheet"
+          description="Pick a file, match its columns, review every row, then import it all at once — with one-tap undo."
+          badge="Arrives in Phase 6"
+        />
       </View>
     </Screen>
   );

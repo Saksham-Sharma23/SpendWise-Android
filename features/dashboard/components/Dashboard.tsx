@@ -1,0 +1,367 @@
+import { useRouter } from 'expo-router';
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  ChevronRight,
+  PiggyBank,
+  Plus,
+  Search,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react-native';
+import { useEffect, type ReactNode } from 'react';
+import { Text, View } from 'react-native';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
+
+import { Screen } from '../../../components/layout/Screen';
+import { AnimatedAmount } from '../../../components/ui/AnimatedAmount';
+import { Card } from '../../../components/ui/Card';
+import { CategoryIcon } from '../../../components/ui/CategoryIcon';
+import { LedgerRow } from '../../../components/ui/LedgerRow';
+import { PressableScale } from '../../../components/ui/PressableScale';
+import { MONTHS_LONG, todayISO } from '../../../lib/dates';
+import { formatINR } from '../../../lib/money';
+import { colors, fonts, withAlpha } from '../../../lib/theme';
+import {
+  useMonthOverview,
+  useRecentTransactions,
+  useTopCategories,
+  type CategorySpend,
+} from '../queries';
+import { TrendChart } from './TrendChart';
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function greeting(hour: number): string {
+  if (hour < 5) return 'Up late';
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+/** Percentage change, or null when there is no baseline to compare against. */
+function pctChange(current: number, previous: number): number | null {
+  if (previous === 0) return null;
+  return ((current - previous) / previous) * 100;
+}
+
+/** Staggered entrance, so the dashboard assembles rather than pops in. */
+function Section({ index, children }: { index: number; children: ReactNode }) {
+  return (
+    <Animated.View entering={FadeInDown.delay(60 + index * 70).duration(450)} className="px-5">
+      {children}
+    </Animated.View>
+  );
+}
+
+export function Dashboard() {
+  const router = useRouter();
+  const now = new Date();
+  const today = todayISO();
+  const month = MONTHS_LONG[now.getMonth()];
+
+  const overview = useMonthOverview(today);
+  const net = overview.incomePaise - overview.expensePaise;
+  const savedPct = overview.incomePaise > 0 ? (net / overview.incomePaise) * 100 : 0;
+
+  return (
+    <Screen
+      eyebrow={`${greeting(now.getHours())} 👋`}
+      title="Your money"
+      subtitle={`${WEEKDAYS[now.getDay()]}, ${now.getDate()} ${month} ${now.getFullYear()}`}
+      right={
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel="Search transactions"
+          onPress={() => router.push('/(tabs)/transactions')}
+          scaleTo={0.9}
+          className="h-11 w-11 items-center justify-center rounded-full border"
+          style={{ backgroundColor: colors.card, borderColor: colors.border }}
+        >
+          <Search size={19} color={colors.foreground} />
+        </PressableScale>
+      }
+    >
+      <View className="gap-3">
+        <Section index={0}>
+          <Card variant="accent" className="p-5">
+            <View className="flex-row items-center justify-between">
+              <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>
+                Net balance · {month}
+              </Text>
+              <View
+                className="h-9 w-9 items-center justify-center rounded-full"
+                style={{ backgroundColor: colors.primarySoft }}
+              >
+                <Wallet size={17} color={colors.primary} />
+              </View>
+            </View>
+            <AnimatedAmount
+              paise={net}
+              style={{
+                color: net < 0 ? colors.expense : colors.primary,
+                fontFamily: fonts.bold,
+                fontSize: 38,
+                letterSpacing: -1.2,
+                marginTop: 6,
+              }}
+            />
+            <View className="mt-3 flex-row items-center gap-2">
+              <Chip
+                tone={savedPct >= 0 ? 'good' : 'bad'}
+                icon={savedPct >= 0 ? ArrowUpRight : ArrowDownRight}
+                label={`${Math.abs(savedPct).toFixed(1)}%`}
+              />
+              <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12 }}>
+                {savedPct >= 0 ? 'of income saved' : 'more spent than earned'}
+              </Text>
+            </View>
+          </Card>
+        </Section>
+
+        <Section index={1}>
+          <View className="flex-row gap-3">
+            <StatCard
+              label="Income"
+              icon={TrendingUp}
+              color={colors.income}
+              paise={overview.incomePaise}
+              change={pctChange(overview.incomePaise, overview.lastIncomePaise)}
+              higherIsBetter
+            />
+            <StatCard
+              label="Expenses"
+              icon={TrendingDown}
+              color={colors.expense}
+              paise={overview.expensePaise}
+              change={pctChange(overview.expensePaise, overview.lastExpensePaise)}
+              higherIsBetter={false}
+            />
+          </View>
+        </Section>
+
+        <Section index={2}>
+          <TrendChart />
+        </Section>
+
+        <Section index={3}>
+          <TopCategories expensePaise={overview.expensePaise} />
+        </Section>
+
+        <Section index={4}>
+          <PressableScale
+            accessibilityRole="button"
+            onPress={() => router.push('/budgets')}
+            className="flex-row items-center gap-3 rounded-3xl border p-4"
+            style={{ backgroundColor: colors.card, borderColor: colors.border }}
+          >
+            <View
+              className="h-11 w-11 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: colors.primarySoft }}
+            >
+              <PiggyBank size={21} color={colors.primary} />
+            </View>
+            <View className="flex-1">
+              <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
+                Set up budgets
+              </Text>
+              <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
+                Track your financial health by category
+              </Text>
+            </View>
+            <ChevronRight size={18} color={colors.muted} />
+          </PressableScale>
+        </Section>
+
+        <Section index={5}>
+          <RecentTransactions />
+        </Section>
+      </View>
+    </Screen>
+  );
+}
+
+function Chip({ tone, icon: Icon, label }: { tone: 'good' | 'bad' | 'neutral'; icon?: LucideIcon; label: string }) {
+  const color = tone === 'good' ? colors.income : tone === 'bad' ? colors.expense : colors.muted;
+  return (
+    <View
+      className="flex-row items-center gap-0.5 rounded-full px-2 py-0.5"
+      style={{ backgroundColor: withAlpha(color, 0.14) }}
+    >
+      {Icon ? <Icon size={12} color={color} strokeWidth={2.5} /> : null}
+      <Text style={{ color, fontFamily: fonts.semibold, fontSize: 11 }}>{label}</Text>
+    </View>
+  );
+}
+
+function StatCard({
+  label,
+  icon: Icon,
+  color,
+  paise,
+  change,
+  higherIsBetter,
+}: {
+  label: string;
+  icon: LucideIcon;
+  color: string;
+  paise: number;
+  change: number | null;
+  higherIsBetter: boolean;
+}) {
+  const up = (change ?? 0) >= 0;
+  const good = change == null ? null : up === higherIsBetter;
+
+  return (
+    <Card className="flex-1 p-4" glow={color}>
+      <View className="flex-row items-center justify-between">
+        <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>{label}</Text>
+        <View
+          className="h-8 w-8 items-center justify-center rounded-full"
+          style={{ backgroundColor: withAlpha(color, 0.14) }}
+        >
+          <Icon size={15} color={color} strokeWidth={2.4} />
+        </View>
+      </View>
+      <AnimatedAmount
+        paise={paise}
+        options={{ whole: true }}
+        style={{
+          color: colors.foreground,
+          fontFamily: fonts.bold,
+          fontSize: 21,
+          letterSpacing: -0.5,
+          marginTop: 10,
+        }}
+      />
+      <View className="mt-2 flex-row items-center gap-1.5">
+        {change == null ? (
+          <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11 }}>No data last month</Text>
+        ) : (
+          <>
+            <Chip
+              tone={good ? 'good' : 'bad'}
+              icon={up ? ArrowUpRight : ArrowDownRight}
+              label={`${Math.abs(change).toFixed(0)}%`}
+            />
+            <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11 }}>vs last month</Text>
+          </>
+        )}
+      </View>
+    </Card>
+  );
+}
+
+function TopCategories({ expensePaise }: { expensePaise: number }) {
+  const top = useTopCategories(todayISO(), 4);
+  if (top.length === 0) return null;
+
+  return (
+    <Card className="p-5">
+      <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>
+        Where it went
+      </Text>
+      <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
+        Top categories this month
+      </Text>
+      <View className="mt-4 gap-4">
+        {top.map((c, i) => (
+          <CategoryBar key={c.id ?? 'none'} item={c} share={expensePaise > 0 ? c.totalPaise / expensePaise : 0} index={i} />
+        ))}
+      </View>
+    </Card>
+  );
+}
+
+function CategoryBar({ item, share, index }: { item: CategorySpend; share: number; index: number }) {
+  const width = useSharedValue(0);
+  useEffect(() => {
+    width.value = withDelay(150 + index * 90, withTiming(Math.min(1, share), { duration: 700 }));
+  }, [share, index, width]);
+  const fill = useAnimatedStyle(() => ({ width: `${width.value * 100}%` }));
+  const tint = item.color ?? colors.muted;
+
+  return (
+    <View className="flex-row items-center gap-3">
+      <CategoryIcon icon={item.icon} color={item.color} size={38} />
+      <View className="flex-1">
+        <View className="flex-row items-baseline justify-between">
+          <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14, flexShrink: 1 }}>
+            {item.name ?? 'Uncategorised'}
+          </Text>
+          <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14, fontVariant: ['tabular-nums'] }}>
+            {formatINR(item.totalPaise, { whole: true })}
+          </Text>
+        </View>
+        <View className="mt-2 flex-row items-center gap-2">
+          <View className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: colors.elevated }}>
+            <Animated.View className="h-full rounded-full" style={[{ backgroundColor: tint }, fill]} />
+          </View>
+          <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11, width: 32, textAlign: 'right' }}>
+            {Math.round(share * 100)}%
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function RecentTransactions() {
+  const router = useRouter();
+  const rows = useRecentTransactions(5);
+
+  return (
+    <Card className="px-5 pb-2 pt-5">
+      <View className="flex-row items-center justify-between">
+        <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>
+          Recent transactions
+        </Text>
+        {rows.length > 0 ? (
+          <PressableScale accessibilityRole="button" onPress={() => router.push('/(tabs)/transactions')} className="py-1 pl-3">
+            <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 13 }}>View all</Text>
+          </PressableScale>
+        ) : null}
+      </View>
+
+      {rows.length === 0 ? (
+        <View className="items-center py-8">
+          <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13 }}>
+            Nothing here yet.
+          </Text>
+          <PressableScale
+            accessibilityRole="button"
+            onPress={() => router.push('/(modals)/transaction')}
+            className="mt-3 flex-row items-center gap-1.5 rounded-full px-4 py-2.5"
+            style={{ backgroundColor: colors.primary }}
+          >
+            <Plus size={16} color={colors.onPrimary} strokeWidth={2.6} />
+            <Text style={{ color: colors.onPrimary, fontFamily: fonts.semibold }}>Add your first</Text>
+          </PressableScale>
+        </View>
+      ) : (
+        <View className="mt-2">
+          {rows.map((row, i) => (
+            <PressableScale
+              key={row.id}
+              accessibilityRole="button"
+              scaleTo={0.98}
+              onPress={() => router.push({ pathname: '/(modals)/transaction', params: { id: String(row.id) } })}
+              className="py-3"
+              style={i > 0 ? { borderTopWidth: 1, borderTopColor: colors.border } : undefined}
+            >
+              <LedgerRow row={row} />
+            </PressableScale>
+          ))}
+        </View>
+      )}
+    </Card>
+  );
+}

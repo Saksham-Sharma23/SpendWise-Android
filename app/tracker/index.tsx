@@ -1,15 +1,19 @@
-import { Text, View } from 'react-native';
+import { Repeat } from 'lucide-react-native';
+import { View } from 'react-native';
+
 import { Screen } from '../../components/layout/Screen';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function TrackerScreen() {
   return (
-    <Screen title="Tracker" subtitle="Subscriptions">
+    <Screen back title="Tracker" subtitle="Subscriptions and renewals">
       <View className="px-5">
-        <View className="rounded-lg border border-dashed border-border p-6">
-          <Text className="text-center text-sm text-muted-foreground">
-            Phase 4 builds this: renewal countdowns computed on read, status filters, and the kebab actions.
-          </Text>
-        </View>
+        <EmptyState
+          icon={Repeat}
+          title="Nothing to track yet"
+          description="Add Netflix, rent or your gym and see every renewal counting down, with a reminder before it renews."
+          badge="Arrives in Phase 4"
+        />
       </View>
     </Screen>
   );

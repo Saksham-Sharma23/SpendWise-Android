@@ -6,7 +6,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Toaster } from 'sonner-native';
@@ -22,6 +22,7 @@ import { configureConnection, db } from '../db/client';
 import { getOrCreateDatabaseKey } from '../db/encryption';
 import migrations from '../db/migrations/migrations';
 import { seedIfNeeded } from '../db/seed';
+import { colors } from '../lib/theme';
 
 // Keep the splash up until migrations AND seeding finish. Flashing an empty
 // shell while the schema is still being created is how a launch reads as broken.
@@ -71,7 +72,6 @@ export default function RootLayout() {
 
 /** Mounted only after the connection is keyed. */
 function MigratedApp() {
-  const scheme = useColorScheme();
   const [boot, setBoot] = useState<BootState>({ phase: 'booting' });
 
   const [fontsLoaded, fontError] = useFonts({
@@ -130,7 +130,8 @@ function MigratedApp() {
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: 'transparent' },
+            contentStyle: { backgroundColor: colors.background },
+            animation: 'fade_from_bottom',
           }}
         >
           <Stack.Screen name="(tabs)" />
@@ -138,8 +139,10 @@ function MigratedApp() {
           <Stack.Screen name="(modals)/transaction" options={{ presentation: 'modal' }} />
           <Stack.Screen name="(modals)/filters" options={{ presentation: 'modal' }} />
         </Stack>
-        <Toaster position="bottom-center" richColors />
-        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+        {/* Above the floating tab bar, so a toast never covers the add button. */}
+        <Toaster position="bottom-center" richColors theme="dark" offset={110} />
+        {/* Dark-only design: the status bar is always light-on-dark. */}
+        <StatusBar style="light" />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
@@ -148,7 +151,7 @@ function MigratedApp() {
 function BootSpinner() {
   return (
     <View className="flex-1 items-center justify-center bg-background">
-      <ActivityIndicator />
+      <ActivityIndicator color={colors.primary} />
     </View>
   );
 }
@@ -165,7 +168,7 @@ function BootFailure({ error }: { error: string }) {
         Your data has not been changed. Restoring from a backup will be offered here once that
         screen exists.
       </Text>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </View>
   );
 }

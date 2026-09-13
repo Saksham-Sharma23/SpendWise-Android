@@ -1,15 +1,21 @@
-import { Text, View } from 'react-native';
+import { PiggyBank } from 'lucide-react-native';
+import { View } from 'react-native';
+
 import { Screen } from '../../components/layout/Screen';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { MONTHS_LONG } from '../../lib/dates';
 
 export default function BudgetsScreen() {
+  const now = new Date();
   return (
-    <Screen title="Budgets" subtitle="Per-category limits">
+    <Screen back title="Budgets" subtitle={`${MONTHS_LONG[now.getMonth()]} ${now.getFullYear()}`}>
       <View className="px-5">
-        <View className="rounded-lg border border-dashed border-border p-6">
-          <Text className="text-center text-sm text-muted-foreground">
-            Phase 4 builds this: MiniDonut progress, days left in cycle, a 75% amber warning and an over-budget banner.
-          </Text>
-        </View>
+        <EmptyState
+          icon={PiggyBank}
+          title="No budgets yet"
+          description="Set a monthly limit per category and watch progress fill up as you spend, with a warning at 75%."
+          badge="Arrives in Phase 4"
+        />
       </View>
     </Screen>
   );

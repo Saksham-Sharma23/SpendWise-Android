@@ -1,9 +1,11 @@
 import { Trash2 } from 'lucide-react-native';
 import { memo } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 
-import { formatINR } from '../../../lib/money';
+import { LedgerRow } from '../../../components/ui/LedgerRow';
+import { PressableScale } from '../../../components/ui/PressableScale';
+import { colors, fonts } from '../../../lib/theme';
 import type { TransactionRow as Row } from '../queries';
 
 /**
@@ -25,39 +27,35 @@ interface Props {
 }
 
 /**
- * Deterministic colour per category, ported from the web app's group-utils.
- * Not persisted: the same name always yields the same hue, so both clients
- * agree without either storing a colour.
+ * Deterministic colour per category name, for categories without a stored
+ * colour. Seeded categories carry their own; this is the fallback.
  */
-const PALETTE = [
-  '#0B5C4B', '#1D5C8A', '#6B3FA0', '#8A5410',
-  '#8E2436', '#2F6E3B', '#345B8C', '#7A4A2B',
-];
+const PALETTE = ['#E8833A', '#3A7CA5', '#8B5FBF', '#D4A32C', '#D4544E', '#4B9B6E', '#4E86C7', '#C2548A'];
 
 export function colorForCategory(name: string | null): string {
-  if (!name) return '#6B7280';
+  if (!name) return colors.muted;
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
   return PALETTE[h % PALETTE.length]!;
 }
 
-function initials(name: string | null): string {
-  if (!name) return '—';
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase() ?? '').join('') || '—';
-}
-
 function RightAction({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Delete transaction"
-      onPress={onPress}
-      className="my-1 mr-4 w-20 items-center justify-center rounded-lg bg-destructive"
-    >
-      <Trash2 size={20} color="#fff" />
-      <Text className="mt-1 text-xs text-destructive-foreground">Delete</Text>
-    </Pressable>
+    <View className="justify-center pr-5">
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel="Delete transaction"
+        onPress={onPress}
+        scaleTo={0.9}
+        className="h-14 w-16 items-center justify-center rounded-2xl"
+        style={{ backgroundColor: colors.expense }}
+      >
+        <Trash2 size={19} color={colors.background} strokeWidth={2.3} />
+        <Text style={{ color: colors.background, fontFamily: fonts.semibold, fontSize: 10, marginTop: 2 }}>
+          Delete
+        </Text>
+      </PressableScale>
+    </View>
   );
 }
 
@@ -69,58 +67,22 @@ function TransactionRowBase({
   selectionMode = false,
   onLongPress,
 }: Props) {
-  const isIncome = row.type === 'income';
-  const color = colorForCategory(row.categoryName);
-
   const body = (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
+      accessibilityState={selectionMode ? { selected } : undefined}
       onPress={() => onPress(row.id)}
       onLongPress={onLongPress ? () => onLongPress(row.id) : undefined}
       delayLongPress={300}
-      className={`flex-row items-center gap-3 px-5 py-3 ${selected ? 'bg-accent' : 'bg-background'}`}
+      scaleTo={0.98}
+      className="mx-3 rounded-2xl px-3 py-3"
+      style={{ backgroundColor: selected ? colors.primarySoft : colors.background }}
     >
-      <View
-        className="h-10 w-10 items-center justify-center rounded-full"
-        style={{ backgroundColor: selected ? color : `${color}22` }}
-      >
-        <Text
-          className="text-xs"
-          style={{
-            color: selected ? '#fff' : color,
-            fontFamily: 'PlusJakartaSans_600SemiBold',
-          }}
-        >
-          {selectionMode && selected ? '✓' : initials(row.categoryName)}
-        </Text>
-      </View>
-
-      <View className="flex-1 pr-2">
-        <Text
-          numberOfLines={1}
-          className="text-[15px] text-foreground"
-          style={{ fontFamily: 'PlusJakartaSans_500Medium' }}
-        >
-          {row.note?.trim() || row.categoryName || 'Untitled'}
-        </Text>
-        <Text numberOfLines={1} className="mt-0.5 text-xs text-muted-foreground">
-          {row.categoryName ?? 'Uncategorised'}
-          {row.isRecurring ? ' · recurring' : ''}
-        </Text>
-      </View>
-
-      <Text
-        className="text-[15px]"
-        style={{
-          fontVariant: ['tabular-nums'],
-          fontFamily: 'PlusJakartaSans_600SemiBold',
-          color: isIncome ? '#15803D' : undefined,
-        }}
-      >
-        {isIncome ? '+' : '−'}
-        {formatINR(row.amountPaise, { bare: false })}
-      </Text>
-    </Pressable>
+      <LedgerRow
+        row={{ ...row, categoryColor: row.categoryColor ?? colorForCategory(row.categoryName) }}
+        selected={selectionMode && selected}
+      />
+    </PressableScale>
   );
 
   // Swiping while multi-selecting would fight the selection gesture, so the

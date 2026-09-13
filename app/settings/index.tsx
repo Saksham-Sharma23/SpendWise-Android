@@ -1,15 +1,19 @@
-import { Text, View } from 'react-native';
+import { Settings } from 'lucide-react-native';
+import { View } from 'react-native';
+
 import { Screen } from '../../components/layout/Screen';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function SettingsScreen() {
   return (
-    <Screen title="Settings" subtitle="Theme, notifications, data">
+    <Screen back title="Settings" subtitle="Notifications, security, data">
       <View className="px-5">
-        <View className="rounded-lg border border-dashed border-border p-6">
-          <Text className="text-center text-sm text-muted-foreground">
-            Phase 9 builds this: theme, currency display, notification preferences and data management.
-          </Text>
-        </View>
+        <EmptyState
+          icon={Settings}
+          title="Settings are on the way"
+          description="Notification preferences, an optional fingerprint lock and data management will live here."
+          badge="Arrives in Phase 9"
+        />
       </View>
     </Screen>
   );

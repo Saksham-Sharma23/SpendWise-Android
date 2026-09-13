@@ -1,15 +1,19 @@
-import { Text, View } from 'react-native';
+import { DatabaseBackup } from 'lucide-react-native';
+import { View } from 'react-native';
+
 import { Screen } from '../../components/layout/Screen';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function BackupScreen() {
   return (
-    <Screen title="Backup & restore" subtitle="Your data lives only on this phone">
+    <Screen back title="Backup & restore" subtitle="Your data lives only on this phone">
       <View className="px-5">
-        <View className="rounded-lg border border-dashed border-border p-6">
-          <Text className="text-center text-sm text-muted-foreground">
-            Phase 7 builds this: export as .db or .json through the share sheet, validated restore, and a monthly reminder.
-          </Text>
-        </View>
+        <EmptyState
+          icon={DatabaseBackup}
+          title="Keep a copy somewhere safe"
+          description="Export everything to a file through the share sheet, and restore it on a new phone — checked before anything is overwritten."
+          badge="Arrives in Phase 7"
+        />
       </View>
     </Screen>
   );

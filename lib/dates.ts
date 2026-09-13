@@ -85,6 +85,35 @@ export function monthKey(s: ISODate): string {
   return s.slice(0, 7);
 }
 
+/** First day of the month containing `s`. */
+export function startOfMonth(s: ISODate): ISODate {
+  return `${s.slice(0, 7)}-01`;
+}
+
+/**
+ * English month names, spelled out here rather than via toLocaleDateString:
+ * labels must not change shape on a device whose ICU data is incomplete.
+ */
+export const MONTHS_SHORT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+] as const;
+
+export const MONTHS_LONG = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+] as const;
+
+/** '2026-09-13' -> '13 Sep' */
+export function formatDayMonth(s: ISODate): string {
+  return `${Number(s.slice(8, 10))} ${MONTHS_SHORT[Number(s.slice(5, 7)) - 1]}`;
+}
+
+/** '2026-09' or '2026-09-13' -> 'September 2026' */
+export function formatMonthYear(s: string): string {
+  return `${MONTHS_LONG[Number(s.slice(5, 7)) - 1]} ${s.slice(0, 4)}`;
+}
+
 // ---------------------------------------------------------------------------
 // Budget cycles
 // ---------------------------------------------------------------------------

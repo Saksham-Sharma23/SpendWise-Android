@@ -1,17 +1,19 @@
-import { Text, View } from 'react-native';
+import { ChartColumn } from 'lucide-react-native';
+import { View } from 'react-native';
+
 import { Screen } from '../../components/layout/Screen';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function InsightsScreen() {
   return (
-    <Screen title="Insights" subtitle="Analytics">
+    <Screen title="Insights" subtitle="Where your money goes, over time">
       <View className="px-5">
-        <View className="rounded-lg border border-dashed border-border p-6">
-          <Text className="text-center text-sm text-muted-foreground">
-            Phase 5 builds the charts here: a trend area chart with a
-            3/6/12/24-month selector and a touch scrubber, a category donut,
-            and stat cards — all aggregated in SQL, never in JavaScript.
-          </Text>
-        </View>
+        <EmptyState
+          icon={ChartColumn}
+          title="Deeper analytics are coming"
+          description="A 24-month trend you can scrub with your finger, a category donut and stat cards like average spend per day."
+          badge="Arrives in Phase 5"
+        />
       </View>
     </Screen>
   );

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Screen } from '../components/layout/Screen';
+import { colors } from '../lib/theme';
 import { databaseSizeBytes, countTransactions, runAnalyticsBenchmark } from '../db/benchmark';
 import type { BenchResult } from '../db/benchmark';
 import { devClearTransactions, devSeedTransactions } from '../db/devSeed';
@@ -36,12 +37,12 @@ function Button({
       accessibilityRole="button"
       disabled={busy}
       onPress={onPress}
-      className={`flex-row items-center justify-center gap-2 rounded-lg px-4 py-3 ${
+      className={`flex-row items-center justify-center gap-2 rounded-full px-4 py-3.5 ${
         tone === 'danger' ? 'bg-destructive' : 'bg-primary'
       }`}
       style={{ opacity: busy ? 0.6 : 1 }}
     >
-      {busy ? <ActivityIndicator size="small" color="#fff" /> : null}
+      {busy ? <ActivityIndicator size="small" color={tone === 'danger' ? colors.background : colors.onPrimary} /> : null}
       <Text
         className={tone === 'danger' ? 'text-destructive-foreground' : 'text-primary-foreground'}
         style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}
@@ -135,10 +136,10 @@ function DevHarness() {
   const passed = trend ? trend.ms <= THRESHOLD_MS && !trend.scan : null;
 
   return (
-    <Screen title="Dev harness" subtitle="Phase 1 exit criterion" scroll={false}>
+    <Screen back title="Dev harness" subtitle="Phase 1 exit criterion" scroll={false}>
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         <View className="gap-3 px-5">
-          <View className="rounded-lg border border-border bg-card p-4">
+          <View className="rounded-3xl border border-border bg-card p-4">
             <Text className="text-xs uppercase tracking-wider text-muted-foreground">
               Database
             </Text>
@@ -162,21 +163,21 @@ function DevHarness() {
 
           {passed !== null ? (
             <View
-              className="rounded-lg border p-4"
+              className="rounded-3xl border p-4"
               style={{
-                borderColor: passed ? '#0B5C4B' : '#8E2436',
-                backgroundColor: passed ? '#DCECE5' : '#F7E4E7',
+                borderColor: passed ? colors.income : colors.expense,
+                backgroundColor: passed ? colors.incomeSoft : colors.expenseSoft,
               }}
             >
               <Text
                 style={{
                   fontFamily: 'PlusJakartaSans_600SemiBold',
-                  color: passed ? '#0B5C4B' : '#8E2436',
+                  color: passed ? colors.income : colors.expense,
                 }}
               >
                 {passed ? 'Exit criterion PASSED' : 'Exit criterion FAILED'}
               </Text>
-              <Text className="mt-1 text-xs" style={{ color: passed ? '#0B5C4B' : '#8E2436' }}>
+              <Text className="mt-1 text-xs" style={{ color: passed ? colors.income : colors.expense }}>
                 Trend query {trend?.ms}ms (target ≤{THRESHOLD_MS}ms)
                 {trend?.scan ? ' · full table scan detected' : ' · index used'}
               </Text>
@@ -184,7 +185,7 @@ function DevHarness() {
           ) : null}
 
           {results ? (
-            <View className="overflow-hidden rounded-lg border border-border bg-card">
+            <View className="overflow-hidden rounded-3xl border border-border bg-card">
               {results.map((r, i) => (
                 <View key={r.name} className={i > 0 ? 'border-t border-border p-3' : 'p-3'}>
                   <View className="flex-row items-baseline justify-between">
@@ -193,7 +194,7 @@ function DevHarness() {
                       className="text-sm"
                       style={{
                         fontVariant: ['tabular-nums'],
-                        color: r.ms <= THRESHOLD_MS ? '#0B5C4B' : '#8A5410',
+                        color: r.ms <= THRESHOLD_MS ? colors.income : colors.warning,
                         fontFamily: 'PlusJakartaSans_600SemiBold',
                       }}
                     >
@@ -210,7 +211,7 @@ function DevHarness() {
           ) : null}
 
           {log.length > 0 ? (
-            <View className="rounded-lg border border-border bg-muted p-3">
+            <View className="rounded-2xl border border-border bg-muted p-3">
               {log.map((line, i) => (
                 <Text key={i} className="text-xs text-muted-foreground">
                   {line}

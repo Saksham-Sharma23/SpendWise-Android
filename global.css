@@ -3,80 +3,53 @@
 @tailwind utilities;
 
 /*
- * Design tokens, ported from the web app's globals.css.
+ * Design tokens — the SpendWise web look: near-black ground, graphite cards,
+ * one electric lime accent, green for money in, coral for money out.
  *
- * NativeWind reads these as CSS variables and exposes them to the Tailwind
- * theme, so `bg-background` / `text-foreground` resolve correctly in both
- * themes without any JS branching. Keep this file the single source of
- * colour truth — never hardcode a hex value in a component.
+ * The app is dark-only by design, matching the web app. Tokens are defined
+ * once on :root (and repeated under .dark so NativeWind's class strategy
+ * resolves identically whichever scheme the phone reports).
+ *
+ * NativeWind exposes these to Tailwind, so `bg-card` / `text-primary` work
+ * with no JS branching. JS-side colours (icons, SVG, charts) come from
+ * lib/theme.ts, which mirrors these values — change both together.
  */
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 160 24% 8%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 160 24% 8%;
-
-    --muted: 150 12% 94%;
-    --muted-foreground: 158 8% 40%;
-
-    --border: 150 10% 87%;
-    --input: 150 10% 87%;
-
-    /* Deep pine — the app's primary. Matches the web accent. */
-    --primary: 165 79% 20%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 150 12% 94%;
-    --secondary-foreground: 160 24% 8%;
-
-    --accent: 150 12% 94%;
-    --accent-foreground: 160 24% 8%;
-
-    /* Semantic — deliberately distinct from --primary so "success" never
-       reads as "this is the brand colour". */
-    --success: 142 71% 29%;
-    --success-foreground: 0 0% 100%;
-    --warning: 32 81% 30%;
-    --warning-foreground: 0 0% 100%;
-    --destructive: 347 60% 35%;
-    --destructive-foreground: 0 0% 100%;
-
-    --ring: 165 79% 20%;
-    --radius: 0.625rem;
-  }
-
+  :root,
   .dark:root {
-    --background: 160 18% 6%;
-    --foreground: 150 16% 92%;
+    --background: 240 6% 4%;
+    --foreground: 240 5% 96%;
 
-    --card: 162 16% 9%;
-    --card-foreground: 150 16% 92%;
+    --card: 225 6% 9%;
+    --card-foreground: 240 5% 96%;
 
-    --muted: 162 14% 13%;
-    --muted-foreground: 152 9% 64%;
+    --elevated: 225 5% 12%;
 
-    --border: 162 13% 18%;
-    --input: 162 13% 18%;
+    --muted: 225 5% 13%;
+    --muted-foreground: 228 4% 57%;
 
-    --primary: 165 49% 58%;
-    --primary-foreground: 165 60% 8%;
+    --border: 228 5% 16%;
+    --input: 228 5% 18%;
 
-    --secondary: 162 14% 13%;
-    --secondary-foreground: 150 16% 92%;
+    /* Electric lime — the brand. Always paired with near-black text. */
+    --primary: 74 87% 67%;
+    --primary-foreground: 80 60% 6%;
 
-    --accent: 162 14% 13%;
-    --accent-foreground: 150 16% 92%;
+    --secondary: 225 5% 13%;
+    --secondary-foreground: 240 5% 96%;
 
-    --success: 142 52% 55%;
-    --success-foreground: 142 60% 8%;
-    --warning: 32 72% 62%;
-    --warning-foreground: 32 60% 8%;
-    --destructive: 347 66% 72%;
-    --destructive-foreground: 347 60% 10%;
+    --accent: 74 40% 14%;
+    --accent-foreground: 74 87% 67%;
 
-    --ring: 165 49% 58%;
+    --success: 152 62% 52%;
+    --success-foreground: 152 60% 8%;
+    --warning: 38 92% 60%;
+    --warning-foreground: 38 60% 8%;
+    --destructive: 0 84% 68%;
+    --destructive-foreground: 0 60% 8%;
+
+    --ring: 74 87% 67%;
+    --radius: 1rem;
   }
 }
