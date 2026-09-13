@@ -33,19 +33,18 @@ type BootState =
   | { phase: 'failed'; error: string };
 
 export default function RootLayout() {
-  const scheme = useColorScheme();
-  const [boot, setBoot] = useState<BootState>({ phase: 'booting' });
   const [keyReady, setKeyReady] = useState(false);
-
-  const [fontsLoaded, fontError] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-  });
+  const [keyError, setKeyError] = useState<string | null>(null);
 
   // 1. Unlock the database before anything touches it. PRAGMA key must be the
   //    first statement on the connection.
+  //
+  //    Migrations are NOT allowed to start until this resolves, which is why
+  //    they live in a child component that is only mounted afterwards. Calling
+  //    useMigrations here, alongside this effect, lets its effect run while the
+  //    key is still being read from SecureStore — the first launch then writes
+  //    an UNENCRYPTED database, and the later PRAGMA key fails with
+  //    "file is not a database". Found on device, 2026-09-13.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -56,10 +55,7 @@ export default function RootLayout() {
         setKeyReady(true);
       } catch (e) {
         if (!cancelled) {
-          setBoot({
-            phase: 'failed',
-            error: e instanceof Error ? e.message : 'Could not unlock the database.',
-          });
+          setKeyError(e instanceof Error ? e.message : 'Could not unlock the database.');
         }
       }
     })();
@@ -68,12 +64,29 @@ export default function RootLayout() {
     };
   }, []);
 
-  // 2. Migrations. Only runs once the connection is keyed.
+  if (keyError) return <BootFailure error={keyError} />;
+  if (!keyReady) return <BootSpinner />;
+  return <MigratedApp />;
+}
+
+/** Mounted only after the connection is keyed. */
+function MigratedApp() {
+  const scheme = useColorScheme();
+  const [boot, setBoot] = useState<BootState>({ phase: 'booting' });
+
+  const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+  });
+
+  // 2. Migrations — safe now, the connection is keyed.
   const { success: migrated, error: migrationError } = useMigrations(db, migrations);
 
   // 3. Seed, then release the splash.
   useEffect(() => {
-    if (!keyReady || !migrated) return;
+    if (!migrated) return;
     let cancelled = false;
     (async () => {
       try {
@@ -91,7 +104,7 @@ export default function RootLayout() {
     return () => {
       cancelled = true;
     };
-  }, [keyReady, migrated]);
+  }, [migrated]);
 
   useEffect(() => {
     if (migrationError) {
@@ -108,34 +121,8 @@ export default function RootLayout() {
   // A failed migration is a permanently broken install with no server-side
   // fix. Show a real recovery path rather than a crash loop. Restore lands
   // in Phase 7; until then this at least explains what happened.
-  if (boot.phase === 'failed') {
-    return (
-      <View
-        className="flex-1 items-center justify-center bg-background px-6"
-        onLayout={onReady}
-      >
-        <Text className="mb-2 text-center text-lg text-foreground">
-          SpendWise could not start
-        </Text>
-        <Text className="mb-6 text-center text-sm text-muted-foreground">
-          {boot.error}
-        </Text>
-        <Text className="text-center text-xs text-muted-foreground">
-          Your data has not been changed. Restoring from a backup will be
-          offered here once that screen exists.
-        </Text>
-        <StatusBar style="auto" />
-      </View>
-    );
-  }
-
-  if (boot.phase === 'booting' || !fontsSettled) {
-    return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (boot.phase === 'failed') return <BootFailure error={boot.error} />;
+  if (boot.phase === 'booting' || !fontsSettled) return <BootSpinner />;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onReady}>
@@ -156,5 +143,30 @@ export default function RootLayout() {
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function BootSpinner() {
+  return (
+    <View className="flex-1 items-center justify-center bg-background">
+      <ActivityIndicator />
+    </View>
+  );
+}
+
+function BootFailure({ error }: { error: string }) {
+  return (
+    <View
+      className="flex-1 items-center justify-center bg-background px-6"
+      onLayout={() => void SplashScreen.hideAsync()}
+    >
+      <Text className="mb-2 text-center text-lg text-foreground">SpendWise could not start</Text>
+      <Text className="mb-6 text-center text-sm text-muted-foreground">{error}</Text>
+      <Text className="text-center text-xs text-muted-foreground">
+        Your data has not been changed. Restoring from a backup will be offered here once that
+        screen exists.
+      </Text>
+      <StatusBar style="auto" />
+    </View>
   );
 }
