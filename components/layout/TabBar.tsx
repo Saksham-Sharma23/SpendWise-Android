@@ -42,11 +42,11 @@ const LEAD = { damping: 22, stiffness: 420, mass: 0.8 };
 const TRAIL = { damping: 20, stiffness: 150, mass: 1 };
 
 /**
- * A frosted-glass tab bar.
+ * A glass tab bar: glassmorphism with a touch of liquid glass.
  *
- * The surface is glassmorphism: a real backdrop blur (when the native module
- * is in the build), a translucent tint, an even white frost and a thin light
- * border. No gloss or specular highlights — those belong to "liquid glass".
+ * A light backdrop blur and thin tint keep it frosted; a refractive rim, a
+ * top sheen and a small specular hotspot give it depth. Kept subtle on
+ * purpose — heavy blur reads as muddy, strong gloss as plastic.
  *
  * The selection is one "droplet" rather than a pill per tab. Its two edges
  * run on different springs, so as it travels it stretches out and thins,
@@ -167,14 +167,27 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                   height: PILL_HEIGHT,
                   borderRadius: PILL_HEIGHT / 2,
                   overflow: 'hidden',
-                  // Frosted lime: the tint plus a little of the panel's milkiness.
-                  backgroundColor: 'rgba(222, 248, 130, 0.16)',
+                  // Lime glass: a light tint, a gloss on top, a lit rim.
+                  backgroundColor: 'rgba(222, 248, 130, 0.12)',
                   borderWidth: 1,
-                  borderColor: 'rgba(225, 250, 140, 0.38)',
+                  borderColor: 'rgba(230, 252, 150, 0.34)',
                 },
                 droplet,
               ]}
-            />
+            >
+              {/* Percent sizes, so the gloss follows the droplet as it stretches. */}
+              <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+                <Defs>
+                  <LinearGradient id="dropGloss" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor="#fff" stopOpacity={0.2} />
+                    <Stop offset="0.45" stopColor="#fff" stopOpacity={0.03} />
+                    <Stop offset="0.75" stopColor="#fff" stopOpacity={0} />
+                    <Stop offset="1" stopColor="#e6fc96" stopOpacity={0.12} />
+                  </LinearGradient>
+                </Defs>
+                <Rect width="100%" height="100%" fill="url(#dropGloss)" />
+              </Svg>
+            </Animated.View>
           ) : null}
 
           <View className="flex-1 flex-row items-center" style={{ paddingHorizontal: PAD }}>
@@ -222,30 +235,39 @@ const GRAIN = (() => {
 })();
 
 /**
- * Frosted glass (glassmorphism), built in layers from the back:
- *   1. real backdrop blur, when the native module is in the build
- *   2. a smoked tint, denser when there is no blur to hide the content
- *   3. an even milky frost
- *   4. diffuse light spreading down from the top — soft, never a gloss line
- *   5. etched grain
- *   6. an edge that catches light at the top and fades toward the bottom
+ * Glass that sits between frosted and liquid, built in layers from the back:
+ *   1. a light backdrop blur, so content stays legible through the bar
+ *   2. a thin smoked tint (denser when there is no blur to hide the content)
+ *   3. a faint frost
+ *   4. sheen: light entering at the top, fading out, pooling again at the base
+ *      the way it does in a thick lens
+ *   5. a small specular hotspot near the top-left
+ *   6. very faint grain
+ *   7. a refractive rim: bright at the top, dim at the sides, lit again at
+ *      the bottom, with a softer inner ring that gives the glass thickness
  */
 function GlassSurface({ radius, width, height }: { radius: number; width: number; height: number }) {
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]}>
-      <GlassBlur intensity={90} />
+      <GlassBlur intensity={38} />
       <View
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: BLUR_AVAILABLE ? 'rgba(22, 23, 28, 0.30)' : 'rgba(26, 27, 33, 0.84)' },
+          { backgroundColor: BLUR_AVAILABLE ? 'rgba(18, 19, 24, 0.22)' : 'rgba(26, 27, 33, 0.84)' },
         ]}
       />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.075)' }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.035)' }]} />
       {width > 0 ? (
         <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
           <Defs>
-            <RadialGradient id="diffuse" cx="50%" cy="0%" rx="65%" ry="130%">
-              <Stop offset="0" stopColor="#fff" stopOpacity={0.11} />
+            <LinearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#fff" stopOpacity={0.13} />
+              <Stop offset="0.42" stopColor="#fff" stopOpacity={0.02} />
+              <Stop offset="0.8" stopColor="#fff" stopOpacity={0} />
+              <Stop offset="1" stopColor="#fff" stopOpacity={0.06} />
+            </LinearGradient>
+            <RadialGradient id="hotspot" cx="24%" cy="0%" rx="22%" ry="60%">
+              <Stop offset="0" stopColor="#fff" stopOpacity={0.16} />
               <Stop offset="1" stopColor="#fff" stopOpacity={0} />
             </RadialGradient>
             <Pattern id="grain" width={GRAIN_TILE} height={GRAIN_TILE} patternUnits="userSpaceOnUse">
@@ -261,14 +283,31 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
                 />
               ))}
             </Pattern>
-            <LinearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#fff" stopOpacity={0.3} />
-              <Stop offset="0.5" stopColor="#fff" stopOpacity={0.08} />
-              <Stop offset="1" stopColor="#fff" stopOpacity={0.14} />
+            <LinearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#fff" stopOpacity={0.5} />
+              <Stop offset="0.3" stopColor="#fff" stopOpacity={0.1} />
+              <Stop offset="0.7" stopColor="#fff" stopOpacity={0.04} />
+              <Stop offset="1" stopColor="#fff" stopOpacity={0.24} />
+            </LinearGradient>
+            <LinearGradient id="innerRim" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#fff" stopOpacity={0.12} />
+              <Stop offset="0.5" stopColor="#fff" stopOpacity={0} />
+              <Stop offset="1" stopColor="#fff" stopOpacity={0.07} />
             </LinearGradient>
           </Defs>
-          <Rect width={width} height={height} fill="url(#diffuse)" />
-          <Rect width={width} height={height} fill="url(#grain)" />
+          <Rect width={width} height={height} fill="url(#sheen)" />
+          <Rect width={width} height={height} fill="url(#hotspot)" />
+          <Rect width={width} height={height} fill="url(#grain)" opacity={0.6} />
+          <Rect
+            x={2}
+            y={2}
+            width={width - 4}
+            height={height - 4}
+            rx={radius - 2}
+            fill="none"
+            stroke="url(#innerRim)"
+            strokeWidth={2}
+          />
           <Rect
             x={0.5}
             y={0.5}
@@ -276,7 +315,7 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
             height={height - 1}
             rx={radius - 0.5}
             fill="none"
-            stroke="url(#edge)"
+            stroke="url(#rim)"
             strokeWidth={1}
           />
         </Svg>
