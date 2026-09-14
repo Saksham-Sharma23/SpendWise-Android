@@ -18,7 +18,7 @@
 | 1 | Database foundation | 3–4 d | 🟡 50k rows seeded on device — benchmark tap + DB pull pending |
 | 2 | Transactions | 4–5 d | ✅ Code complete 2026-09-14 — awaiting the user's on-device check |
 | 3 | Home dashboard | 3 d | ✅ Code complete 2026-09-14 — awaiting the user's on-device check |
-| 4 | Budgets & Tracker | 4 d | ⬜ Not started |
+| 4 | Budgets & Tracker | 4 d | ✅ Code complete 2026-09-14 — awaiting the user's on-device check |
 | 5 | Analytics | 3 d | ⬜ Not started |
 | 6A | Sheets: import and workspaces | 7–8 d | ⬜ Not started |
 | 6B | Linked sheets | 4–5 d | ⬜ Not started |
@@ -187,38 +187,42 @@ to change later.
 
 ## Phase 4 — Budgets & Tracker
 **Goal:** Both secondary features, including the two trickiest pieces of ported logic.
-**Est:** 4 days · **Status:** ⬜ Not started
+**Est:** 4 days · **Status:** ✅ Code complete — the user verifies on the phone
 
 > The two date-arithmetic ports in this phase are the most bug-prone code in the project.
 > They are also easy to unit-test, which is why testing them is a task and not a suggestion.
 
-- [ ] **`features/budgets/queries.ts`: spend-against-limit over the reset-day cycle window**
+- [x] **`features/budgets/queries.ts`: spend-against-limit over the reset-day cycle window** *(one pass for every budget: each contributes its own `(category, start, end)` clause, so ten reset days cost one query. Proven against the migrated schema in `__tests__/spend.test.ts`)*
   *Why:* The cycle window is not a calendar month — a budget resetting on the 15th spans two months. Getting the window wrong makes every budget figure quietly incorrect.
-- [ ] **Port `getDaysLeftInCycle` and cycle window arithmetic to TypeScript**
+- [x] **Port `getDaysLeftInCycle` and cycle window arithmetic to TypeScript** *(`getCycleWindow` in lib/dates — one implementation, used by the Budgets screen, Home and Phase 8's alerts)*
   *Why:* Direct port from the web app, where it had to be kept in sync across two files. One implementation here, used everywhere.
-- [ ] **Budgets list with MiniDonut, days-left, 75% amber, over-budget banner**
+- [x] **Budgets list with MiniDonut, days-left, 75% amber, over-budget banner** *(`components/charts/MiniDonut` — an animated dash offset, not a rebuilt arc path; thresholds are pure and tested in `progress.test.ts`)*
   *Why:* Parity. The 75% threshold is the useful one — being told you're over budget after the fact isn't actionable.
-- [ ] **Budget create/edit modal**
+- [x] **Budget create/edit modal** *(shows the window the chosen reset day produces, since "the 15th" is ambiguous; pause/resume while editing)*
   *Why:* Completes CRUD. Keep `limit_amount` in paise, consistent with everything else.
-- [ ] **Port `_enrich` renewal calculation: advance `anchor_date` by cycle until ≥ today, month-end clamped**
+- [x] **Port `_enrich` renewal calculation: advance `anchor_date` by cycle until ≥ today, month-end clamped** *(`features/tracker/renewal.ts`; nothing is stored, so the figures cannot go stale)*
   *Why:* The self-correcting design means no background job is needed — renewal is always computed on read. Month-end clamping is what stops a 31 Jan subscription from breaking in February.
-- [ ] **Unit-test renewal against month-end edge cases (31 Jan → Feb, leap years)**
+- [x] **Unit-test renewal against month-end edge cases (31 Jan → Feb, leap years)** *(26 tests: 31 Jan → 28 Feb → recovers 31 Mar; a 29 Feb yearly anchor in a non-leap year and its recovery in 2028)*
   *Why:* This is precisely the code that looks right and is wrong four months later. Tests are cheap here because the function is pure.
-- [ ] **Subscriptions list with status filter and renewal/amount/name sort**
+- [x] **Subscriptions list with status filter and renewal/amount/name sort** *(cost sorts by the MONTHLY equivalent, so a yearly plan ranks against a monthly one honestly)*
   *Why:* Parity with the web Tracker.
-- [ ] **Port `group-utils.ts` for deterministic icon and colour**
+- [x] **Port `group-utils.ts` for deterministic icon and colour** *(`features/tracker/identity.ts`, plus `lib/icons.ts` so the names it returns are provably ones the renderer knows)*
   *Why:* Deterministic means Netflix looks the same on both clients with nothing persisted.
-- [ ] **Urgency countdown with `ok` / `soon` / `muted`**
+- [x] **Urgency countdown with `ok` / `soon` / `muted`** *(the web app's value names, not colour names)*
   *Why:* Use the web app's exact value names — not colour names — so behaviour matches and the values stay meaningful when theming changes.
-- [ ] **Kebab actions: Edit, Pause/Resume, Cancel, Delete**
+- [x] **Kebab actions: Edit, Pause/Resume, Cancel, Delete** *(all four undoable by toast; pause/resume/cancel are one status change, as on the web)*
   *Why:* Parity. All are status changes rather than separate operations, mirroring the web design.
-- [ ] **`monthly_cost` normalisation: monthly ×1, yearly ÷12, quarterly ÷3, weekly ×52÷12**
+- [x] **`monthly_cost` normalisation: monthly ×1, yearly ÷12, quarterly ÷3, weekly ×52÷12** *(`toMonthlyPaise`, rounded in paise — never a fractional paise)*
   *Why:* Comparing a yearly and a weekly subscription needs a common unit. Do the division in paise with explicit rounding, not floats.
 
-**Exit criterion:** Budget cycles and subscription renewals compute correctly across month-end and leap-year boundaries, proven by tests.
+**Exit criterion:** Budget cycles and subscription renewals compute correctly across month-end and leap-year boundaries, proven by tests. ✅ 44 tests across `features/budgets/__tests__` and `features/tracker/__tests__`.
 
 **Discovered during this phase:**
-- _(none yet)_
+- **lib/dates already held both hard ports** (`getCycleWindow`, `getNextRenewal`) with 40 tests from Phase 1, so this phase built the query and UI layers on top rather than re-deriving the arithmetic. Over-investing in Phase 1 paid exactly as the plan predicted.
+- **Home cannot import features/budgets** (#9: no sibling imports), so the Home card's figures come from `useDashboardBudgets` in the dashboard's own query file, reaching the SAME `getCycleWindow` through lib/. The duplication is the query, never the arithmetic.
+- **The icon vocabulary moved to `lib/icons.ts`.** The Tracker's deterministic icons have to agree with what `CategoryIcon` can draw, and a test asserting that could not import the component (it pulls in React Native and dies under Node). Plain data in lib/ fixes both, and a test now keeps the name list and the component's mapping in step.
+- **Subscriptions still create no transactions,** matching the web app. `reminder_days_before` is stored but nothing fires yet — notifications are Phase 8, and the form says so rather than implying a reminder is set.
+- **Phase 8 hook already in place:** `budgetProgressForCategory` gives the 75%/100% alert the same figure the screen shows, so the alert cannot disagree with the bar.
 
 ---
 

@@ -2,10 +2,10 @@ import { and, asc, desc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 
 import { setMeta } from '../../db/seed';
 import { readDb } from '../../db/read';
-import { appMeta, categories, META_KEYS, subscriptions, transactions } from '../../db/schema';
+import { appMeta, budgets, categories, META_KEYS, subscriptions, transactions } from '../../db/schema';
 import type { BillingCycle, SubscriptionStatus } from '../../db/schema';
 import { useDbQuery, type DbQueryResult } from '../../lib/db/useDbQuery';
-import { addMonthsClamped, startOfMonth, type ISODate } from '../../lib/dates';
+import { addMonthsClamped, getCycleWindow, startOfMonth, type ISODate } from '../../lib/dates';
 
 /**
  * The dashboard's query boundary.
@@ -304,3 +304,92 @@ export function dismissOnboarding(): void {
   setMeta(META_KEYS.ONBOARDING_DISMISSED, '1');
 }
 
+
+// ---------------------------------------------------------------------------
+// Budgets on Home
+// ---------------------------------------------------------------------------
+
+export interface DashboardBudget {
+  id: number;
+  categoryName: string;
+  limitPaise: number;
+  spentPaise: number;
+  ratio: number;
+  fill: number;
+  state: 'under' | 'warning' | 'over' | 'paused';
+}
+
+const EMPTY_BUDGETS: DashboardBudget[] = [];
+
+/**
+ * The few budgets worth showing on Home: closest to their limit first.
+ *
+ * Home cannot import features/budgets (siblings never import each other,
+ * CLAUDE.md #9), so the same cycle-window arithmetic is reached through
+ * lib/dates — the shared floor both features stand on. Spend is summed per
+ * budget in SQL, each within its OWN window, exactly as the Budgets screen
+ * does it.
+ */
+export function useDashboardBudgets(today: ISODate, limit = 4): DbQueryResult<DashboardBudget[]> {
+  return useDbQuery(
+    async () => {
+      const rows = await readDb
+        .select({
+          id: budgets.id,
+          categoryId: budgets.categoryId,
+          limitPaise: budgets.limitPaise,
+          resetDay: budgets.resetDay,
+          isActive: budgets.isActive,
+          categoryName: categories.name,
+        })
+        .from(budgets)
+        .innerJoin(categories, eq(budgets.categoryId, categories.id))
+        .where(and(isNull(budgets.deletedAt), isNull(categories.deletedAt)));
+
+      if (rows.length === 0) return EMPTY_BUDGETS;
+
+      const windows = rows.map((b) => getCycleWindow(b.resetDay, today));
+      const clauses = rows.map(
+        (b, i) =>
+          sql`(${transactions.categoryId} = ${b.categoryId} and ${transactions.date} >= ${windows[i]!.start} and ${transactions.date} <= ${windows[i]!.end})`,
+      );
+      const spend = await readDb
+        .select({
+          categoryId: sql<number>`${transactions.categoryId}`,
+          spentPaise: sql<number>`coalesce(sum(${transactions.amountPaise}), 0)`,
+        })
+        .from(transactions)
+        .where(
+          and(
+            isNull(transactions.deletedAt),
+            eq(transactions.type, 'expense'),
+            sql`(${sql.join(clauses, sql` or `)})`,
+          ),
+        )
+        .groupBy(transactions.categoryId);
+
+      const byCategory = new Map(spend.map((s) => [s.categoryId, s.spentPaise]));
+
+      return rows
+        .map((b): DashboardBudget => {
+          const spentPaise = byCategory.get(b.categoryId) ?? 0;
+          const ratio = b.limitPaise > 0 ? spentPaise / b.limitPaise : spentPaise > 0 ? 1 : 0;
+          return {
+            id: b.id,
+            categoryName: b.categoryName,
+            limitPaise: b.limitPaise,
+            spentPaise,
+            ratio,
+            fill: Math.max(0, Math.min(1, ratio)),
+            state: !b.isActive ? 'paused' : ratio >= 1 ? 'over' : ratio >= 0.75 ? 'warning' : 'under',
+          };
+        })
+        // Closest to the limit first: that is the one worth a glance.
+        .sort((a, b) => b.ratio - a.ratio)
+        .slice(0, limit);
+    },
+    ['budgets', 'transactions', 'categories'],
+    [today, limit],
+    EMPTY_BUDGETS,
+  );
+}

@@ -104,6 +104,8 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen name="(modals)/category" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="(modals)/budget" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="(modals)/subscription" options={{ presentation: 'modal' }} />
         </Stack>
         {/* Above the floating tab bar, so a toast never covers the add button. */}
         <Toaster position="bottom-center" richColors theme="dark" offset={110} />

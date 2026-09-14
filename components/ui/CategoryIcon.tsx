@@ -57,6 +57,7 @@ import {
 } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
+import { ICON_NAMES } from '../../lib/icons';
 import { withAlpha } from '../../lib/theme';
 
 /**
@@ -123,8 +124,15 @@ const ICONS: Record<string, LucideIcon> = {
   tag: Tag,
 };
 
-/** Every icon a category may use, in picker order. */
-export const CATEGORY_ICON_NAMES = Object.keys(ICONS);
+/**
+ * Every icon a category may use, in picker order. The vocabulary lives in
+ * lib/icons.ts (plain data, importable from tests and from features that must
+ * agree with it); this keeps only the name -> component mapping.
+ */
+export const CATEGORY_ICON_NAMES: readonly string[] = ICON_NAMES;
+
+/** Exported for the test that keeps ICON_NAMES and this mapping in step. */
+export const MAPPED_ICON_NAMES = Object.keys(ICONS);
 
 /** Colours offered when creating or recolouring a category. */
 export const CATEGORY_COLORS = [

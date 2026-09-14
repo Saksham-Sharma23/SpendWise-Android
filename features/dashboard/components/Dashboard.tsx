@@ -2,8 +2,6 @@ import { useRouter } from 'expo-router';
 import {
   ArrowDownRight,
   ArrowUpRight,
-  ChevronRight,
-  PiggyBank,
   Plus,
   Search,
   TrendingDown,
@@ -24,6 +22,7 @@ import Animated, {
 import { Screen } from '../../../components/layout/Screen';
 import { Welcome } from '../../../components/layout/Welcome';
 import { AnimatedAmount } from '../../../components/ui/AnimatedAmount';
+import { BudgetOverviewCard } from '../../../components/ui/BudgetOverviewCard';
 import { Card } from '../../../components/ui/Card';
 import { CategoryIcon } from '../../../components/ui/CategoryIcon';
 import { InsightBanner } from '../../../components/ui/InsightBanner';
@@ -39,6 +38,7 @@ import { useToday } from '../../../lib/today';
 import {
   dismissOnboarding,
   useActiveSubscriptions,
+  useDashboardBudgets,
   useHasTransactions,
   useMonthOverview,
   useOnboardingDismissed,
@@ -190,28 +190,7 @@ export function Dashboard() {
           </Section>
 
           <Section index={5}>
-            <PressableScale
-              accessibilityRole="button"
-              onPress={() => router.push('/budgets')}
-              className="flex-row items-center gap-3 rounded-3xl border p-4"
-              style={{ backgroundColor: colors.card, borderColor: colors.border }}
-            >
-              <View
-                className="h-11 w-11 items-center justify-center rounded-2xl"
-                style={{ backgroundColor: colors.primarySoft }}
-              >
-                <PiggyBank size={21} color={colors.primary} />
-              </View>
-              <View className="flex-1">
-                <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
-                  Set up budgets
-                </Text>
-                <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
-                  Track your financial health by category
-                </Text>
-              </View>
-              <ChevronRight size={18} color={colors.muted} />
-            </PressableScale>
+            <Budgets today={today} />
           </Section>
 
           <Section index={6}>
@@ -243,6 +222,30 @@ function Insight({ today, overview }: { today: ISODate; overview: MonthOverview 
     topCategory: lead ? { name: lead.name ?? 'Uncategorised', totalPaise: lead.totalPaise } : null,
   });
   return <InsightBanner insight={insight} />;
+}
+
+/** Budget progress for Home — the same cycle windows the Budgets screen uses. */
+function Budgets({ today }: { today: ISODate }) {
+  const router = useRouter();
+  const { data: rows, status } = useDashboardBudgets(today, 4);
+  // Nothing while pending: an empty prompt that flips to four donuts a frame
+  // later reads as a glitch (convention #12).
+  if (status === 'pending') return null;
+  return (
+    <BudgetOverviewCard
+      items={rows.map((b) => ({
+        id: b.id,
+        categoryName: b.categoryName,
+        fill: b.fill,
+        ratio: b.ratio,
+        state: b.state,
+        spentPaise: b.spentPaise,
+        limitPaise: b.limitPaise,
+      }))}
+      overCount={rows.filter((b) => b.state === 'over').length}
+      onOpen={() => router.push('/budgets')}
+    />
+  );
 }
 
 /** Upcoming renewals, computed on read from active subscriptions (lib/renewals). */
