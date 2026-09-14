@@ -16,11 +16,24 @@ const { withAndroidManifest, withDangerousMod } = require('expo/config-plugins')
  *   file  snapshots/                pre-migration copies (large, device-local safety net)
  *   file  legacy/                   encrypted originals kept for one launch after conversion
  *   file  unreadable/               databases moved aside by "Start fresh"
+ *   file  DevLauncherApp-….js       the dev-launcher's JS bundle: ~15 MB, dev builds only,
+ *                                   and re-downloaded from Metro on demand. It does not
+ *                                   exist in a release build, but on a dev build it pushed
+ *                                   the 16 MB database past Android's 25 MB quota, so
+ *                                   `bmgr backupnow` answered "Size quota exceeded" and
+ *                                   NOTHING was backed up (measured on the dev phone,
+ *                                   2026-09-15). Excluding it makes the backup drill
+ *                                   meaningful on the build we actually test with.
  *   sharedpref SecureStore.xml      Keystore-wrapped values cannot be decrypted on another
  *                                   device; restoring them only produces DecryptException
  *
  * Keep in step with db/files.ts. Sheet templates (files/sheets/, Phase 6A) are
  * backed up by default because nothing excludes them.
+ *
+ * ⚠️ The 25 MB quota is a real ceiling for REAL data too: the 50k-row test database is
+ * already 16 MB. Layer 2 fails silently when it is exceeded — there is no user-visible
+ * error — which is exactly why Layer 1 (manual export) and Layer 3 (the monthly reminder)
+ * both ship. Phase 7 should show database size in Settings and warn as it approaches.
  */
 
 const EXCLUDES = [
@@ -30,6 +43,9 @@ const EXCLUDES = [
   ['file', 'snapshots/'],
   ['file', 'legacy/'],
   ['file', 'unreadable/'],
+  // Dev-build only (expo-dev-launcher); see the quota note above.
+  ['file', 'DevLauncherApp-BridgelessReactNativeDevBundle.js'],
+  ['file', 'DevLauncherApp-ReactNativeDevBundle.js'],
   ['sharedpref', 'SecureStore.xml'],
 ];
 

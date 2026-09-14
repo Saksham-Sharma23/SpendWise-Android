@@ -83,20 +83,39 @@ export function turnsOf(paise: number, scale: DialScale): number {
 }
 
 /**
- * Track a drag across the twelve o'clock line.
+ * The shortest signed rotation from `previous` to `next`.
  *
  * Comparing raw angles would read the step from 359° to 1° as a huge jump
  * backwards, so the dial would snap from full to empty. Taking the SHORTER
  * way round turns that into the small forward step it visibly is — and it is
  * what lets a value wind past one full turn, or back down through zero.
  */
-export function advance(fromPaise: number, previous: Angle, next: Angle, scale: DialScale): number {
+export function shortestDelta(previous: Angle, next: Angle): Angle {
   let delta = normalizeAngle(next) - normalizeAngle(previous);
   if (delta > Math.PI) delta -= TAU;
   else if (delta < -Math.PI) delta += TAU;
+  return delta;
+}
 
-  const moved = (delta / TAU) * scale.maxPaise;
-  return roundToStep(Math.max(0, fromPaise + moved), scale.stepPaise);
+/** Total rotation (may exceed one turn) -> the amount it represents. */
+export function turnToPaise(turn: Angle, scale: DialScale): number {
+  return roundToStep(Math.max(0, turn / TAU) * scale.maxPaise, scale.stepPaise);
+}
+
+/**
+ * Advance a running ROTATION by one frame of drag, and read the amount off it.
+ *
+ * The amount is derived from the total rotation, never accumulated alongside
+ * it. Adding each frame's movement to a running amount and snapping THAT to a
+ * notch throws the rounding remainder away sixty times a second, so over a
+ * long drag the number falls behind the thumb — at 80% of a turn it read
+ * ₹2,600 instead of ₹8,000 — and the knob then springs back to the drifted
+ * value on release. Keeping rotation as the single source of truth is what
+ * makes the dial track the finger exactly.
+ */
+export function advance(fromTurn: Angle, previous: Angle, next: Angle, scale: DialScale): { turn: Angle; paise: number } {
+  const turn = Math.max(0, fromTurn + shortestDelta(previous, next));
+  return { turn, paise: turnToPaise(turn, scale) };
 }
 
 /**

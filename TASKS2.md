@@ -25,9 +25,9 @@ every screen reads data, so do it before more screens are written against `useLi
 | Phase | Name | Batches | Est. | Blocks | Status |
 |---|---|---|---|---|---|
 | F0 | Decisions | — | ½ d | F1, F2, F4 | ✅ Done 2026-09-14 |
-| F1 | Data safety | 1A · 1B · 1C | 2 d | — | 🟡 Code + tests done 2026-09-14 — phone checks pending |
-| F2 | Schema migrations 0001–0006 | 2A · 2B | 1½ d | F3 | 🟡 Code + tests done 2026-09-14 — phone run pending |
-| F3 | Data-access runtime | 3A · 3B · 3C · 3D | 3 d | F4, Phase 3–6 | 🟡 Code done 2026-09-14 — phone timings pending |
+| F1 | Data safety | 1A · 1B · 1C | 2 d | — | 🟡 Verified on the phone 2026-09-15 except the backup drill (blocked on a rebuild) |
+| F2 | Schema migrations 0001–0006 | 2A · 2B | 1½ d | F3 | ✅ Done — 0001–0006 verified on the phone's 50k database 2026-09-15 |
+| F3 | Data-access runtime | 3A · 3B · 3C · 3D | 3 d | F4, Phase 3–6 | 🟡 Query plans verified on the phone's database 2026-09-15 — in-app timings still open |
 | F4 | Ledger & dashboard smoothness | 4A · 4B · 4C | 2½ d | — | ⬜ Not started |
 | F5 | Everyday UX correctness | 5A · 5B · 5C | 2 d | — | ⬜ Not started |
 | F6 | Tooling & guard rails | 6A · 6B · 6C | 1½ d | — | ⬜ Not started |
@@ -155,6 +155,9 @@ every screen reads data, so do it before more screens are written against `useLi
   - **Prove the backup-file path works now,** even though the UI is Phase 7: a dev-harness button that writes a passphrase-encrypted copy with `ATTACH … KEY` + `sqlcipher_export`, and a second that reads it back into a scratch DB and compares counts.
   - Rebuild from a clean `android/` (`rm -rf android`) and run `npm run verify:apk`.
   **Done when:** (1) the dev phone boots on its converted database with all rows present; (2) the auto-backup drill passes: `adb shell bmgr backupnow com.spendwise.android` → uninstall → reinstall → data present; (3) the encrypted-copy round trip matches counts, and the file's header is not `SQLite format 3`.
+  **(1) ✅ 2026-09-15.** The phone's `files/SQLite/spendwise.db` begins `SQLite format 3` — the conversion ran and the main database is genuinely unkeyed — and it holds all 50,000 rows with `integrity_check` = ok. `files/legacy/` is empty, so the encrypted original was cleaned up after a clean launch, as designed.
+  **(2) ⚠️ Blocked, and it found a real bug — see *Discovered*.** `bmgr backupnow` returned **"Size quota exceeded"**: nothing was backed up. Cause: the dev-launcher's 15.2 MB JS bundle plus the 16.0 MB database is ~31 MB against Android's 25 MB quota. Excluded in `plugins/withBackupRules.js`; the drill needs a rebuild before it can run.
+  **(3) ☐ Open** — the encrypted round trip is in the dev harness and needs the app in the foreground.
 
 **Batch 1B done when:** an unreadable file, a failed migration and a restored auto-backup each end somewhere recoverable.
 
@@ -171,7 +174,13 @@ every screen reads data, so do it before more screens are written against `useLi
   - Change `build:release-apk` so it ends with `&& cd .. && bash scripts/verify-apk.sh`, and make the script's exit code fail the npm script.
   **Done when:** a release build with `INTERNET` present fails the npm command.
 
-**Exit criterion (F1):** double-tap, write failure, an unreadable database file, failed migration, auto-backup restore and a local release build have each been tried on the phone, and each ends in a correct, recoverable state. ☐ **Open — needs the phone.**
+**Exit criterion (F1):** double-tap, write failure, an unreadable database file, failed migration, auto-backup restore and a local release build have each been tried on the phone, and each ends in a correct, recoverable state. 🟡 **Partly met 2026-09-15:** the unkeyed-database conversion is verified on the phone (see 1B); the UI checks and the backup drill are still open.
+
+**Discovered during this phase:**
+- **Android auto-backup was silently failing on the dev phone — the exact failure Layer 2 exists to prevent.** `adb shell bmgr backupnow com.spendwise.android` answered **`Size quota exceeded`**, meaning *nothing* was backed up. Measured cause: `files/DevLauncherApp-BridgelessReactNativeDevBundle.js` is **15.2 MB** and `files/SQLite/spendwise.db` is **16.0 MB** — ~31 MB against Android's **25 MB** quota. Nothing excluded the dev bundle.
+  - **Dev-only in origin:** `expo-dev-launcher` is not in a release build, so a shipped app would not carry that 15 MB. Excluded anyway in `plugins/withBackupRules.js` so the drill is meaningful on the builds we actually test. **Needs a rebuild to take effect.**
+  - **But the ceiling is real for users too.** The 50k-row database is already 16 MB by itself, and Phase 6A adds sheet templates under the same quota. Auto-backup fails *silently* when exceeded — no error reaches the user — which is precisely why Layer 1 (manual export) and Layer 3 (the monthly reminder) both ship. **Phase 7 should show database + template size in Settings and warn as it nears 25 MB.**
+- **`bmgr` cannot be pointed at the local transport on this device** (`Unknown transport com.android.localtransport/.LocalTransportService`), so the uninstall/reinstall drill has to run against whatever transport the phone has configured.
 
 **Discovered during this phase:**
 - **Drizzle's migrator runs every pending migration in one transaction, where `PRAGMA foreign_keys=OFF` is a no-op.** With FKs on, rebuilding `categories` cascade-deletes every budget and nulls every transaction's category. `db/migrate.ts` turns FKs off before the transaction and runs `foreign_key_check` after; `migrations.test.ts` demonstrates the loss without it.
@@ -248,12 +257,16 @@ every screen reads data, so do it before more screens are written against `useLi
   - Re-create a category and a budget after soft delete.
   **Done when:** all pass, and each fails when its fix is reverted.
 
-- [ ] **Run 0001–0006 on the phone's populated dev database** ☐ *needs the phone*
-  *Why:* `better-sqlite3` is not the SQLCipher build that ships.
-  - Seed 50k in the dev harness, install the build containing 0001, launch, confirm the boot succeeds, the pre-migration snapshot exists and the counts match.
-  **Done when:** numbers are recorded under *Discovered*.
+- [x] **Run 0001–0006 on the phone's populated dev database** — ✅ **2026-09-15.** All six applied to the real 50k-row database on the phone (7 rows in `__drizzle_migrations`, the 2026-09-14 02:44 run). Verified by pulling the live file and inspecting it:
+  - `integrity_check` = ok · `foreign_key_check` = 0 violations
+  - 50,000 transactions, all live; 17 categories; `app_meta.schema_version` = 1
+  - `categories.kind` present (`expense`=12, `income`=2, `both`=3) · `is_recurring` gone
+  - `transactions.month` present as a VIRTUAL generated column, and **0 rows** where `month <> substr(date,1,7)`
+  - Indexes `tx_ledger_idx`, `tx_month_idx`, `cat_name_unique`, `budget_cat_unique`, `sub_status_idx` all exist
+  - `uid` backfilled on every row: 0 empty, 0 duplicate, in both `transactions` and `categories`
+  *(No pre-migration snapshot survives to inspect: `files/snapshots/` keeps the newest two and the directory is now absent, consistent with a clean run followed by cleanup. The snapshot path itself is still unproven on the phone — see F1.)*
 
-**Exit criterion (F2):** migrations apply cleanly to a populated 50k-row database on the phone, and every schema test is green. ☐ **Tests green; phone run open.**
+**Exit criterion (F2):** migrations apply cleanly to a populated 50k-row database on the phone, and every schema test is green. ✅ **Met 2026-09-15** — the phone's own database passes integrity and FK checks after 0001–0006, with every column, index and backfill in place.
 
 **Discovered during this phase:**
 - **"One migration" became six (0001–0006)**, all generated or created with `drizzle-kit generate [--custom]` and none hand-edited, because drizzle-kit 0.31 produces broken SQL in three situations. Each was caught by the populated migration test:
@@ -308,7 +321,12 @@ every screen reads data, so do it before more screens are written against `useLi
   - Import and time the real query builders through `db/read.ts`. Build dates with `lib/dates.ts` (`addMonthsClamped`, `todayISO`).
   **Done when:** the harness reports each hook's query by name.
 
-- [ ] **Record on-device timings, then decide on a rollup table** ☐ *needs the phone — rollup decision deferred until the numbers exist*
+- [ ] **Record on-device timings, then decide on a rollup table** 🟡 *plans confirmed on the phone's data; in-app timings still need the running app*
+  **Confirmed 2026-09-15 against the phone's own 50k-row file** (pulled and run through better-sqlite3 — the planner reads the same schema and statistics the phone's SQLite does, so the chosen index is the same; only absolute times differ):
+  - Ledger keyset page: `SEARCH transactions USING INDEX tx_ledger_idx (date<?)` — **no TEMP B-TREE**, so `(date, id) < (?, ?)` really is a range scan, as F0-S4 assumed.
+  - Month aggregate: `SEARCH transactions USING INDEX tx_month_idx (month>?)` — **no TEMP B-TREE**, so `GROUP BY month` needs no sort step.
+  - Desktop medians on that data (a floor, not the phone's number): ledger page 0.16 ms · 12-month trend 3.50 ms · month overview 0.29 ms · top categories 5.38 ms.
+  **Rollup decision: still deferred, but leaning NO** — the trend query is 3.5 ms desktop and the rule is "build it only above 50 ms at 50k on the phone". A phone is slower, but not 14× on an index scan this shape. Confirm with the dev harness before deciding.
   *Why:* The expression index took the desktop trend from 146 ms to 26 ms. A trigger-maintained `month_totals` rollup took it to 0.14 ms, at +64% insert cost. Decide from phone numbers, not principle.
   - Seed 50k and 200k on the phone and record all benchmark rows in TASKS.md Phase 1 (this closes its open task).
   - Build the rollup only if the 24-month trend is over 50 ms at 50k. If you build it, triggers must handle insert, update, soft delete and restore, with a reconciliation test.

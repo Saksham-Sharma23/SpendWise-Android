@@ -1,6 +1,8 @@
 import {
   advance,
   angleOf,
+  shortestDelta,
+  turnToPaise,
   angleToPaise,
   DIAL_SCALES,
   normalizeAngle,
@@ -64,37 +66,80 @@ describe('angle <-> paise', () => {
   });
 });
 
-describe('advance — dragging across twelve o\'clock', () => {
+describe('advance - dragging across twelve o clock', () => {
   it('reads a step forward over the top as a small INCREASE', () => {
-    // 359° -> 1°. Comparing raw angles would read this as -358°, and the
-    // dial would collapse from full to empty under the thumb.
-    const from = angleToPaise(TAU * 0.99, SMALL);
-    const next = advance(from, TAU * 0.99, TAU * 0.01, SMALL);
-    expect(next).toBeGreaterThan(from);
+    // 359 -> 1 degrees. Comparing raw angles would read this as -358, and
+    // the dial would collapse from full to empty under the thumb.
+    const from = TAU * 0.99;
+    const { paise } = advance(from, TAU * 0.99, TAU * 0.01, SMALL);
+    expect(paise).toBeGreaterThan(turnToPaise(from, SMALL));
   });
 
   it('winds past a full turn instead of wrapping to zero', () => {
-    const start = SMALL.maxPaise * 0.95;
-    const next = advance(start, TAU * 0.95, TAU * 0.05, SMALL);
-    expect(next).toBeGreaterThan(SMALL.maxPaise);
+    const { paise } = advance(TAU * 0.95, TAU * 0.95, TAU * 0.05, SMALL);
+    expect(paise).toBeGreaterThan(SMALL.maxPaise);
   });
 
   it('reads a step backward over the top as a DECREASE', () => {
-    const from = angleToPaise(TAU * 0.01, SMALL);
-    const next = advance(from + SMALL.stepPaise * 5, TAU * 0.01, TAU * 0.99, SMALL);
-    expect(next).toBeLessThan(from + SMALL.stepPaise * 5);
+    const from = TAU * 0.01 + 0.3;
+    const { paise } = advance(from, TAU * 0.01, TAU * 0.99, SMALL);
+    expect(paise).toBeLessThan(turnToPaise(from, SMALL));
   });
 
   it('never goes below zero', () => {
-    expect(advance(0, TAU * 0.01, TAU * 0.9, SMALL)).toBe(0);
-    expect(advance(SMALL.stepPaise, TAU * 0.5, TAU * 0.1, SMALL)).toBeGreaterThanOrEqual(0);
+    expect(advance(0, TAU * 0.01, TAU * 0.9, SMALL).paise).toBe(0);
+    expect(advance(0, TAU * 0.5, TAU * 0.1, SMALL).turn).toBe(0);
   });
 
   it('always lands on the step', () => {
-    let value = 0;
+    let turn = 0;
     for (let i = 0; i < 40; i++) {
-      value = advance(value, (i * 0.37) % TAU, ((i + 1) * 0.37) % TAU, SMALL);
-      expect(value % SMALL.stepPaise).toBe(0);
+      const out = advance(turn, (i * 0.37) % TAU, ((i + 1) * 0.37) % TAU, SMALL);
+      turn = out.turn;
+      expect(out.paise % SMALL.stepPaise).toBe(0);
+    }
+  });
+
+  it('does NOT drift behind the thumb over a long drag', () => {
+    // The bug this guards, seen on the phone: accumulating the amount frame
+    // by frame and snapping it each time discards the rounding remainder, so
+    // 80% of a turn (Rs 8,000) read Rs 2,600. Deriving the amount from the
+    // total rotation keeps the two in lockstep however many frames it took.
+    const FRAMES = 400;
+    const target = TAU * 0.8;
+    let turn = 0;
+    for (let i = 0; i < FRAMES; i++) {
+      turn = advance(turn, (i * target) / FRAMES, ((i + 1) * target) / FRAMES, SMALL).turn;
+    }
+    expect(turn).toBeCloseTo(target, 6);
+    expect(turnToPaise(turn, SMALL)).toBe(8_000_00);
+  });
+
+  it('puts the knob where the value is, so it cannot spring away on release', () => {
+    // What the screen does in onFinalize: the settle angle must be within
+    // half a notch of where the thumb left the knob.
+    let turn = 0;
+    for (let i = 0; i < 120; i++) {
+      turn = advance(turn, (i * TAU * 0.6) / 120, ((i + 1) * TAU * 0.6) / 120, SMALL).turn;
+    }
+    const settle = (turnToPaise(turn, SMALL) / SMALL.maxPaise) * TAU;
+    const halfNotch = (SMALL.stepPaise / SMALL.maxPaise) * TAU * 0.5;
+    expect(Math.abs(settle - turn)).toBeLessThanOrEqual(halfNotch + 1e-9);
+  });
+});
+
+describe('shortestDelta', () => {
+  it('takes the short way over twelve o clock in both directions', () => {
+    expect(shortestDelta(TAU * 0.99, TAU * 0.01)).toBeCloseTo(TAU * 0.02);
+    expect(shortestDelta(TAU * 0.01, TAU * 0.99)).toBeCloseTo(-TAU * 0.02);
+  });
+
+  it('is never more than half a turn', () => {
+    for (let i = 0; i < 24; i++) {
+      for (let j = 0; j < 24; j++) {
+        const d = shortestDelta((i / 24) * TAU, (j / 24) * TAU);
+        expect(Math.abs(d)).toBeLessThanOrEqual(Math.PI + 1e-9);
+      }
     }
   });
 });

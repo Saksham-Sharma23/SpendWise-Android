@@ -68,17 +68,26 @@ export function AmountDial({
   const trackRadius = radius - 26;
   const circumference = TAU * trackRadius;
 
-  // The angle the knob is drawn at. Driven by the gesture while dragging, and
-  // by the value at every other time (typing, a preset, a scale change).
-  const angle = useSharedValue(0);
+  /**
+   * TOTAL rotation from zero, in radians, and the single source of truth
+   * while the thumb is down. It may exceed 2π (wound past a full turn).
+   *
+   * The amount is DERIVED from it rather than accumulated alongside it. An
+   * earlier version added each frame's movement to a running value and then
+   * snapped that to a notch, which discarded the rounding remainder sixty
+   * times a second: over a long drag the number fell steadily behind the
+   * thumb, and on release the knob sprang back to the drifted value's angle.
+   * With one source of truth the two cannot disagree.
+   */
+  const turn = useSharedValue(0);
   const dragging = useSharedValue(0);
   const pressing = useSharedValue(0);
 
   // Mirrors of the props, so the worklet reads current values without the
   // gesture being rebuilt (and losing its state) on every render.
-  const value = useSharedValue(valuePaise);
   const max = useSharedValue(maxPaise);
   const step = useSharedValue(stepPaise);
+  const emitted = useSharedValue(valuePaise);
   const lastAngle = useSharedValue(0);
 
   useEffect(() => {
@@ -89,11 +98,10 @@ export function AmountDial({
   // Follow the value unless the thumb is down — otherwise the knob would
   // fight the finger as state round-trips through React.
   useEffect(() => {
-    value.value = valuePaise;
+    emitted.value = valuePaise;
     if (dragging.value === 1) return;
-    const target = maxPaise > 0 ? ((valuePaise % maxPaise) / maxPaise) * TAU : 0;
-    angle.value = withSpring(target, { damping: 18, stiffness: 140, mass: 0.7 });
-  }, [valuePaise, maxPaise, angle, value, dragging]);
+    turn.value = maxPaise > 0 ? (valuePaise / maxPaise) * TAU : 0;
+  }, [valuePaise, maxPaise, turn, emitted, dragging]);
 
   const emit = useCallback((paise: number) => onChange(paise), [onChange]);
 
@@ -102,10 +110,7 @@ export function AmountDial({
     .onBegin((e) => {
       dragging.value = 1;
       pressing.value = withSpring(1, springs.press);
-      const dx = e.x - radius;
-      const dy = e.y - radius;
-      lastAngle.value = Math.atan2(dx, -dy);
-      angle.value = lastAngle.value;
+      lastAngle.value = Math.atan2(e.x - radius, -(e.y - radius));
     })
     .onUpdate((e) => {
       const dx = e.x - radius;
@@ -121,16 +126,17 @@ export function AmountDial({
       let delta = next - lastAngle.value;
       if (delta > Math.PI) delta -= TAU;
       else if (delta < -Math.PI) delta += TAU;
-
       lastAngle.value = next;
-      angle.value = next;
 
-      const moved = (delta / TAU) * max.value;
-      const raw = Math.max(0, value.value + moved);
+      // The knob tracks the thumb exactly — no rounding applied to the angle,
+      // so it never lags behind or springs away from where it was dropped.
+      turn.value = Math.max(0, turn.value + delta);
+
+      const raw = (turn.value / TAU) * max.value;
       const snapped = step.value > 0 ? Math.round(raw / step.value) * step.value : raw;
 
-      if (snapped !== value.value) {
-        value.value = snapped;
+      if (snapped !== emitted.value) {
+        emitted.value = snapped;
         // Cross to JS only when the number actually changes — roughly once
         // per notch, not sixty times a second.
         scheduleOnRN(emit, snapped);
@@ -139,13 +145,13 @@ export function AmountDial({
     .onFinalize(() => {
       dragging.value = 0;
       pressing.value = withSpring(0, springs.settle);
-      // Settle onto the notch the value landed on.
-      const target = max.value > 0 ? ((value.value % max.value) / max.value) * TAU : 0;
-      angle.value = withSpring(target, { damping: 20, stiffness: 180 });
+      // Snap the knob onto the notch the amount landed on. It is at most half
+      // a notch away, so this is a tiny correction rather than a journey.
+      if (max.value > 0) turn.value = (emitted.value / max.value) * TAU;
     });
 
   const progress = useDerivedValue(() => {
-    const a = angle.value % TAU;
+    const a = turn.value % TAU;
     return a < 0 ? a + TAU : a;
   });
 
