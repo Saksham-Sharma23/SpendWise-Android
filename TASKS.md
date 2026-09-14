@@ -199,6 +199,7 @@ to change later.
 - [x] **Budgets list with MiniDonut, days-left, 75% amber, over-budget banner** *(`components/charts/MiniDonut` — an animated dash offset, not a rebuilt arc path; thresholds are pure and tested in `progress.test.ts`)*
   *Why:* Parity. The 75% threshold is the useful one — being told you're over budget after the fact isn't actionable.
 - [x] **Budget create/edit modal** *(shows the window the chosen reset day produces, since "the 15th" is ambiguous; pause/resume while editing)*
+- [x] **The amount is set on an alarm-clock dial** *(user's idea, 2026-09-15. One turn covers the chosen scale — 10k / 1L / 10L — in 100 notches, so the resistance feels the same at every scale and only the number moves faster. `features/budgets/dial.ts` is pure and has 20 tests; the gesture runs on the UI thread and crosses to JS once per notch, not per frame. Tapping the figure still opens the keypad)*
   *Why:* Completes CRUD. Keep `limit_amount` in paise, consistent with everything else.
 - [x] **Port `_enrich` renewal calculation: advance `anchor_date` by cycle until ≥ today, month-end clamped** *(`features/tracker/renewal.ts`; nothing is stored, so the figures cannot go stale)*
   *Why:* The self-correcting design means no background job is needed — renewal is always computed on read. Month-end clamping is what stops a 31 Jan subscription from breaking in February.

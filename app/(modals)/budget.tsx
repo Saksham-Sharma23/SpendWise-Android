@@ -3,12 +3,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pause, Play, Trash2, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
 import { CategoryIcon } from '../../components/ui/CategoryIcon';
+import { BudgetAmountDial } from '../../features/budgets/components/BudgetAmountDial';
 import { PressableScale } from '../../components/ui/PressableScale';
 import {
   createBudget,
@@ -138,36 +139,12 @@ export default function BudgetModal() {
         showsVerticalScrollIndicator={false}
         className="px-5"
       >
-        <Animated.View entering={FadeInDown.duration(350)} className="items-center py-6">
-          <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>
-            How much per cycle?
-          </Text>
+        <Animated.View entering={FadeInDown.duration(350)} className="py-5">
           <Controller
             control={control}
             name="limit"
             render={({ field }) => (
-              <View className="mt-2 flex-row items-center justify-center">
-                <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 34, marginRight: 4 }}>₹</Text>
-                <TextInput
-                  autoFocus={editingId == null}
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  keyboardType="decimal-pad"
-                  placeholder="0"
-                  placeholderTextColor={colors.subtle}
-                  selectionColor={colors.primary}
-                  style={{
-                    color: colors.foreground,
-                    fontFamily: fonts.bold,
-                    fontSize: 46,
-                    letterSpacing: -1.5,
-                    minWidth: 60,
-                    paddingVertical: 0,
-                    fontVariant: ['tabular-nums'],
-                  }}
-                />
-              </View>
+              <BudgetAmountDial value={field.value} onChange={field.onChange} autoFocusKeypad={false} />
             )}
           />
           {errors.limit?.message ? <ErrorText>{errors.limit.message}</ErrorText> : null}
