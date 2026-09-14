@@ -210,7 +210,12 @@ export default function TransactionModal() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(120).duration(350)}>
-          <Label>Category</Label>
+          <View className="flex-row items-center justify-between">
+            <Label>Category</Label>
+            <PressableScale accessibilityRole="button" onPress={() => router.push('/categories' as never)} className="mb-2.5 pl-3">
+              <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 12 }}>Manage</Text>
+            </PressableScale>
+          </View>
           <Controller
             control={control}
             name="categoryId"

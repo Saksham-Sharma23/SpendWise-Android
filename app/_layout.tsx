@@ -137,7 +137,20 @@ function MigratedApp() {
           <Stack.Screen name="(tabs)" />
           {/* A group is not a route: each modal is registered by its full name. */}
           <Stack.Screen name="(modals)/transaction" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="(modals)/filters" options={{ presentation: 'modal' }} />
+          {/* A native bottom sheet: it slides over the ledger, so the list you
+              are filtering stays visible behind it. */}
+          <Stack.Screen
+            name="(modals)/filters"
+            options={{
+              presentation: 'formSheet',
+              sheetAllowedDetents: [0.75, 1],
+              sheetGrabberVisible: true,
+              sheetCornerRadius: 28,
+              sheetExpandsWhenScrolledToEdge: true,
+              contentStyle: { backgroundColor: colors.card },
+            }}
+          />
+          <Stack.Screen name="(modals)/category" options={{ presentation: 'modal' }} />
         </Stack>
         {/* Above the floating tab bar, so a toast never covers the add button. */}
         <Toaster position="bottom-center" richColors theme="dark" offset={110} />

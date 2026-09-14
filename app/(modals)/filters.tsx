@@ -46,15 +46,17 @@ export default function FiltersModal() {
   };
 
   return (
-    <View className="flex-1" style={{ paddingTop: insets.top, backgroundColor: colors.background }}>
-      <View className="flex-row items-center justify-between px-5 py-3">
+    // Presented as a native bottom sheet (see app/_layout.tsx), so no top safe
+    // area: the sheet already starts below the status bar.
+    <View className="flex-1" style={{ backgroundColor: colors.card }}>
+      <View className="flex-row items-center justify-between px-5 pb-2 pt-5">
         <PressableScale
           accessibilityRole="button"
           accessibilityLabel="Close"
           onPress={() => router.back()}
           scaleTo={0.88}
           className="h-10 w-10 items-center justify-center rounded-full border"
-          style={{ backgroundColor: colors.card, borderColor: colors.border }}
+          style={{ backgroundColor: colors.elevated, borderColor: colors.border }}
         >
           <X size={19} color={colors.foreground} />
         </PressableScale>
@@ -95,7 +97,7 @@ export default function FiltersModal() {
                   className="flex-row items-center gap-1.5 rounded-full border px-4 py-2"
                   style={{
                     borderColor: on ? colors.primaryBorder : colors.border,
-                    backgroundColor: on ? colors.primarySoft : colors.card,
+                    backgroundColor: on ? colors.primarySoft : colors.elevated,
                   }}
                 >
                   {on ? <Check size={14} color={colors.primary} strokeWidth={2.6} /> : null}
@@ -128,7 +130,7 @@ export default function FiltersModal() {
                   className="flex-row items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3.5"
                   style={{
                     borderColor: on ? color : colors.border,
-                    backgroundColor: on ? withAlpha(color, 0.16) : colors.card,
+                    backgroundColor: on ? withAlpha(color, 0.16) : colors.elevated,
                   }}
                 >
                   <CategoryIcon icon={c.icon} color={color} size={26} />

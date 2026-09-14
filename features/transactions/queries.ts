@@ -107,6 +107,29 @@ export function useTransactionSummary(filters: TransactionFilters) {
   );
 }
 
+/**
+ * A non-live page of matching rows, for export only.
+ *
+ * Export is the one place the ledger's rows genuinely have to leave SQLite —
+ * they are going into a file, not into a sum. Paging keeps a 50k-row export
+ * from materialising every row in memory at once.
+ */
+export function getTransactionsPage(
+  filters: TransactionFilters,
+  limit: number,
+  offset: number,
+): TransactionRow[] {
+  return db
+    .select(listColumns)
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .where(buildWhere(filters))
+    .orderBy(desc(transactions.date), desc(transactions.id))
+    .limit(limit)
+    .offset(offset)
+    .all() as TransactionRow[];
+}
+
 /** One transaction by id, for the edit form. */
 export function getTransaction(id: number): TransactionRow | undefined {
   const rows = db

@@ -8,6 +8,7 @@ import {
   Repeat,
   Settings,
   ShieldCheck,
+  Tags,
   Users,
   type LucideIcon,
 } from 'lucide-react-native';
@@ -34,6 +35,7 @@ const GROUPS: { title: string; rows: Row[] }[] = [
     rows: [
       { icon: PiggyBank, tint: '#D4F55E', label: 'Budgets', hint: 'Per-category limits and cycles', href: '/budgets' },
       { icon: Repeat, tint: '#9B8CFF', label: 'Tracker', hint: 'Subscriptions and renewals', href: '/tracker' },
+      { icon: Tags, tint: '#E8833A', label: 'Categories', hint: 'Create, rename, recolour and merge', href: '/categories' },
       { icon: Users, tint: '#5EC8F5', label: 'Groups', hint: 'Split expenses with friends', soon: true },
     ],
   },
