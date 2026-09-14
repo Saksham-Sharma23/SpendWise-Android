@@ -2,7 +2,7 @@ import { Text, View } from 'react-native';
 
 import { formatDayMonth } from '../../lib/dates';
 import { formatINR } from '../../lib/money';
-import { colors, fonts } from '../../lib/theme';
+import { colors, fonts, useColors } from '../../lib/theme';
 import { CategoryIcon } from './CategoryIcon';
 
 export interface LedgerRowData {
@@ -28,6 +28,7 @@ interface Props {
  * whoever renders it.
  */
 export function LedgerRow({ row, selected = false, hideDate = false }: Props) {
+  const colors = useColors();
   const isIncome = row.type === 'income';
   const title = row.note?.trim() || row.categoryName || 'Untitled';
   const subtitle = [

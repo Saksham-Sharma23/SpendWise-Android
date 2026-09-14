@@ -13,7 +13,7 @@ import {
 } from '../../../components/ui/CategoryIcon';
 import { PressableScale } from '../../../components/ui/PressableScale';
 import { formatCount } from '../../../lib/money';
-import { colors, fonts, withAlpha } from '../../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
 import {
   CategoryError,
   MAX_CATEGORY_NAME,
@@ -37,6 +37,7 @@ function report(e: unknown, fallback: string) {
  * is no server copy to recover a mistake from.
  */
 export function CategoryEditor() {
+  const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -286,6 +287,7 @@ export function CategoryEditor() {
 }
 
 function Label({ children, top = false }: { children: string; top?: boolean }) {
+  const colors = useColors();
   return (
     <Text
       style={{
@@ -316,6 +318,7 @@ function ActionRow({
   tint?: string;
   onPress: () => void;
 }) {
+  const colors = useColors();
   return (
     <PressableScale
       accessibilityRole="button"

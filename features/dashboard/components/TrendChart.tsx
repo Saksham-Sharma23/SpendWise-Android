@@ -6,7 +6,7 @@ import { Card } from '../../../components/ui/Card';
 import { Segmented } from '../../../components/ui/Segmented';
 import { formatMonthYear } from '../../../lib/dates';
 import { formatINR, formatINRCompact } from '../../../lib/money';
-import { colors, fonts } from '../../../lib/theme';
+import { colors, fonts, useColors } from '../../../lib/theme';
 import { useToday } from '../../../lib/today';
 import { useMonthlyTrend } from '../queries';
 
@@ -21,6 +21,7 @@ type Range = '6' | '12';
  * SQL (useMonthlyTrend), at most 12 rows.
  */
 export function TrendChart() {
+  const colors = useColors();
   const [range, setRange] = useState<Range>('6');
   const [mode, setMode] = useState<TrendMode>('bar');
   const today = useToday();
@@ -87,6 +88,7 @@ export function TrendChart() {
 }
 
 function Figure({ label, color, paise }: { label: string; color: string; paise: number }) {
+  const colors = useColors();
   return (
     <View className="flex-1 rounded-2xl px-3 py-2.5" style={{ backgroundColor: colors.elevated }}>
       <View className="flex-row items-center gap-1.5">

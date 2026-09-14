@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-import { colors, fonts, springs } from '../../lib/theme';
+import { colors, fonts, springs, useColors } from '../../lib/theme';
 
 export interface SegmentOption<T extends string> {
   value: T;
@@ -25,6 +25,7 @@ interface Props<T extends string> {
  * app's Bar/Line and All/Income/Expense toggles.
  */
 export function Segmented<T extends string>({ options, value, onChange, size = 'md' }: Props<T>) {
+  const colors = useColors();
   const [width, setWidth] = useState(0);
   const index = Math.max(
     0,

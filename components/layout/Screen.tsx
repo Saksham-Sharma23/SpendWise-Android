@@ -5,7 +5,7 @@ import { ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, fonts } from '../../lib/theme';
+import { colors, fonts, useColors } from '../../lib/theme';
 import { PressableScale } from '../ui/PressableScale';
 import { BlurTarget } from './glass';
 
@@ -38,6 +38,7 @@ export function Screen({
   right,
   back = false,
 }: ScreenProps) {
+  const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 

@@ -2,7 +2,7 @@ import { DatabaseBackup, FileSpreadsheet, Plus, ShieldCheck, type LucideIcon } f
 import { Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { colors, fonts, withAlpha } from '../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
 import { Card } from '../ui/Card';
 import { PressableScale } from '../ui/PressableScale';
 
@@ -19,6 +19,7 @@ interface Props {
  * add a transaction, import a spreadsheet, restore a backup.
  */
 export function Welcome({ onAdd, onImport, onRestore, onSkip }: Props) {
+  const colors = useColors();
   return (
     <View className="gap-3 px-5">
       <Animated.View entering={FadeInDown.delay(40).duration(450)}>
@@ -68,6 +69,7 @@ function Door({
   onPress: () => void;
   primary?: boolean;
 }) {
+  const colors = useColors();
   return (
     <Animated.View entering={FadeInDown.delay(60 + index * 70).duration(420)}>
       <PressableScale

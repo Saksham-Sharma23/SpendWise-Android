@@ -18,11 +18,11 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Screen } from '../../components/layout/Screen';
 import { Card } from '../../components/ui/Card';
 import { PressableScale } from '../../components/ui/PressableScale';
-import { colors, fonts, withAlpha } from '../../lib/theme';
+import { accent, colors, fonts, useColors, withAlpha, type AccentHue } from '../../lib/theme';
 
 type Row = {
   icon: LucideIcon;
-  tint: string;
+  tint: AccentHue;
   label: string;
   hint: string;
   href?: string;
@@ -33,32 +33,33 @@ const GROUPS: { title: string; rows: Row[] }[] = [
   {
     title: 'Money',
     rows: [
-      { icon: PiggyBank, tint: '#D4F55E', label: 'Budgets', hint: 'Per-category limits and cycles', href: '/budgets' },
-      { icon: Repeat, tint: '#9B8CFF', label: 'Tracker', hint: 'Subscriptions and renewals', href: '/tracker' },
-      { icon: Tags, tint: '#E8833A', label: 'Categories', hint: 'Create, rename, recolour and merge', href: '/categories' },
-      { icon: Users, tint: '#5EC8F5', label: 'Groups', hint: 'Split expenses with friends', soon: true },
+      { icon: PiggyBank, tint: 'lime', label: 'Budgets', hint: 'Per-category limits and cycles', href: '/budgets' },
+      { icon: Repeat, tint: 'violet', label: 'Tracker', hint: 'Subscriptions and renewals', href: '/tracker' },
+      { icon: Tags, tint: 'orange', label: 'Categories', hint: 'Create, rename, recolour and merge', href: '/categories' },
+      { icon: Users, tint: 'blue', label: 'Groups', hint: 'Split expenses with friends', soon: true },
     ],
   },
   {
     title: 'Your data',
     rows: [
-      { icon: FileSpreadsheet, tint: '#3DDC97', label: 'Import a sheet', hint: 'Bring in an Excel or CSV export', href: '/import/pick' },
-      { icon: DatabaseBackup, tint: '#F5B544', label: 'Backup & restore', hint: 'Export your data, or restore it', href: '/backup' },
+      { icon: FileSpreadsheet, tint: 'mint', label: 'Import a sheet', hint: 'Bring in an Excel or CSV export', href: '/import/pick' },
+      { icon: DatabaseBackup, tint: 'amber', label: 'Backup & restore', hint: 'Export your data, or restore it', href: '/backup' },
     ],
   },
   {
     title: 'App',
     rows: [
-      { icon: Settings, tint: '#B0B3BC', label: 'Settings', hint: 'Notifications, security, data', href: '/settings' },
+      { icon: Settings, tint: 'grey', label: 'Settings', hint: 'Notifications, security, data', href: '/settings' },
       // Stripped from release bundles by the __DEV__ guard.
       ...(__DEV__
-        ? [{ icon: FlaskConical, tint: '#F87171', label: 'Dev harness', hint: 'Seed 50k rows and benchmark queries', href: '/dev' }]
+        ? ([{ icon: FlaskConical, tint: 'red', label: 'Dev harness', hint: 'Seed 50k rows and benchmark queries', href: '/dev' }] as Row[])
         : []),
     ],
   },
 ];
 
 export default function MoreScreen() {
+  const colors = useColors();
   const router = useRouter();
 
   return (
@@ -114,6 +115,7 @@ export default function MoreScreen() {
 }
 
 function MoreRow({ row, first, onPress }: { row: Row; first: boolean; onPress: () => void }) {
+  const colors = useColors();
   const Icon = row.icon;
   const disabled = row.soon === true;
 
@@ -129,9 +131,9 @@ function MoreRow({ row, first, onPress }: { row: Row; first: boolean; onPress: (
     >
       <View
         className="h-11 w-11 items-center justify-center rounded-2xl"
-        style={{ backgroundColor: withAlpha(row.tint, 0.13) }}
+        style={{ backgroundColor: withAlpha(accent(row.tint), 0.13) }}
       >
-        <Icon size={20} color={row.tint} />
+        <Icon size={20} color={accent(row.tint)} />
       </View>
       <View className="flex-1">
         <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>{row.label}</Text>

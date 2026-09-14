@@ -11,7 +11,7 @@ import { Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import type { Insight, InsightIcon, InsightTone } from '../../lib/insight';
-import { colors, fonts, withAlpha } from '../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
 import { Card } from './Card';
 
 const ICONS: Record<InsightIcon, LucideIcon> = {
@@ -35,6 +35,7 @@ const TONE: Record<InsightTone, string> = {
  * text changing in place.
  */
 export function InsightBanner({ insight }: { insight: Insight }) {
+  const colors = useColors();
   const tint = TONE[insight.tone];
   const Icon = ICONS[insight.icon];
 

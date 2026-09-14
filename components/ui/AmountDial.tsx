@@ -12,7 +12,7 @@ import Animated, {
 import Svg, { Circle, Defs, G, LinearGradient, Line, Stop } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { colors, fonts, springs, withAlpha } from '../../lib/theme';
+import { colors, fonts, springs, useColors, withAlpha } from '../../lib/theme';
 import { PressableScale } from './PressableScale';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -64,6 +64,7 @@ export function AmountDial({
   onPressCenter,
   label = 'Amount',
 }: AmountDialProps) {
+  const colors = useColors();
   const radius = size / 2;
   const trackRadius = radius - 26;
   const circumference = TAU * trackRadius;

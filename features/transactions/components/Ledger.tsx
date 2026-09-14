@@ -16,7 +16,7 @@ import { Segmented } from '../../../components/ui/Segmented';
 import { categoryColor } from '../../../lib/categoryColor';
 import { formatMonthYear } from '../../../lib/dates';
 import { formatCount } from '../../../lib/money';
-import { colors, fonts } from '../../../lib/theme';
+import { colors, fonts, useColors } from '../../../lib/theme';
 import { exportTransactionsCsv } from '../export';
 import { useFilterStore } from '../filterStore';
 import {
@@ -70,6 +70,7 @@ function withMonthHeaders(rows: TransactionRow[]): { items: ListItem[]; headerIn
 type TypeFilter = 'all' | 'income' | 'expense';
 
 export function Ledger() {
+  const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   // Filters live in a store because the filter sheet is a separate ROUTE and
@@ -406,6 +407,7 @@ function RoundIconButton({
   active?: boolean;
   children: React.ReactNode;
 }) {
+  const colors = useColors();
   return (
     <PressableScale
       accessibilityRole="button"
@@ -424,6 +426,7 @@ function RoundIconButton({
 }
 
 function SummaryFigure({ label, paise, color }: { label: string; paise: number; color: string }) {
+  const colors = useColors();
   return (
     <View className="flex-1 items-center px-1">
       <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>{label}</Text>

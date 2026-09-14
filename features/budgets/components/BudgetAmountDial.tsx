@@ -6,7 +6,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { AmountDial } from '../../../components/ui/AmountDial';
 import { PressableScale } from '../../../components/ui/PressableScale';
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '../../../lib/money';
-import { colors, fonts, withAlpha } from '../../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
 import { DIAL_SCALES, presetsFor, rescale, scaleFor, turnsOf, type DialScale } from '../dial';
 
 /**
@@ -28,6 +28,7 @@ interface Props {
 }
 
 export function BudgetAmountDial({ value, onChange, autoFocusKeypad = false }: Props) {
+  const colors = useColors();
   const paise = parseAmountToPaise(value) ?? 0;
 
   // Start on a scale that can show the value in one turn — editing a ₹40,000

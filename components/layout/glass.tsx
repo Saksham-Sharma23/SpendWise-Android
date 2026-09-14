@@ -4,6 +4,8 @@ import { useCallback, useRef, type ReactNode, type RefObject } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { create } from 'zustand';
 
+import { useThemeName } from '../../lib/theme';
+
 /**
  * Real backdrop blur for the glass tab bar — when the native module exists.
  *
@@ -54,9 +56,16 @@ export function BlurTarget({ children, style }: { children: ReactNode; style?: S
   );
 }
 
-/** The frosted backdrop. Renders nothing when blur is unavailable. */
+/**
+ * The frosted backdrop. Renders nothing when blur is unavailable.
+ *
+ * The tint follows the theme: a dark tint over a light page darkens
+ * everything behind the bar into a grey band, which is the opposite of what
+ * frosted glass should do.
+ */
 export function GlassBlur({ intensity = 45 }: { intensity?: number }) {
   const target = useBlurTargetStore((s) => s.target);
+  const theme = useThemeName();
   if (!blur || !target) return null;
   const BlurView = blur.BlurView;
   return (
@@ -64,7 +73,7 @@ export function GlassBlur({ intensity = 45 }: { intensity?: number }) {
       blurTarget={target}
       blurMethod="dimezisBlurViewSdk31Plus"
       intensity={intensity}
-      tint="dark"
+      tint={theme === 'light' ? 'light' : 'dark'}
       style={StyleSheet.absoluteFill}
     />
   );

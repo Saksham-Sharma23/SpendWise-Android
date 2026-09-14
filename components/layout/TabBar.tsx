@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Pattern, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { colors, fonts, springs } from '../../lib/theme';
+import { fonts, springs, useColors, useThemeName, withAlpha } from '../../lib/theme';
 import { PressableScale } from '../ui/PressableScale';
 import { BLUR_AVAILABLE, GlassBlur } from './glass';
 
@@ -55,6 +55,7 @@ const TRAIL = { damping: 20, stiffness: 150, mass: 1 };
  * release on.
  */
 export function TabBar({ state, navigation }: BottomTabBarProps) {
+  const colors = useColors();
   const { bottom } = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
 
@@ -167,10 +168,10 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                   height: PILL_HEIGHT,
                   borderRadius: PILL_HEIGHT / 2,
                   overflow: 'hidden',
-                  // Lime glass: a light tint, a gloss on top, a lit rim.
-                  backgroundColor: 'rgba(222, 248, 130, 0.12)',
+                  // Accent glass: a light tint, a gloss on top, a lit rim.
+                  backgroundColor: withAlpha(colors.primary, 0.14),
                   borderWidth: 1,
-                  borderColor: 'rgba(230, 252, 150, 0.34)',
+                  borderColor: withAlpha(colors.primary, 0.36),
                 },
                 droplet,
               ]}
@@ -182,7 +183,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                     <Stop offset="0" stopColor="#fff" stopOpacity={0.2} />
                     <Stop offset="0.45" stopColor="#fff" stopOpacity={0.03} />
                     <Stop offset="0.75" stopColor="#fff" stopOpacity={0} />
-                    <Stop offset="1" stopColor="#e6fc96" stopOpacity={0.12} />
+                    <Stop offset="1" stopColor={colors.primary} stopOpacity={0.18} />
                   </LinearGradient>
                 </Defs>
                 <Rect width="100%" height="100%" fill="url(#dropGloss)" />
@@ -247,28 +248,58 @@ const GRAIN = (() => {
  *      the bottom, with a softer inner ring that gives the glass thickness
  */
 function GlassSurface({ radius, width, height }: { radius: number; width: number; height: number }) {
+  const colors = useColors();
+  const isLight = useThemeName() === 'light';
+
+  // Glass takes its character from the light BEHIND it. On a dark ground the
+  // lighting is white and the tint is smoke; on a light one the frost is
+  // white and the lighting has to DARKEN instead, or the bar reads as a grey
+  // smudge with no edges.
+  const g = isLight
+    ? {
+        tint: BLUR_AVAILABLE ? 'rgba(255, 255, 255, 0.40)' : 'rgba(252, 251, 249, 0.90)',
+        frost: 'rgba(255, 255, 255, 0.35)',
+        sheen: '#ffffff',
+        sheenTop: 0.55,
+        hotspot: 0.5,
+        rim: '#2A2823',
+        rimTop: 0.1,
+        rimMid: 0.05,
+        rimBottom: 0.12,
+        innerRim: 0.05,
+        grainOpacity: 0.35,
+      }
+    : {
+        tint: BLUR_AVAILABLE ? 'rgba(18, 19, 24, 0.22)' : 'rgba(26, 27, 33, 0.84)',
+        frost: 'rgba(255, 255, 255, 0.035)',
+        sheen: '#ffffff',
+        sheenTop: 0.13,
+        hotspot: 0.16,
+        rim: '#ffffff',
+        rimTop: 0.5,
+        rimMid: 0.04,
+        rimBottom: 0.24,
+        innerRim: 0.12,
+        grainOpacity: 0.6,
+      };
+
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]}>
       <GlassBlur intensity={38} />
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          { backgroundColor: BLUR_AVAILABLE ? 'rgba(18, 19, 24, 0.22)' : 'rgba(26, 27, 33, 0.84)' },
-        ]}
-      />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.035)' }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: g.tint }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: g.frost }]} />
       {width > 0 ? (
         <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
           <Defs>
             <LinearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#fff" stopOpacity={0.13} />
-              <Stop offset="0.42" stopColor="#fff" stopOpacity={0.02} />
-              <Stop offset="0.8" stopColor="#fff" stopOpacity={0} />
-              <Stop offset="1" stopColor="#fff" stopOpacity={0.06} />
+              <Stop offset="0" stopColor={g.sheen} stopOpacity={g.sheenTop} />
+              <Stop offset="0.42" stopColor={g.sheen} stopOpacity={g.sheenTop * 0.15} />
+              <Stop offset="0.8" stopColor={g.sheen} stopOpacity={0} />
+              <Stop offset="1" stopColor={g.sheen} stopOpacity={g.sheenTop * 0.45} />
             </LinearGradient>
             <RadialGradient id="hotspot" cx="24%" cy="0%" rx="22%" ry="60%">
-              <Stop offset="0" stopColor="#fff" stopOpacity={0.16} />
-              <Stop offset="1" stopColor="#fff" stopOpacity={0} />
+              <Stop offset="0" stopColor={g.sheen} stopOpacity={g.hotspot} />
+              <Stop offset="1" stopColor={g.sheen} stopOpacity={0} />
             </RadialGradient>
             <Pattern id="grain" width={GRAIN_TILE} height={GRAIN_TILE} patternUnits="userSpaceOnUse">
               {GRAIN.map((g, i) => (
@@ -284,20 +315,20 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
               ))}
             </Pattern>
             <LinearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#fff" stopOpacity={0.5} />
-              <Stop offset="0.3" stopColor="#fff" stopOpacity={0.1} />
-              <Stop offset="0.7" stopColor="#fff" stopOpacity={0.04} />
-              <Stop offset="1" stopColor="#fff" stopOpacity={0.24} />
+              <Stop offset="0" stopColor={g.rim} stopOpacity={g.rimTop} />
+              <Stop offset="0.3" stopColor={g.rim} stopOpacity={g.rimMid * 2.5} />
+              <Stop offset="0.7" stopColor={g.rim} stopOpacity={g.rimMid} />
+              <Stop offset="1" stopColor={g.rim} stopOpacity={g.rimBottom} />
             </LinearGradient>
             <LinearGradient id="innerRim" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#fff" stopOpacity={0.12} />
-              <Stop offset="0.5" stopColor="#fff" stopOpacity={0} />
-              <Stop offset="1" stopColor="#fff" stopOpacity={0.07} />
+              <Stop offset="0" stopColor={g.rim} stopOpacity={g.innerRim} />
+              <Stop offset="0.5" stopColor={g.rim} stopOpacity={0} />
+              <Stop offset="1" stopColor={g.rim} stopOpacity={g.innerRim * 0.6} />
             </LinearGradient>
           </Defs>
           <Rect width={width} height={height} fill="url(#sheen)" />
           <Rect width={width} height={height} fill="url(#hotspot)" />
-          <Rect width={width} height={height} fill="url(#grain)" opacity={0.6} />
+          <Rect width={width} height={height} fill="url(#grain)" opacity={g.grainOpacity} />
           <Rect
             x={2}
             y={2}
@@ -335,6 +366,7 @@ function Tab({
   focused: boolean;
   onPress: () => void;
 }) {
+  const colors = useColors();
   const bounce = useSharedValue(1);
   const on = useSharedValue(focused ? 1 : 0);
 
@@ -381,6 +413,7 @@ function Tab({
 }
 
 function AddButton() {
+  const colors = useColors();
   const router = useRouter();
   const turn = useSharedValue(0);
   const spin = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value * 90}deg` }] }));

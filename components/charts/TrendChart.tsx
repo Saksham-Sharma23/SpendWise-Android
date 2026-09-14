@@ -12,7 +12,7 @@ import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-nativ
 
 import { MONTHS_SHORT, formatMonthYear } from '../../lib/dates';
 import { formatINR } from '../../lib/money';
-import { colors, fonts } from '../../lib/theme';
+import { colors, fonts, useColors } from '../../lib/theme';
 
 /**
  * Income vs expense over months — the reusable chart for Home (Phase 3) and
@@ -47,6 +47,7 @@ interface Props {
 }
 
 export function TrendChart({ points, mode, selectedIndex, onSelect, height = 150 }: Props) {
+  const colors = useColors();
   const [width, setWidth] = useState(0);
   const max = useMemo(
     () => Math.max(1, ...points.map((p) => Math.max(p.incomePaise, p.expensePaise))),
@@ -130,6 +131,7 @@ function MonthBars({
   compact: boolean;
   onPress: () => void;
 }) {
+  const colors = useColors();
   const barWidth = compact ? 6 : 12;
   return (
     <Pressable
@@ -222,6 +224,7 @@ function LineMode({
   selectedIndex: number;
   onSelect: (index: number) => void;
 }) {
+  const colors = useColors();
   const n = points.length;
   const slot = width / Math.max(1, n);
   const x = (i: number) => slot * (i + 0.5);

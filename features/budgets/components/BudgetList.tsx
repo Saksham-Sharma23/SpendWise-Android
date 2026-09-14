@@ -14,7 +14,7 @@ import { colorForCategory } from '../../../lib/categoryColor';
 import { formatDayMonth } from '../../../lib/dates';
 import { formatINR } from '../../../lib/money';
 import { useToday } from '../../../lib/today';
-import { colors, fonts, withAlpha } from '../../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
 import { budgetTotals, daysLeftLabel, type BudgetProgress } from '../progress';
 import { restoreBudget, softDeleteBudget, useBudgetsWithSpend } from '../queries';
 
@@ -26,6 +26,7 @@ import { restoreBudget, softDeleteBudget, useBudgetsWithSpend } from '../queries
  * cycle on the 30th, and saying "this month" would be a different number.
  */
 export function BudgetList() {
+  const colors = useColors();
   const router = useRouter();
   const today = useToday();
   const { data: rows, status } = useBudgetsWithSpend(today);
@@ -121,6 +122,7 @@ export function BudgetList() {
 }
 
 function Figure({ label, value, tint, last }: { label: string; value: string; tint?: string; last?: boolean }) {
+  const colors = useColors();
   return (
     <View
       className="flex-1 px-1"
@@ -152,6 +154,7 @@ function BudgetCard({
   onPress: () => void;
   onDelete: () => void;
 }) {
+  const colors = useColors();
   const tone = toneFor(budget.state);
   const color = budget.categoryColor ?? colorForCategory(budget.categoryName);
   const percent = Math.round(budget.ratio * 100);

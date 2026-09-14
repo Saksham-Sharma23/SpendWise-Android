@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 
 import { TabBar } from '../../components/layout/TabBar';
-import { colors } from '../../lib/theme';
+import { colors, useColors } from '../../lib/theme';
 
 /**
  * Four tabs and one action.
@@ -15,6 +15,7 @@ import { colors } from '../../lib/theme';
  * content, so every tab screen leaves TAB_BAR_CLEARANCE at the bottom.
  */
 export default function TabsLayout() {
+  const colors = useColors();
   return (
     <Tabs
       tabBar={(props) => <TabBar {...props} />}

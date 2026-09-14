@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Screen } from '../components/layout/Screen';
-import { colors } from '../lib/theme';
+import { colors, useColors } from '../lib/theme';
 import { databaseSizeBytes, countTransactions, runBenchmark } from '../db/benchmark';
 import type { BenchResult } from '../db/benchmark';
 import { devClearTransactions, devEncryptedCopyRoundTrip, devSeedTransactions } from '../db/devSeed';
@@ -34,6 +34,7 @@ function Button({
   busy?: boolean;
   tone?: 'default' | 'danger';
 }) {
+  const colors = useColors();
   return (
     <Pressable
       accessibilityRole="button"
@@ -66,6 +67,7 @@ export default function DevScreen() {
 }
 
 function DevHarness() {
+  const colors = useColors();
   const [busy, setBusy] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [results, setResults] = useState<BenchResult[] | null>(null);

@@ -31,7 +31,7 @@ import { addDays, addMonthsClamped, formatDayMonth, getNextRenewal } from '../..
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '../../lib/money';
 import { toMonthlyPaise } from '../../lib/dates';
 import { useToday } from '../../lib/today';
-import { colors, fonts, withAlpha } from '../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
 
 /**
  * Add / edit a subscription.
@@ -41,6 +41,7 @@ import { colors, fonts, withAlpha } from '../../lib/theme';
  * shows the renewal it implies, so the derivation is never a mystery.
  */
 export default function SubscriptionModal() {
+  const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -391,6 +392,7 @@ export default function SubscriptionModal() {
 }
 
 function Label({ children }: { children: string }) {
+  const colors = useColors();
   return (
     <Text
       style={{
@@ -408,6 +410,7 @@ function Label({ children }: { children: string }) {
 }
 
 function ErrorText({ children }: { children: string }) {
+  const colors = useColors();
   return <Text style={{ color: colors.expense, fontFamily: fonts.medium, fontSize: 12, marginTop: 6 }}>{children}</Text>;
 }
 
@@ -424,6 +427,7 @@ function RoundButton({
   tint?: string;
   plain?: boolean;
 }) {
+  const colors = useColors();
   return (
     <PressableScale
       accessibilityRole="button"

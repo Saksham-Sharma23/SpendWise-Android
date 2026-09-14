@@ -3,20 +3,62 @@
 @tailwind utilities;
 
 /*
- * Design tokens — the SpendWise web look: near-black ground, graphite cards,
- * one electric lime accent, green for money in, coral for money out.
+ * Design tokens — the SpendWise look: one electric lime accent, green for
+ * money in, coral for money out, over a near-black ground (dark) or a warm
+ * off-white one (light).
  *
- * The app is dark-only by design, matching the web app. Tokens are defined
- * once on :root (and repeated under .dark so NativeWind's class strategy
- * resolves identically whichever scheme the phone reports).
+ * Two palettes since 2026-09-15. `:root` is LIGHT and `.dark:root` is DARK,
+ * which is how NativeWind's class strategy resolves them; the app sets the
+ * colour scheme from the stored preference (lib/themeStore.ts).
  *
- * NativeWind exposes these to Tailwind, so `bg-card` / `text-primary` work
- * with no JS branching. JS-side colours (icons, SVG, charts) come from
- * lib/theme.ts, which mirrors these values — change both together.
+ * JS-side colours (icons, SVG, charts) come from lib/theme.ts, which mirrors
+ * these values — change both together.
  */
 
 @layer base {
-  :root,
+  /* ---------------------------------------------------------------- light */
+  :root {
+    /* Warm off-white, so true-white cards have something to sit on. */
+    --background: 40 14% 96%;
+    --foreground: 60 4% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 60 4% 10%;
+
+    --elevated: 45 11% 93%;
+
+    --muted: 45 11% 93%;
+    --muted-foreground: 45 3% 41%;
+
+    --border: 45 13% 88%;
+    --input: 45 13% 84%;
+
+    /*
+     * The lime, deepened until white text passes contrast on it. At the dark
+     * theme's 67% lightness it cannot carry white text, and a large fill of
+     * it glares on a white page.
+     */
+    --primary: 74 68% 27%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 45 11% 93%;
+    --secondary-foreground: 60 4% 10%;
+
+    --accent: 74 40% 92%;
+    --accent-foreground: 74 68% 22%;
+
+    --success: 158 82% 23%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 90% 32%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 17 73% 48%;
+    --destructive-foreground: 0 0% 100%;
+
+    --ring: 74 68% 27%;
+    --radius: 1rem;
+  }
+
+  /* ----------------------------------------------------------------- dark */
   .dark:root {
     --background: 240 6% 4%;
     --foreground: 240 5% 96%;

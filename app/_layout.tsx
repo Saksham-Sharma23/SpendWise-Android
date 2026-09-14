@@ -19,8 +19,9 @@ import {
 
 import { bootDatabase, type BootOutcome } from '../db/boot';
 import { checkpointWal } from '../db/connection';
+import { ThemeProvider } from '../components/layout/ThemeProvider';
 import { BootFailure } from '../features/boot/components/BootFailure';
-import { colors } from '../lib/theme';
+import { useColors, useThemeName } from '../lib/theme';
 
 // Keep the splash up until the database is open, migrated and seeded. Flashing
 // an empty shell while the schema is still being created reads as broken.
@@ -32,6 +33,16 @@ void SplashScreen.preventAutoHideAsync();
  * Boot order and failure handling live in db/boot.ts.
  */
 export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutInner />
+    </ThemeProvider>
+  );
+}
+
+function RootLayoutInner() {
+  const colors = useColors();
+  const theme = useThemeName();
   const [outcome, setOutcome] = useState<BootOutcome | null>(null);
   const [attempt, setAttempt] = useState(0);
 
@@ -108,15 +119,16 @@ export default function RootLayout() {
           <Stack.Screen name="(modals)/subscription" options={{ presentation: 'modal' }} />
         </Stack>
         {/* Above the floating tab bar, so a toast never covers the add button. */}
-        <Toaster position="bottom-center" richColors theme="dark" offset={110} />
-        {/* Dark-only design: the status bar is always light-on-dark. */}
-        <StatusBar style="light" />
+        <Toaster position="bottom-center" richColors theme={theme} offset={110} />
+        {/* Dark text on a light ground, light text on a dark one. */}
+        <StatusBar style={theme === 'light' ? 'dark' : 'light'} />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
 function BootSpinner() {
+  const colors = useColors();
   return (
     <View className="flex-1 items-center justify-center bg-background">
       <ActivityIndicator color={colors.primary} />

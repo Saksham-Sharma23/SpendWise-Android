@@ -14,7 +14,7 @@ import { formatDayMonth } from '../../../lib/dates';
 import { formatINR } from '../../../lib/money';
 import { renewalCountdown } from '../../../lib/renewals';
 import { useToday } from '../../../lib/today';
-import { colors, fonts, withAlpha } from '../../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
 import {
   restoreSubscription,
   setSubscriptionStatus,
@@ -32,6 +32,7 @@ import { SubscriptionCard, type CardActions } from './SubscriptionCard';
  * Every figure here is computed on read, so nothing can go stale.
  */
 export function Tracker() {
+  const colors = useColors();
   const router = useRouter();
   const today = useToday();
   const { data: rows, status: queryStatus } = useSubscriptions(today);

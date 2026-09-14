@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { moveDatabaseAside, shareDatabaseCopy, type BootOutcome } from '../../../db/boot';
-import { colors, fonts } from '../../../lib/theme';
+import { colors, fonts, useColors } from '../../../lib/theme';
 
 /**
  * What the user sees when the database cannot be opened, migrated or seeded.
@@ -26,6 +26,7 @@ const TITLES: Record<Failure['kind'], string> = {
 };
 
 export function BootFailure({ outcome, onRetry }: { outcome: Failure; onRetry: () => void }) {
+  const colors = useColors();
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -133,6 +134,7 @@ function Action({
   danger?: boolean;
   disabled?: boolean;
 }) {
+  const colors = useColors();
   const bg = primary ? colors.primary : colors.card;
   const fg = primary ? colors.onPrimary : danger ? colors.expense : colors.foreground;
   return (

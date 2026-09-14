@@ -29,7 +29,7 @@ import {
 import { addDays, formatDayMonth } from '../../lib/dates';
 import { useToday } from '../../lib/today';
 import { paiseToDecimalString } from '../../lib/money';
-import { colors, fonts, withAlpha } from '../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
 
 /**
  * Add / edit a transaction.
@@ -53,6 +53,7 @@ function dateLabel(date: string, today: string): string {
 }
 
 export default function TransactionModal() {
+  const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -368,6 +369,7 @@ export default function TransactionModal() {
 }
 
 function Label({ children }: { children: string }) {
+  const colors = useColors();
   return (
     <Text
       style={{
@@ -385,6 +387,7 @@ function Label({ children }: { children: string }) {
 }
 
 function ErrorText({ children }: { children: string }) {
+  const colors = useColors();
   return (
     <Text style={{ color: colors.expense, fontFamily: fonts.medium, fontSize: 12, marginTop: 6 }}>{children}</Text>
   );
@@ -403,6 +406,7 @@ function RoundButton({
   tint?: string;
   plain?: boolean;
 }) {
+  const colors = useColors();
   return (
     <PressableScale
       accessibilityRole="button"

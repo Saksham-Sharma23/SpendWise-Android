@@ -4,7 +4,7 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 
 import { PressableScale } from '../../../components/ui/PressableScale';
 import { formatDayMonth } from '../../../lib/dates';
-import { colors, fonts, withAlpha } from '../../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
 import type { TransactionFilters } from '../filters';
 
 interface Props {
@@ -31,6 +31,7 @@ interface Chip {
  * into the filter sheet.
  */
 export function FilterChips({ filters, categories, onChange, onClearSearch, onClearAll }: Props) {
+  const colors = useColors();
   const chips: Chip[] = [];
 
   if (filters.search?.trim()) {

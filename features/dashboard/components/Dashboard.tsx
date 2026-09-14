@@ -33,7 +33,7 @@ import { MONTHS_LONG, fromISODate, type ISODate } from '../../../lib/dates';
 import { buildInsight } from '../../../lib/insight';
 import { formatINR } from '../../../lib/money';
 import { upcomingRenewals } from '../../../lib/renewals';
-import { colors, fonts, withAlpha } from '../../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
 import { useToday } from '../../../lib/today';
 import {
   dismissOnboarding,
@@ -74,6 +74,7 @@ function Section({ index, children }: { index: number; children: ReactNode }) {
 }
 
 export function Dashboard() {
+  const colors = useColors();
   const router = useRouter();
   // The date comes from the moving "today" store, so the header, the month
   // windows and every figure roll over at midnight without a remount.
@@ -257,6 +258,7 @@ function Renewals({ today }: { today: ISODate }) {
 }
 
 function Chip({ tone, icon: Icon, label }: { tone: 'good' | 'bad' | 'neutral'; icon?: LucideIcon; label: string }) {
+  const colors = useColors();
   const color = tone === 'good' ? colors.income : tone === 'bad' ? colors.expense : colors.muted;
   return (
     <View
@@ -284,6 +286,7 @@ function StatCard({
   change: number | null;
   higherIsBetter: boolean;
 }) {
+  const colors = useColors();
   const up = (change ?? 0) >= 0;
   const good = change == null ? null : up === higherIsBetter;
 
@@ -328,6 +331,7 @@ function StatCard({
 }
 
 function TopCategories({ today, expensePaise }: { today: ISODate; expensePaise: number }) {
+  const colors = useColors();
   const { data: top } = useTopCategories(today, 4);
   if (top.length === 0) return null;
 
@@ -349,6 +353,7 @@ function TopCategories({ today, expensePaise }: { today: ISODate; expensePaise: 
 }
 
 function CategoryBar({ item, share, index }: { item: CategorySpend; share: number; index: number }) {
+  const colors = useColors();
   const width = useSharedValue(0);
   useEffect(() => {
     width.value = withDelay(150 + index * 90, withTiming(Math.min(1, share), { duration: 700 }));
@@ -382,6 +387,7 @@ function CategoryBar({ item, share, index }: { item: CategorySpend; share: numbe
 }
 
 function RecentTransactions() {
+  const colors = useColors();
   const router = useRouter();
   const { data: rows, status } = useRecentTransactions(5);
 

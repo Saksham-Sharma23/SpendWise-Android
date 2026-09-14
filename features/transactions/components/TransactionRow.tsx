@@ -5,7 +5,7 @@ import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeabl
 
 import { LedgerRow } from '../../../components/ui/LedgerRow';
 import { PressableScale } from '../../../components/ui/PressableScale';
-import { colors, fonts } from '../../../lib/theme';
+import { colors, fonts, useColors } from '../../../lib/theme';
 import type { TransactionRow as Row } from '../queries';
 
 /**
@@ -29,6 +29,7 @@ interface Props {
 }
 
 function RightAction({ onPress }: { onPress: () => void }) {
+  const colors = useColors();
   return (
     <View className="justify-center pr-5">
       <PressableScale
@@ -56,6 +57,7 @@ function TransactionRowBase({
   selectionMode = false,
   onLongPress,
 }: Props) {
+  const colors = useColors();
   const body = (
     <PressableScale
       accessibilityRole="button"

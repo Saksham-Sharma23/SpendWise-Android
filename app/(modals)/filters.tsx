@@ -12,7 +12,7 @@ import { colorForCategory } from '../../lib/categoryColor';
 import { useFilterStore } from '../../features/transactions/filterStore';
 import { hasActiveFilters, useCategories } from '../../features/transactions/queries';
 import { addDays, formatDayMonth, todayISO } from '../../lib/dates';
-import { colors, fonts, withAlpha } from '../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
 
 /**
  * The filter sheet.
@@ -32,6 +32,7 @@ const PRESETS: { label: string; from: () => string; to: () => string }[] = [
 type TypeFilter = 'all' | 'income' | 'expense';
 
 export default function FiltersModal() {
+  const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { filters, patch, reset } = useFilterStore();
@@ -164,6 +165,7 @@ export default function FiltersModal() {
 }
 
 function Section({ label, index, children }: { label: string; index: number; children: ReactNode }) {
+  const colors = useColors();
   return (
     <Animated.View entering={FadeInDown.delay(index * 60).duration(350)} className="mt-6">
       <Text

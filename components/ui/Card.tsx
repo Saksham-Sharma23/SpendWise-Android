@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
-import { colors } from '../../lib/theme';
+import { shadow, useColors, useThemeName, withAlpha } from '../../lib/theme';
 
 interface CardProps {
   children: ReactNode;
@@ -18,17 +18,28 @@ interface CardProps {
 }
 
 export function Card({ children, className = '', style, variant = 'default', glow }: CardProps) {
+  const colors = useColors();
+  const theme = useThemeName();
   const accent = variant === 'accent';
   const glowColor = glow ?? (accent ? colors.primary : undefined);
+
+  // The accent card is a tinted ground, so it has to be built FROM the theme:
+  // dark mode deepens towards the accent's own hue, light mode lifts towards
+  // it. A fixed near-black would simply vanish on a light page.
+  const accentBackground = theme === 'light' ? withAlpha(colors.primary, 0.07) : '#12150B';
 
   return (
     <View
       className={`overflow-hidden rounded-3xl border ${className}`}
       style={[
         {
-          backgroundColor: accent ? '#12150B' : colors.card,
+          backgroundColor: accent ? accentBackground : colors.card,
           borderColor: accent ? colors.primaryBorder : colors.border,
         },
+        // A white card on an off-white page has almost no edge contrast, so
+        // light mode needs a shadow to separate them. Dark mode's is nearly
+        // nothing — see lib/theme `shadow`.
+        shadow('sm'),
         style,
       ]}
     >

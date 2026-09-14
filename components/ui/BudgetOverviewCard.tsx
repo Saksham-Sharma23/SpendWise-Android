@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 
 import { MiniDonut, softToneFor, toneFor } from '../charts/MiniDonut';
 import { formatINRCompact } from '../../lib/money';
-import { colors, fonts } from '../../lib/theme';
+import { colors, fonts, useColors } from '../../lib/theme';
 import { Card } from './Card';
 import { PressableScale } from './PressableScale';
 
@@ -30,6 +30,7 @@ interface Props {
 }
 
 export function BudgetOverviewCard({ items, overCount, onOpen }: Props) {
+  const colors = useColors();
   if (items.length === 0) {
     return (
       <PressableScale

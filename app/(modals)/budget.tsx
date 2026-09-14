@@ -25,7 +25,7 @@ import { getCycleWindow } from '../../lib/dates';
 import { formatDayMonth } from '../../lib/dates';
 import { paiseToDecimalString } from '../../lib/money';
 import { useToday } from '../../lib/today';
-import { colors, fonts, withAlpha } from '../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
 
 /**
  * Set or edit a budget.
@@ -38,6 +38,7 @@ import { colors, fonts, withAlpha } from '../../lib/theme';
 const RESET_DAYS = [1, 5, 10, 15, 20, 25, 31];
 
 export default function BudgetModal() {
+  const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -289,6 +290,7 @@ function ordinal(n: number): string {
 }
 
 function Label({ children }: { children: string }) {
+  const colors = useColors();
   return (
     <Text
       style={{
@@ -306,6 +308,7 @@ function Label({ children }: { children: string }) {
 }
 
 function ErrorText({ children }: { children: string }) {
+  const colors = useColors();
   return <Text style={{ color: colors.expense, fontFamily: fonts.medium, fontSize: 12, marginTop: 6 }}>{children}</Text>;
 }
 
@@ -320,6 +323,7 @@ function RoundButton({
   children: React.ReactNode;
   tint?: string;
 }) {
+  const colors = useColors();
   return (
     <PressableScale
       accessibilityRole="button"

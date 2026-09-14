@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import Animated, { useAnimatedProps, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
-import { colors, withAlpha } from '../../lib/theme';
+import { colors, useColors, withAlpha } from '../../lib/theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -25,6 +25,7 @@ interface Props {
  * read a dial.
  */
 export function MiniDonut({ fill, color, size = 52, thickness = 5, children }: Props) {
+  const colors = useColors();
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = useSharedValue(0);

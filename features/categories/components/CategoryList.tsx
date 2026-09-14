@@ -10,7 +10,7 @@ import { CategoryIcon } from '../../../components/ui/CategoryIcon';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { PressableScale } from '../../../components/ui/PressableScale';
 import { formatCount } from '../../../lib/money';
-import { colors, fonts } from '../../../lib/theme';
+import { colors, fonts, useColors } from '../../../lib/theme';
 import { useCategoriesWithUsageResult, type CategoryWithUsage } from '../queries';
 
 /**
@@ -19,6 +19,7 @@ import { useCategoriesWithUsageResult, type CategoryWithUsage } from '../queries
  * this list opens.
  */
 export function CategoryList() {
+  const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { data: rows, status } = useCategoriesWithUsageResult();
@@ -70,6 +71,7 @@ export function CategoryList() {
 }
 
 function Row({ item, index, onPress }: { item: CategoryWithUsage; index: number; onPress: () => void }) {
+  const colors = useColors();
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(index, 12) * 30).duration(320)}>
       <PressableScale

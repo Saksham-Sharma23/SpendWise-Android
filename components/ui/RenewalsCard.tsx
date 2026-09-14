@@ -4,7 +4,7 @@ import { Text, View } from 'react-native';
 import { formatDayMonth } from '../../lib/dates';
 import { formatINR } from '../../lib/money';
 import { renewalCountdown, type UpcomingRenewal } from '../../lib/renewals';
-import { colors, fonts, withAlpha } from '../../lib/theme';
+import { accent, colors, fonts, useColors, withAlpha } from '../../lib/theme';
 import { Card } from './Card';
 import { CategoryIcon } from './CategoryIcon';
 import { PressableScale } from './PressableScale';
@@ -20,6 +20,7 @@ interface Props {
  * (lib/renewals.ts); this component only draws them.
  */
 export function RenewalsCard({ renewals, onOpenTracker }: Props) {
+  const colors = useColors();
   return (
     <Card className="px-5 pb-2 pt-5">
       <View className="flex-row items-center justify-between">
@@ -41,9 +42,9 @@ export function RenewalsCard({ renewals, onOpenTracker }: Props) {
         >
           <View
             className="h-10 w-10 items-center justify-center rounded-xl"
-            style={{ backgroundColor: withAlpha('#9B8CFF', 0.14) }}
+            style={{ backgroundColor: withAlpha(accent('violet'), 0.14) }}
           >
-            <CalendarClock size={19} color="#9B8CFF" />
+            <CalendarClock size={19} color={accent('violet')} />
           </View>
           <View className="flex-1">
             <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}>No subscriptions yet</Text>
@@ -62,7 +63,7 @@ export function RenewalsCard({ renewals, onOpenTracker }: Props) {
                 className="flex-row items-center gap-3 py-3"
                 style={i > 0 ? { borderTopWidth: 1, borderTopColor: colors.border } : undefined}
               >
-                <CategoryIcon icon={r.categoryIcon ?? 'repeat'} color={r.categoryColor ?? '#9B8CFF'} size={40} />
+                <CategoryIcon icon={r.categoryIcon ?? 'repeat'} color={r.categoryColor ?? accent('violet')} size={40} />
                 <View className="flex-1 pr-2">
                   <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
                     {r.name}

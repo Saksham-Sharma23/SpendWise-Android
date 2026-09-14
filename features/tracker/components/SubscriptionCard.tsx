@@ -8,7 +8,7 @@ import { PressableScale } from '../../../components/ui/PressableScale';
 import { formatDayMonth } from '../../../lib/dates';
 import { formatINR } from '../../../lib/money';
 import { renewalCountdown } from '../../../lib/renewals';
-import { colors, fonts, withAlpha } from '../../../lib/theme';
+import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
 import type { EnrichedSubscription } from '../renewal';
 
 export interface CardActions {
@@ -123,6 +123,7 @@ function ActionSheet({
   onClose: () => void;
   actions: CardActions;
 }) {
+  const colors = useColors();
   const run = (fn: (s: EnrichedSubscription) => void) => () => {
     onClose();
     fn(sub);
@@ -194,6 +195,7 @@ function Row({
   tint?: string;
   onPress: () => void;
 }) {
+  const colors = useColors();
   return (
     <Animated.View entering={FadeIn.duration(160)}>
       <PressableScale
