@@ -5,6 +5,7 @@ import {
   groupIndianManually,
   formatINR,
   formatINRCompact,
+  formatCount,
   parseAmountToPaise,
 } from '../money';
 
@@ -179,5 +180,15 @@ describe('parseAmountToPaise — real spreadsheet cells', () => {
     expect(parseAmountToPaise(undefined)).toBeNull();
     expect(parseAmountToPaise('N/A')).toBeNull();
     expect(parseAmountToPaise('—')).toBeNull();
+  });
+});
+
+describe('formatCount', () => {
+  it('groups counts the Indian way without decimals', () => {
+    expect(formatCount(0)).toBe('0');
+    expect(formatCount(999)).toBe('999');
+    expect(formatCount(50000)).toBe('50,000');
+    expect(formatCount(123456)).toBe('1,23,456');
+    expect(formatCount(10000000)).toBe('1,00,00,000');
   });
 });

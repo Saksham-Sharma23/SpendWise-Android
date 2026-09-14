@@ -1,11 +1,14 @@
 import { sql } from 'drizzle-orm';
-import { File } from 'expo-file-system';
-import { db, sqliteDb } from './client';
+import { File, Paths } from 'expo-file-system';
+
+import { addDays, nowISO, toISODate } from '../lib/dates';
+import { makeDedupeHash } from '../lib/dedupe';
+import { db, sqliteDb, writeTx } from './client';
+import { verifyEncryptedCopy, writeEncryptedCopy, type CopyVerification } from './encryptedCopy';
 import { categories, transactions } from './schema';
-import { addDays, toISODate } from '../lib/dates';
 
 /**
- * Debug-only bulk seeder.
+ * Debug-only bulk seeder and database utilities.
  *
  * You cannot judge query performance on twelve rows. This is the instrument
  * behind the Phase 1 exit criterion — "a 24-month trend query in under ~50ms
@@ -21,6 +24,10 @@ const NOTES = [
   'Movie tickets', 'Petrol', 'Rent', 'Gym', 'Haircut', 'Swiggy',
   'Amazon order', 'Gift', 'Laundry', 'Stationery',
 ];
+
+function assertDev(name: string): void {
+  if (!__DEV__) throw new Error(`${name} is a development-only utility.`);
+}
 
 /** Deterministic PRNG so a run is reproducible when comparing timings. */
 function mulberry32(seed: number) {
@@ -43,123 +50,83 @@ export interface DevSeedResult {
 /**
  * Insert `count` synthetic transactions spread across `years` back from today.
  *
- * Inserts in chunks inside one transaction: SQLite has a hard limit on
- * variables per statement (SQLITE_MAX_VARIABLE_NUMBER), so a single 50k-row
- * INSERT would fail regardless of how the driver batches it.
+ * ONE synchronous transaction, in chunks (SQLite caps variables per
+ * statement). The previous version passed an async callback to
+ * `db.transaction`, which committed after the first chunk and ran the rest in
+ * autocommit — see db/tx.ts.
  */
-export async function devSeedTransactions(
-  count = 50_000,
-  years = 4,
-  seed = 20260911,
-): Promise<DevSeedResult> {
-  if (!__DEV__) {
-    throw new Error('devSeedTransactions is a development-only utility.');
-  }
+export function devSeedTransactions(count = 50_000, years = 4, seed = 20260911): DevSeedResult {
+  assertDev('devSeedTransactions');
 
   const rand = mulberry32(seed);
   const started = Date.now();
 
-  const cats = await db.select({ id: categories.id }).from(categories);
-  if (cats.length === 0) {
-    throw new Error('Seed system categories before running the dev seeder.');
-  }
+  const cats = db.select({ id: categories.id }).from(categories).all();
+  if (cats.length === 0) throw new Error('Seed system categories before running the dev seeder.');
 
   const today = new Date();
   const spanDays = Math.round(years * 365.25);
   const startISO = toISODate(new Date(today.getTime() - spanDays * 86_400_000));
-
   const CHUNK = 500;
-  let inserted = 0;
+  const now = nowISO();
 
-  await db.transaction(async (tx) => {
+  const inserted = writeTx((tx) => {
+    let n = 0;
     for (let offset = 0; offset < count; offset += CHUNK) {
+      const size = Math.min(CHUNK, count - offset);
       const rows = [];
-      const n = Math.min(CHUNK, count - offset);
-
-      for (let i = 0; i < n; i++) {
-        const dayOffset = Math.floor(rand() * spanDays);
-        const date = addDays(startISO, dayOffset);
-
-        // ~8% income, matching a realistic ledger shape: a few salary rows
-        // among many small expenses.
+      for (let i = 0; i < size; i++) {
+        const date = addDays(startISO, Math.floor(rand() * spanDays));
+        // ~8% income, matching a realistic ledger: a few salary rows among many small expenses.
         const isIncome = rand() < 0.08;
-
         const amountPaise = isIncome
           ? Math.round((35_000 + rand() * 60_000) * 100)
           : Math.round((20 + rand() * 3_000) * 100);
-
-        const cat = cats[Math.floor(rand() * cats.length)];
-        const note = NOTES[Math.floor(rand() * NOTES.length)];
-
+        const note = NOTES[Math.floor(rand() * NOTES.length)] ?? null;
         rows.push({
           type: (isIncome ? 'income' : 'expense') as 'income' | 'expense',
           amountPaise,
           date,
-          note: note ?? null,
-          categoryId: cat?.id ?? null,
-          isRecurring: false,
+          note,
+          categoryId: cats[Math.floor(rand() * cats.length)]?.id ?? null,
+          dedupeHash: makeDedupeHash(date, amountPaise, note),
+          createdAt: now,
+          updatedAt: now,
         });
       }
-
-      await tx.insert(transactions).values(rows);
-      inserted += n;
+      tx.insert(transactions).values(rows).run();
+      n += size;
     }
+    return n;
   });
 
-  // Without this the query planner may still be working off empty-table
-  // statistics, which makes any timing taken straight after a seed a lie.
+  // Without this the planner may still use empty-table statistics, which
+  // makes any timing taken straight after a seed a lie.
   sqliteDb.execSync('ANALYZE');
 
-  return {
-    inserted,
-    ms: Date.now() - started,
-    fromDate: startISO,
-    toDate: toISODate(today),
-  };
+  return { inserted, ms: Date.now() - started, fromDate: startISO, toDate: toISODate(today) };
+}
+
+/** Remove every transaction (hard delete). Leaves categories and app_meta intact. */
+export function devClearTransactions(): number {
+  assertDev('devClearTransactions');
+  const before = db.select({ n: sql<number>`count(*)` }).from(transactions).all()[0]?.n ?? 0;
+  writeTx((tx) => {
+    tx.delete(transactions).run();
+  });
+  sqliteDb.execSync('VACUUM');
+  return before;
 }
 
 /**
- * Write an UNENCRYPTED copy of the database next to the real one, for
- * inspection with Drizzle Studio.
- *
- * The on-device file is SQLCipher-encrypted with a per-install key held in
- * the Keystore, so a raw `adb` pull is unreadable — that is the point of the
- * encryption, and it also means the "pull the DB and open it" workflow cannot
- * work on the real file. `sqlcipher_export` into an attached database with an
- * empty key produces a plain SQLite copy. Development builds only: shipping
- * this would undo the encryption entirely.
- *
- * Pull it with:  npm run db:pull   then:  npm run db:studio
+ * Prove the backup-file path (decision F0-1) end to end on the device:
+ * write a passphrase-encrypted copy with SQLCipher, read it back with the
+ * passphrase, compare every table's row count, and confirm the file is not a
+ * plain SQLite file. Phase 7's encrypted export is built on the same calls.
  */
-export function devExportDecryptedCopy(): string {
-  if (!__DEV__) {
-    throw new Error('devExportDecryptedCopy is a development-only utility.');
-  }
-  const plainPath = sqliteDb.databasePath.replace(/[^/]+$/, 'spendwise-plain.db');
-
-  // sqlcipher_export refuses to write into a non-empty database, so a copy
-  // from a previous run must go first.
-  const previous = new File(`file://${plainPath}`);
-  if (previous.exists) previous.delete();
-
-  sqliteDb.execSync(`ATTACH DATABASE '${plainPath.replace(/'/g, "''")}' AS plaintext KEY ''`);
-  try {
-    sqliteDb.getFirstSync(`SELECT sqlcipher_export('plaintext')`);
-  } finally {
-    sqliteDb.execSync('DETACH DATABASE plaintext');
-  }
-  return plainPath;
-}
-
-/** Remove every dev-seeded row. Leaves categories and app_meta intact. */
-export async function devClearTransactions(): Promise<number> {
-  if (!__DEV__) {
-    throw new Error('devClearTransactions is a development-only utility.');
-  }
-  const before = await db
-    .select({ n: sql<number>`count(*)` })
-    .from(transactions);
-  await db.delete(transactions);
-  sqliteDb.execSync('VACUUM');
-  return before[0]?.n ?? 0;
+export function devEncryptedCopyRoundTrip(passphrase = 'dev-harness-passphrase'): CopyVerification & { path: string } {
+  assertDev('devEncryptedCopyRoundTrip');
+  const target = new File(Paths.cache, 'spendwise-encrypted-roundtrip.db');
+  writeEncryptedCopy(target, passphrase);
+  return { ...verifyEncryptedCopy(target, passphrase), path: target.uri };
 }

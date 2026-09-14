@@ -10,9 +10,21 @@ import type { ExpoConfig, ConfigContext } from 'expo/config';
  * itself enforces it.
  */
 
-// Dev builds need INTERNET so Metro can serve the bundle over Wi-Fi and the
-// dev client can reach the packager. Release builds must not have it.
-const IS_DEV = process.env.EAS_BUILD_PROFILE === 'development' || process.env.NODE_ENV !== 'production';
+/**
+ * INTERNET is OPT-IN, so every build path fails closed.
+ *
+ * Dev builds need it (Metro serves the bundle over Wi-Fi), so it is granted
+ * only when a development build is explicitly requested:
+ *   - EAS: the development profile sets EAS_BUILD_PROFILE=development;
+ *   - local: `npm run prebuild:dev` / `npm run android` set SPENDWISE_DEV_NETWORK=1
+ *     through scripts/with-dev-network.js.
+ * A plain `npx expo prebuild` — or any build that forgets an env var — gets no
+ * INTERNET. The previous rule (`NODE_ENV !== 'production'`) was true for a
+ * plain local prebuild, so a local release APK shipped with INTERNET.
+ */
+export const ALLOW_DEV_NETWORK =
+  process.env.EAS_BUILD_PROFILE === 'development' || process.env.SPENDWISE_DEV_NETWORK === '1';
+const IS_DEV = ALLOW_DEV_NETWORK;
 
 const ANDROID_PERMISSIONS = [
   'android.permission.POST_NOTIFICATIONS',
@@ -100,6 +112,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     // Layer 2 of the backup strategy (CLAUDE.md §Backup). Android restores the
     // SQLite file automatically on a new device. 25 MB cap — surfaced in Settings.
+    // Works only because the main DB is unkeyed (decision F0-1); the exclusion
+    // rules are written by ./plugins/withBackupRules.
     allowBackup: true,
     predictiveBackGestureEnabled: false,
     permissions: ANDROID_PERMISSIONS,
@@ -109,6 +123,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-router',
     'expo-font',
     'expo-sharing',
+    './plugins/withBackupRules',
     [
       'expo-splash-screen',
       {
@@ -121,9 +136,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-sqlite',
       {
-        // SQLCipher. CLAUDE.md convention: enable BEFORE there is data —
-        // retrofitting encryption onto a populated database is a migration
-        // nobody wants to write.
+        // SQLCipher stays in the build for passphrase-encrypted BACKUP FILES
+        // (db/encryptedCopy.ts). The main database is opened without a key
+        // (decision F0-1, 2026-09-14), where SQLCipher behaves exactly like SQLite.
         android: { useSQLCipher: true },
       },
     ],

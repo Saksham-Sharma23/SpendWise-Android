@@ -1,8 +1,9 @@
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 
 import { db } from '../../db/client';
+import { readDb } from '../../db/read';
 import { categories, transactions } from '../../db/schema';
+import { useDbQuery, type DbQueryResult } from '../../lib/db/useDbQuery';
 import * as m from './mutations';
 
 /**
@@ -26,27 +27,36 @@ export interface CategoryWithUsage {
  * Every live category with how many live transactions use it — counted in
  * SQL through tx_cat_idx, never by loading transactions (CLAUDE.md #5).
  */
-export function useCategoriesWithUsage(): CategoryWithUsage[] {
-  const { data } = useLiveQuery(
-    db
-      .select({
-        id: categories.id,
-        name: categories.name,
-        icon: categories.icon,
-        color: categories.color,
-        isSystem: categories.isSystem,
-        transactionCount: sql<number>`count(${transactions.id})`,
-      })
-      .from(categories)
-      .leftJoin(
-        transactions,
-        and(eq(transactions.categoryId, categories.id), isNull(transactions.deletedAt)),
-      )
-      .where(isNull(categories.deletedAt))
-      .groupBy(categories.id)
-      .orderBy(asc(sql`lower(${categories.name})`)),
+/** Result form, for screens that must tell "still loading" from "genuinely none". */
+export function useCategoriesWithUsageResult(): DbQueryResult<CategoryWithUsage[]> {
+  return useDbQuery(
+    async () =>
+      (await readDb
+        .select({
+          id: categories.id,
+          name: categories.name,
+          icon: categories.icon,
+          color: categories.color,
+          isSystem: categories.isSystem,
+          transactionCount: sql<number>`count(${transactions.id})`,
+        })
+        .from(categories)
+        .leftJoin(
+          transactions,
+          and(eq(transactions.categoryId, categories.id), isNull(transactions.deletedAt)),
+        )
+        .where(isNull(categories.deletedAt))
+        .groupBy(categories.id)
+        .orderBy(asc(sql`lower(${categories.name})`))) as CategoryWithUsage[],
+    // Counts change when transactions do, not just when categories do.
+    ['categories', 'transactions'],
+    [],
+    [] as CategoryWithUsage[],
   );
-  return data as CategoryWithUsage[];
+}
+
+export function useCategoriesWithUsage(): CategoryWithUsage[] {
+  return useCategoriesWithUsageResult().data;
 }
 
 export function getCategory(id: number) {

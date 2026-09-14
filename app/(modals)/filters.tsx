@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from '../../components/ui/CategoryIcon';
 import { PressableScale } from '../../components/ui/PressableScale';
 import { Segmented } from '../../components/ui/Segmented';
-import { colorForCategory } from '../../features/transactions/components/TransactionRow';
+import { colorForCategory } from '../../lib/categoryColor';
 import { useFilterStore } from '../../features/transactions/filterStore';
 import { hasActiveFilters, useCategories } from '../../features/transactions/queries';
 import { addDays, formatDayMonth, todayISO } from '../../lib/dates';

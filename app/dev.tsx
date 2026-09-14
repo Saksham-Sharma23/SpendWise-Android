@@ -4,9 +4,11 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 
 import { Screen } from '../components/layout/Screen';
 import { colors } from '../lib/theme';
-import { databaseSizeBytes, countTransactions, runAnalyticsBenchmark } from '../db/benchmark';
+import { databaseSizeBytes, countTransactions, runBenchmark } from '../db/benchmark';
 import type { BenchResult } from '../db/benchmark';
-import { devClearTransactions, devExportDecryptedCopy, devSeedTransactions } from '../db/devSeed';
+import { devClearTransactions, devEncryptedCopyRoundTrip, devSeedTransactions } from '../db/devSeed';
+import { dashboardBenchQueries } from '../features/dashboard/benchmark';
+import { transactionBenchQueries } from '../features/transactions/benchmark';
 
 /**
  * Development-only harness for the Phase 1 exit criterion.
@@ -84,7 +86,7 @@ function DevHarness() {
   async function onSeed() {
     setBusy('seed');
     try {
-      const r = await devSeedTransactions(50_000, 4);
+      const r = devSeedTransactions(50_000, 4);
       say(`Seeded ${r.inserted.toLocaleString()} rows in ${(r.ms / 1000).toFixed(1)}s`);
       say(`Range ${r.fromDate} → ${r.toDate}`);
       setCount(safeCount());
@@ -95,13 +97,14 @@ function DevHarness() {
     }
   }
 
-  function onBench() {
+  async function onBench() {
     setBusy('bench');
     try {
-      const r = runAnalyticsBenchmark();
+      // The shipped query builders, run through db/read.ts exactly as screens run them.
+      const r = await runBenchmark([...dashboardBenchQueries(), ...transactionBenchQueries()]);
       setResults(r);
       const worst = Math.max(...r.map((x) => x.ms));
-      const scans = r.filter((x) => x.scan).length;
+      const scans = r.filter((x) => x.scan || x.tempSort).length;
       say(`Benchmark done — slowest ${worst}ms, ${scans} scan(s)`);
     } catch (e) {
       say(`Benchmark failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -110,14 +113,15 @@ function DevHarness() {
     }
   }
 
-  function onExportPlain() {
-    setBusy('export');
+  function onEncryptedRoundTrip() {
+    setBusy('encrypted');
     try {
-      const path = devExportDecryptedCopy();
-      say(`Decrypted copy written: ${path.split('/').slice(-2).join('/')}`);
-      say('Pull with: npm run db:pull   then: npm run db:studio');
+      const r = devEncryptedCopyRoundTrip();
+      const mismatched = r.tables.filter((t) => t.live !== t.copy).map((t) => `${t.name} ${t.live}≠${t.copy}`);
+      say(r.encrypted ? 'Encrypted copy header: ciphertext ✓' : 'Encrypted copy header: PLAIN SQLite ✗');
+      say(r.matches ? `Row counts match across ${r.tables.length} tables ✓` : `Row counts differ: ${mismatched.join(', ')} ✗`);
     } catch (e) {
-      say(`Export failed: ${e instanceof Error ? e.message : String(e)}`);
+      say(`Encrypted round trip failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(null);
     }
@@ -126,7 +130,7 @@ function DevHarness() {
   async function onClear() {
     setBusy('clear');
     try {
-      const n = await devClearTransactions();
+      const n = devClearTransactions();
       say(`Cleared ${n.toLocaleString()} rows`);
       setResults(null);
       setCount(safeCount());
@@ -145,8 +149,8 @@ function DevHarness() {
     }
   })();
 
-  const trend = results?.find((r) => r.name.startsWith('trend'));
-  const passed = trend ? trend.ms <= THRESHOLD_MS && !trend.scan : null;
+  const trend = results?.find((r) => r.name === 'trend (24 months)');
+  const passed = trend ? trend.ms <= THRESHOLD_MS && !trend.scan && !trend.tempSort : null;
 
   return (
     <Screen back title="Dev harness" subtitle="Phase 1 exit criterion" scroll={false}>
@@ -168,9 +172,9 @@ function DevHarness() {
           <Button label="Seed 50,000 transactions" onPress={onSeed} busy={busy === 'seed'} />
           <Button label="Run analytics benchmark" onPress={onBench} busy={busy === 'bench'} />
           <Button
-            label="Export decrypted copy (for Drizzle Studio)"
-            onPress={onExportPlain}
-            busy={busy === 'export'}
+            label="Encrypted backup file round trip"
+            onPress={onEncryptedRoundTrip}
+            busy={busy === 'encrypted'}
           />
           <Button
             label="Clear all transactions"
@@ -197,7 +201,7 @@ function DevHarness() {
               </Text>
               <Text className="mt-1 text-xs" style={{ color: passed ? colors.income : colors.expense }}>
                 Trend query {trend?.ms}ms (target ≤{THRESHOLD_MS}ms)
-                {trend?.scan ? ' · full table scan detected' : ' · index used'}
+                {trend?.scan ? ' · full table scan detected' : trend?.tempSort ? ' · temporary sort detected' : ' · index, no sort'}
               </Text>
             </View>
           ) : null}
@@ -221,7 +225,7 @@ function DevHarness() {
                   </View>
                   <Text className="mt-0.5 text-xs text-muted-foreground">
                     {r.rows} row{r.rows === 1 ? '' : 's'}
-                    {r.scan ? ' · SCAN' : ' · indexed'}
+                    {r.scan ? ' · SCAN' : r.tempSort ? ' · TEMP SORT' : ' · indexed'}
                   </Text>
                 </View>
               ))}

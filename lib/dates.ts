@@ -38,8 +38,26 @@ export function fromISODate(s: ISODate): Date {
   return new Date(y, m - 1, d);
 }
 
+/** Milliseconds from `now` until one second past the next local midnight (at least 1 s). */
+export function msUntilNextMidnight(now: Date): number {
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1, 0);
+  return Math.max(1_000, next.getTime() - now.getTime());
+}
+
 export function todayISO(): ISODate {
   return toISODate(new Date());
+}
+
+/**
+ * The one timestamp format the database stores: `2026-09-14T10:11:12.345Z`.
+ *
+ * It matches the schema's column default, `strftime('%Y-%m-%dT%H:%M:%fZ','now')`,
+ * character for character, so rows written by SQLite and rows written by app
+ * code compare correctly as text. (Before migration 0003, defaults produced
+ * `2026-09-14 10:11:12` — a space sorts before `T`, which broke comparisons.)
+ */
+export function nowISO(): string {
+  return new Date().toISOString();
 }
 
 /** Days in a given month. `month` is 1-12. */

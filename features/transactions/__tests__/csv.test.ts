@@ -30,7 +30,8 @@ describe('csvHeader / csvLine', () => {
     const h = csvHeader();
     expect(h.startsWith(CSV_BOM)).toBe(true);
     expect(h.endsWith('\r\n')).toBe(true);
-    expect(h).toContain('Date,Type,Amount,Category,Note,Recurring');
+    expect(h).toContain('Date,Type,Amount,Category,Note');
+    expect(h).not.toContain('Recurring');
   });
 
   it('writes amounts as exact decimals from paise', () => {
@@ -40,21 +41,19 @@ describe('csvHeader / csvLine', () => {
       amountPaise: 12455001,
       categoryName: 'Food & Dining',
       note: 'Dinner, with friends',
-      isRecurring: false,
     });
-    expect(line).toBe('2026-09-14,Expense,124550.01,Food & Dining,"Dinner, with friends",No\r\n');
+    expect(line).toBe('2026-09-14,Expense,124550.01,Food & Dining,"Dinner, with friends"\r\n');
   });
 
-  it('handles income, missing category and recurring', () => {
+  it('handles income and a missing category', () => {
     const line = csvLine({
       date: '2026-09-01',
       type: 'income',
       amountPaise: 500,
       categoryName: null,
       note: null,
-      isRecurring: true,
     });
-    expect(line).toBe('2026-09-01,Income,5.00,,,Yes\r\n');
+    expect(line).toBe('2026-09-01,Income,5.00,,\r\n');
   });
 });
 

@@ -22,19 +22,30 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Screen } from '../../../components/layout/Screen';
+import { Welcome } from '../../../components/layout/Welcome';
 import { AnimatedAmount } from '../../../components/ui/AnimatedAmount';
 import { Card } from '../../../components/ui/Card';
 import { CategoryIcon } from '../../../components/ui/CategoryIcon';
+import { InsightBanner } from '../../../components/ui/InsightBanner';
 import { LedgerRow } from '../../../components/ui/LedgerRow';
 import { PressableScale } from '../../../components/ui/PressableScale';
-import { MONTHS_LONG, todayISO } from '../../../lib/dates';
+import { RenewalsCard } from '../../../components/ui/RenewalsCard';
+import { MONTHS_LONG, fromISODate, type ISODate } from '../../../lib/dates';
+import { buildInsight } from '../../../lib/insight';
 import { formatINR } from '../../../lib/money';
+import { upcomingRenewals } from '../../../lib/renewals';
 import { colors, fonts, withAlpha } from '../../../lib/theme';
+import { useToday } from '../../../lib/today';
 import {
+  dismissOnboarding,
+  useActiveSubscriptions,
+  useHasTransactions,
   useMonthOverview,
+  useOnboardingDismissed,
   useRecentTransactions,
   useTopCategories,
   type CategorySpend,
+  type MonthOverview,
 } from '../queries';
 import { TrendChart } from './TrendChart';
 
@@ -64,19 +75,29 @@ function Section({ index, children }: { index: number; children: ReactNode }) {
 
 export function Dashboard() {
   const router = useRouter();
-  const now = new Date();
-  const today = todayISO();
-  const month = MONTHS_LONG[now.getMonth()];
+  // The date comes from the moving "today" store, so the header, the month
+  // windows and every figure roll over at midnight without a remount.
+  const today = useToday();
+  const day = fromISODate(today);
+  const month = MONTHS_LONG[day.getMonth()];
 
-  const overview = useMonthOverview(today);
+  const { data: overview } = useMonthOverview(today);
   const net = overview.incomePaise - overview.expensePaise;
   const savedPct = overview.incomePaise > 0 ? (net / overview.incomePaise) * 100 : 0;
 
+  // First run: a genuinely empty ledger that hasn't been waved off gets the
+  // three doors instead of a dashboard of zeros. Both answers must be real
+  // ('ok') — while either is pending, show neither, so nothing flashes.
+  const hasTx = useHasTransactions();
+  const dismissed = useOnboardingDismissed();
+  const showWelcome =
+    hasTx.status === 'ok' && dismissed.status === 'ok' && !hasTx.data && !dismissed.data;
+
   return (
     <Screen
-      eyebrow={`${greeting(now.getHours())} 👋`}
+      eyebrow={`${greeting(new Date().getHours())} 👋`}
       title="Your money"
-      subtitle={`${WEEKDAYS[now.getDay()]}, ${now.getDate()} ${month} ${now.getFullYear()}`}
+      subtitle={`${WEEKDAYS[day.getDay()]}, ${day.getDate()} ${month} ${day.getFullYear()}`}
       right={
         <PressableScale
           accessibilityRole="button"
@@ -90,103 +111,146 @@ export function Dashboard() {
         </PressableScale>
       }
     >
-      <View className="gap-3">
-        <Section index={0}>
-          <Card variant="accent" className="p-5">
-            <View className="flex-row items-center justify-between">
-              <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>
-                Net balance · {month}
-              </Text>
+      {showWelcome ? (
+        <Welcome
+          onAdd={() => router.push('/(modals)/transaction')}
+          onImport={() => router.push('/import/pick')}
+          onRestore={() => router.push('/backup')}
+          onSkip={dismissOnboarding}
+        />
+      ) : (
+        <View className="gap-3">
+          <Section index={0}>
+            <Card variant="accent" className="p-5">
+              <View className="flex-row items-center justify-between">
+                <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>
+                  Net balance · {month}
+                </Text>
+                <View
+                  className="h-9 w-9 items-center justify-center rounded-full"
+                  style={{ backgroundColor: colors.primarySoft }}
+                >
+                  <Wallet size={17} color={colors.primary} />
+                </View>
+              </View>
+              <AnimatedAmount
+                paise={net}
+                style={{
+                  color: net < 0 ? colors.expense : colors.primary,
+                  fontFamily: fonts.bold,
+                  fontSize: 38,
+                  letterSpacing: -1.2,
+                  marginTop: 6,
+                }}
+              />
+              <View className="mt-3 flex-row items-center gap-2">
+                <Chip
+                  tone={savedPct >= 0 ? 'good' : 'bad'}
+                  icon={savedPct >= 0 ? ArrowUpRight : ArrowDownRight}
+                  label={`${Math.abs(savedPct).toFixed(1)}%`}
+                />
+                <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12 }}>
+                  {savedPct >= 0 ? 'of income saved' : 'more spent than earned'}
+                </Text>
+              </View>
+            </Card>
+          </Section>
+
+          <Section index={1}>
+            <View className="flex-row gap-3">
+              <StatCard
+                label="Income"
+                icon={TrendingUp}
+                color={colors.income}
+                paise={overview.incomePaise}
+                change={pctChange(overview.incomePaise, overview.lastIncomePaise)}
+                higherIsBetter
+              />
+              <StatCard
+                label="Expenses"
+                icon={TrendingDown}
+                color={colors.expense}
+                paise={overview.expensePaise}
+                change={pctChange(overview.expensePaise, overview.lastExpensePaise)}
+                higherIsBetter={false}
+              />
+            </View>
+          </Section>
+
+          <Section index={2}>
+            <Insight today={today} overview={overview} />
+          </Section>
+
+          <Section index={3}>
+            <TrendChart />
+          </Section>
+
+          <Section index={4}>
+            <TopCategories today={today} expensePaise={overview.expensePaise} />
+          </Section>
+
+          <Section index={5}>
+            <PressableScale
+              accessibilityRole="button"
+              onPress={() => router.push('/budgets')}
+              className="flex-row items-center gap-3 rounded-3xl border p-4"
+              style={{ backgroundColor: colors.card, borderColor: colors.border }}
+            >
               <View
-                className="h-9 w-9 items-center justify-center rounded-full"
+                className="h-11 w-11 items-center justify-center rounded-2xl"
                 style={{ backgroundColor: colors.primarySoft }}
               >
-                <Wallet size={17} color={colors.primary} />
+                <PiggyBank size={21} color={colors.primary} />
               </View>
-            </View>
-            <AnimatedAmount
-              paise={net}
-              style={{
-                color: net < 0 ? colors.expense : colors.primary,
-                fontFamily: fonts.bold,
-                fontSize: 38,
-                letterSpacing: -1.2,
-                marginTop: 6,
-              }}
-            />
-            <View className="mt-3 flex-row items-center gap-2">
-              <Chip
-                tone={savedPct >= 0 ? 'good' : 'bad'}
-                icon={savedPct >= 0 ? ArrowUpRight : ArrowDownRight}
-                label={`${Math.abs(savedPct).toFixed(1)}%`}
-              />
-              <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12 }}>
-                {savedPct >= 0 ? 'of income saved' : 'more spent than earned'}
-              </Text>
-            </View>
-          </Card>
-        </Section>
+              <View className="flex-1">
+                <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
+                  Set up budgets
+                </Text>
+                <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
+                  Track your financial health by category
+                </Text>
+              </View>
+              <ChevronRight size={18} color={colors.muted} />
+            </PressableScale>
+          </Section>
 
-        <Section index={1}>
-          <View className="flex-row gap-3">
-            <StatCard
-              label="Income"
-              icon={TrendingUp}
-              color={colors.income}
-              paise={overview.incomePaise}
-              change={pctChange(overview.incomePaise, overview.lastIncomePaise)}
-              higherIsBetter
-            />
-            <StatCard
-              label="Expenses"
-              icon={TrendingDown}
-              color={colors.expense}
-              paise={overview.expensePaise}
-              change={pctChange(overview.expensePaise, overview.lastExpensePaise)}
-              higherIsBetter={false}
-            />
-          </View>
-        </Section>
+          <Section index={6}>
+            <Renewals today={today} />
+          </Section>
 
-        <Section index={2}>
-          <TrendChart />
-        </Section>
-
-        <Section index={3}>
-          <TopCategories expensePaise={overview.expensePaise} />
-        </Section>
-
-        <Section index={4}>
-          <PressableScale
-            accessibilityRole="button"
-            onPress={() => router.push('/budgets')}
-            className="flex-row items-center gap-3 rounded-3xl border p-4"
-            style={{ backgroundColor: colors.card, borderColor: colors.border }}
-          >
-            <View
-              className="h-11 w-11 items-center justify-center rounded-2xl"
-              style={{ backgroundColor: colors.primarySoft }}
-            >
-              <PiggyBank size={21} color={colors.primary} />
-            </View>
-            <View className="flex-1">
-              <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
-                Set up budgets
-              </Text>
-              <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
-                Track your financial health by category
-              </Text>
-            </View>
-            <ChevronRight size={18} color={colors.muted} />
-          </PressableScale>
-        </Section>
-
-        <Section index={5}>
-          <RecentTransactions />
-        </Section>
-      </View>
+          <Section index={7}>
+            <RecentTransactions />
+          </Section>
+        </View>
+      )}
     </Screen>
   );
+}
+
+/**
+ * The one-sentence insight. Its own component so the extra top-category query
+ * only re-renders the banner, and nothing shows until both answers are real.
+ */
+function Insight({ today, overview }: { today: ISODate; overview: MonthOverview }) {
+  const { data: top, status } = useTopCategories(today, 1);
+  if (status !== 'ok') return null;
+  const lead = top[0];
+  const insight = buildInsight({
+    incomePaise: overview.incomePaise,
+    expensePaise: overview.expensePaise,
+    count: overview.count,
+    lastExpenseToDatePaise: overview.lastExpenseToDatePaise,
+    topCategory: lead ? { name: lead.name ?? 'Uncategorised', totalPaise: lead.totalPaise } : null,
+  });
+  return <InsightBanner insight={insight} />;
+}
+
+/** Upcoming renewals, computed on read from active subscriptions (lib/renewals). */
+function Renewals({ today }: { today: ISODate }) {
+  const router = useRouter();
+  const { data: subs, status } = useActiveSubscriptions();
+  if (status === 'pending') return null;
+  return <RenewalsCard renewals={upcomingRenewals(subs, today, 3)} onOpenTracker={() => router.push('/tracker')} />;
 }
 
 function Chip({ tone, icon: Icon, label }: { tone: 'good' | 'bad' | 'neutral'; icon?: LucideIcon; label: string }) {
@@ -260,8 +324,8 @@ function StatCard({
   );
 }
 
-function TopCategories({ expensePaise }: { expensePaise: number }) {
-  const top = useTopCategories(todayISO(), 4);
+function TopCategories({ today, expensePaise }: { today: ISODate; expensePaise: number }) {
+  const { data: top } = useTopCategories(today, 4);
   if (top.length === 0) return null;
 
   return (
@@ -316,7 +380,7 @@ function CategoryBar({ item, share, index }: { item: CategorySpend; share: numbe
 
 function RecentTransactions() {
   const router = useRouter();
-  const rows = useRecentTransactions(5);
+  const { data: rows, status } = useRecentTransactions(5);
 
   return (
     <Card className="px-5 pb-2 pt-5">
@@ -331,7 +395,10 @@ function RecentTransactions() {
         ) : null}
       </View>
 
-      {rows.length === 0 ? (
+      {status === 'pending' ? (
+        // No result yet: hold the card's height, never flash "Nothing here yet".
+        <View style={{ height: 120 }} />
+      ) : rows.length === 0 ? (
         <View className="items-center py-8">
           <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13 }}>
             Nothing here yet.

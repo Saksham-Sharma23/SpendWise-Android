@@ -13,8 +13,10 @@ import type { TransactionRow as Row } from '../queries';
  *
  * Swipe-left reveals delete — the mobile idiom replacing the web table's row
  * menu, which has no touch equivalent. The delete is soft and paired with an
- * undo toast (see the list screen), so the gesture is safe to trigger by
- * accident.
+ * undo toast (see the ledger), so the gesture is safe to trigger by accident.
+ *
+ * `row.categoryColor` must already be resolved (the ledger fills the
+ * fallback once per fetch), so rendering never allocates a new row object.
  */
 
 interface Props {
@@ -24,19 +26,6 @@ interface Props {
   selected?: boolean;
   selectionMode?: boolean;
   onLongPress?: (id: number) => void;
-}
-
-/**
- * Deterministic colour per category name, for categories without a stored
- * colour. Seeded categories carry their own; this is the fallback.
- */
-const PALETTE = ['#E8833A', '#3A7CA5', '#8B5FBF', '#D4A32C', '#D4544E', '#4B9B6E', '#4E86C7', '#C2548A'];
-
-export function colorForCategory(name: string | null): string {
-  if (!name) return colors.muted;
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return PALETTE[h % PALETTE.length]!;
 }
 
 function RightAction({ onPress }: { onPress: () => void }) {
@@ -78,10 +67,7 @@ function TransactionRowBase({
       className="mx-3 rounded-2xl px-3 py-3"
       style={{ backgroundColor: selected ? colors.primarySoft : colors.background }}
     >
-      <LedgerRow
-        row={{ ...row, categoryColor: row.categoryColor ?? colorForCategory(row.categoryName) }}
-        selected={selectionMode && selected}
-      />
+      <LedgerRow row={row} selected={selectionMode && selected} />
     </PressableScale>
   );
 
@@ -101,4 +87,31 @@ function TransactionRowBase({
   );
 }
 
-export const TransactionRowItem = memo(TransactionRowBase);
+/**
+ * Every live-query re-run produces NEW row objects, so a default `memo`
+ * (reference equality) would re-render every visible row on every write.
+ * Compare the fields that are actually drawn instead: an edit re-renders one
+ * row, a selection tap re-renders one row.
+ */
+function sameRow(a: Props, b: Props): boolean {
+  const x = a.row;
+  const y = b.row;
+  return (
+    x.id === y.id &&
+    x.amountPaise === y.amountPaise &&
+    x.type === y.type &&
+    x.date === y.date &&
+    x.note === y.note &&
+    x.categoryId === y.categoryId &&
+    x.categoryName === y.categoryName &&
+    x.categoryColor === y.categoryColor &&
+    x.categoryIcon === y.categoryIcon &&
+    a.selected === b.selected &&
+    a.selectionMode === b.selectionMode &&
+    a.onPress === b.onPress &&
+    a.onDelete === b.onDelete &&
+    a.onLongPress === b.onLongPress
+  );
+}
+
+export const TransactionRowItem = memo(TransactionRowBase, sameRow);

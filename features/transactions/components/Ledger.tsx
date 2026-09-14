@@ -1,7 +1,7 @@
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
-import { Receipt, Search, SearchX, Share2, SlidersHorizontal, X } from 'lucide-react-native';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { CircleAlert, Receipt, Search, SearchX, Share2, SlidersHorizontal, X } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,7 +13,9 @@ import { Card } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { PressableScale } from '../../../components/ui/PressableScale';
 import { Segmented } from '../../../components/ui/Segmented';
+import { categoryColor } from '../../../lib/categoryColor';
 import { formatMonthYear } from '../../../lib/dates';
+import { formatCount } from '../../../lib/money';
 import { colors, fonts } from '../../../lib/theme';
 import { exportTransactionsCsv } from '../export';
 import { useFilterStore } from '../filterStore';
@@ -24,7 +26,7 @@ import {
   softDeleteTransactions,
   useCategories,
   useTransactionSummary,
-  useTransactions,
+  useTransactionPages,
   type TransactionFilters,
   type TransactionRow,
 } from '../queries';
@@ -34,23 +36,26 @@ import { TransactionRowItem } from './TransactionRow';
 /**
  * The ledger.
  *
- * The list is a FlashList over a LIVE query with a growing window. Because
- * `useLiveQuery` re-runs on every write, adding a transaction anywhere — the
+ * The list is a FlashList over keyset pages whose first page is LIVE. Because
+ * the query re-runs on every write, adding a transaction anywhere — the
  * FAB, an import, the widget — updates this screen with no refresh, no cache
  * and no invalidation call. That is the whole reason this app needs no
  * server-state library.
  */
 
-const PAGE = 40;
-
 type ListItem = { kind: 'month'; key: string; label: string } | { kind: 'row'; row: TransactionRow };
 
-/** Insert a header before the first row of each month, and note where each header sits. */
+/**
+ * Insert a header before the first row of each month, note where each header
+ * sits, and resolve each row's display colour ONCE per fetch — so rows never
+ * build a fresh object during render.
+ */
 function withMonthHeaders(rows: TransactionRow[]): { items: ListItem[]; headerIndices: number[] } {
   const items: ListItem[] = [];
   const headerIndices: number[] = [];
   let current = '';
-  for (const row of rows) {
+  for (const raw of rows) {
+    const row = raw.categoryColor ? raw : { ...raw, categoryColor: categoryColor(raw.categoryColor, raw.categoryName) };
     const key = row.date.slice(0, 7);
     if (key !== current) {
       current = key;
@@ -73,8 +78,14 @@ export function Ledger() {
   // re-render the sheet on every character.
   const sheetFilters = useFilterStore((s) => s.filters);
   const patch = useFilterStore((s) => s.patch);
+  // The box updates on every keystroke; the query only after a 150 ms pause,
+  // so typing a word runs the LIKE scan once instead of once per letter.
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [limit, setLimit] = useState(PAGE);
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 150);
+    return () => clearTimeout(t);
+  }, [searchInput]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -82,20 +93,26 @@ export function Ledger() {
 
   const filters: TransactionFilters = useMemo(() => ({ ...sheetFilters, search }), [sheetFilters, search]);
 
-  const { data: rows = [] } = useTransactions(filters, limit);
+  // Keyset pages: page 1 live, older pages fetched as you scroll (queries.ts).
+  const { rows, status: rowsStatus, loadMore, reset: resetPages } = useTransactionPages(filters);
   const { data: summaryRows = [] } = useTransactionSummary(filters);
   const { data: categoryList = [] } = useCategories();
   const summary = summaryRows[0];
 
   const { items, headerIndices } = useMemo(() => withMonthHeaders(rows as TransactionRow[]), [rows]);
   const selectionMode = selected.size > 0;
+
+  // A filter change can hide selected rows; deleting rows you can no longer
+  // see is never what was meant, so the selection resets with the filter.
+  const filterKey = JSON.stringify(filters);
+  useEffect(() => {
+    setSelected((prev) => (prev.size === 0 ? prev : new Set()));
+  }, [filterKey]);
   const total = summary?.count ?? 0;
 
-  const onEndReached = useCallback(() => {
-    // Only grow the window when the current one is full — otherwise every
-    // bounce at the bottom of a short list would widen the query for nothing.
-    if (rows.length >= limit) setLimit((l) => l + PAGE);
-  }, [rows.length, limit]);
+  // loadMore is a no-op while a page is loading or when nothing older exists,
+  // so a bounce at the bottom of a short list costs nothing.
+  const onEndReached = loadMore;
 
   /**
    * Pull-to-refresh. The data is already live, so there is nothing to fetch;
@@ -104,13 +121,14 @@ export function Ledger() {
    */
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setLimit(PAGE);
+    resetPages();
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
     refreshTimer.current = setTimeout(() => setRefreshing(false), 450);
-  }, []);
+  }, [resetPages]);
 
   const deleteOne = useCallback((row: TransactionRow) => {
-    softDeleteTransaction(row.id);
+    // On failure safeWrite has already toasted why — no undo to offer.
+    if (!softDeleteTransaction(row.id).ok) return;
     toast.success('Transaction deleted', {
       // Soft delete is what makes this honest: the row is still there, so
       // undo restores the original rather than re-creating a lookalike.
@@ -120,7 +138,7 @@ export function Ledger() {
 
   const deleteSelected = useCallback(() => {
     const ids = [...selected];
-    softDeleteTransactions(ids);
+    if (!softDeleteTransactions(ids).ok) return;
     setSelected(new Set());
     toast.success(`${ids.length} deleted`, {
       action: { label: 'Undo', onClick: () => restoreTransactions(ids) },
@@ -144,10 +162,42 @@ export function Ledger() {
     [router, selectionMode, toggleSelect],
   );
 
+  // Hoisted so FlashList receives a stable function. It changes only when
+  // selection does — which is exactly when cells must re-check `selected`
+  // (there is no extraData); the row memo then skips every unchanged row.
+  const renderItem = useCallback(
+    ({ item }: { item: ListItem }) =>
+      item.kind === 'month' ? (
+        <View className="px-5 pb-1 pt-4" style={{ backgroundColor: colors.background }}>
+          <Text
+            style={{
+              color: colors.muted,
+              fontFamily: fonts.semibold,
+              fontSize: 12,
+              letterSpacing: 1,
+              textTransform: 'uppercase',
+            }}
+          >
+            {item.label}
+          </Text>
+        </View>
+      ) : (
+        <TransactionRowItem
+          row={item.row}
+          onPress={openRow}
+          onDelete={deleteOne}
+          onLongPress={toggleSelect}
+          selected={selected.has(item.row.id)}
+          selectionMode={selectionMode}
+        />
+      ),
+    [openRow, deleteOne, toggleSelect, selected, selectionMode],
+  );
+
   const clearFilters = () => {
     useFilterStore.getState().reset();
+    setSearchInput('');
     setSearch('');
-    setLimit(PAGE);
   };
 
   const onExport = async () => {
@@ -160,7 +210,7 @@ export function Ledger() {
     try {
       const result = await exportTransactionsCsv(filters);
       if (!result.shared) toast.error('Sharing is not available on this device');
-      else toast.success(`Exported ${result.rows.toLocaleString('en-IN')} transactions`);
+      else toast.success(`Exported ${formatCount(result.rows)} transactions`);
     } catch (e) {
       toast.error(e instanceof Error ? `Export failed: ${e.message}` : 'Export failed');
     } finally {
@@ -181,7 +231,7 @@ export function Ledger() {
       subtitle={
         selectionMode
           ? 'Tap rows to add or remove them'
-          : `${total.toLocaleString('en-IN')} ${total === 1 ? 'entry' : 'entries'}${active ? ' · filtered' : ''}`
+          : `${formatCount(total)} ${total === 1 ? 'entry' : 'entries'}${active ? ' · filtered' : ''}`
       }
       scroll={false}
       right={
@@ -250,17 +300,16 @@ export function Ledger() {
             <TextInput
               placeholder="Search notes and categories"
               placeholderTextColor={colors.subtle}
-              value={search}
+              value={searchInput}
               onChangeText={(t) => {
-                setSearch(t);
-                setLimit(PAGE);
+                setSearchInput(t);
               }}
               returnKeyType="search"
               className="ml-2.5 flex-1"
               style={{ color: colors.foreground, fontFamily: fonts.regular, fontSize: 14 }}
             />
-            {search ? (
-              <PressableScale accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setSearch('')} scaleTo={0.85} hitSlop={10}>
+            {searchInput ? (
+              <PressableScale accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setSearchInput('')} scaleTo={0.85} hitSlop={10}>
                 <X size={17} color={colors.muted} />
               </PressableScale>
             ) : null}
@@ -270,7 +319,6 @@ export function Ledger() {
             value={(sheetFilters.type ?? 'all') as TypeFilter}
             onChange={(t) => {
               patch({ type: t });
-              setLimit(PAGE);
             }}
             options={[
               { value: 'all', label: 'All' },
@@ -287,14 +335,26 @@ export function Ledger() {
           categories={categoryList}
           onChange={(p) => {
             patch(p);
-            setLimit(PAGE);
           }}
-          onClearSearch={() => setSearch('')}
+          onClearSearch={() => setSearchInput('')}
           onClearAll={clearFilters}
         />
       </View>
 
-      {items.length === 0 ? (
+      {rowsStatus === 'error' ? (
+        <View className="flex-1 px-5 pt-2">
+          {/* Never let a failed query masquerade as an empty ledger. */}
+          <EmptyState
+            icon={CircleAlert}
+            title="Couldn't load transactions"
+            description="Your data is safe — this screen just couldn't read it. Pull down or reopen the tab to try again."
+            action={{ label: 'Try again', onPress: onRefresh }}
+          />
+        </View>
+      ) : rowsStatus === 'pending' ? (
+        // First load has not answered yet: show nothing rather than "No transactions yet".
+        <View className="flex-1" />
+      ) : items.length === 0 ? (
         <View className="flex-1 px-5 pt-2">
           {active ? (
             <EmptyState
@@ -316,7 +376,6 @@ export function Ledger() {
       ) : (
         <FlashList
           data={items}
-          extraData={selected}
           keyExtractor={(item) => (item.kind === 'month' ? `m${item.key}` : `t${item.row.id}`)}
           getItemType={(item) => item.kind}
           // The current month's label stays pinned while its rows scroll under it.
@@ -329,32 +388,7 @@ export function Ledger() {
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE + insets.bottom }}
-          renderItem={({ item }) =>
-            item.kind === 'month' ? (
-              <View className="px-5 pb-1 pt-4" style={{ backgroundColor: colors.background }}>
-                <Text
-                  style={{
-                    color: colors.muted,
-                    fontFamily: fonts.semibold,
-                    fontSize: 12,
-                    letterSpacing: 1,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {item.label}
-                </Text>
-              </View>
-            ) : (
-              <TransactionRowItem
-                row={item.row}
-                onPress={openRow}
-                onDelete={deleteOne}
-                onLongPress={toggleSelect}
-                selected={selected.has(item.row.id)}
-                selectionMode={selectionMode}
-              />
-            )
-          }
+          renderItem={renderItem}
         />
       )}
     </Screen>

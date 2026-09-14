@@ -9,8 +9,9 @@ import { Screen } from '../../../components/layout/Screen';
 import { CategoryIcon } from '../../../components/ui/CategoryIcon';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { PressableScale } from '../../../components/ui/PressableScale';
+import { formatCount } from '../../../lib/money';
 import { colors, fonts } from '../../../lib/theme';
-import { useCategoriesWithUsage, type CategoryWithUsage } from '../queries';
+import { useCategoriesWithUsageResult, type CategoryWithUsage } from '../queries';
 
 /**
  * Category management. The server used to own categories; here the user
@@ -20,7 +21,7 @@ import { useCategoriesWithUsage, type CategoryWithUsage } from '../queries';
 export function CategoryList() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const rows = useCategoriesWithUsage();
+  const { data: rows, status } = useCategoriesWithUsageResult();
 
   const open = (id?: number) =>
     router.push(id != null ? { pathname: '/(modals)/category', params: { id: String(id) } } : '/(modals)/category');
@@ -44,7 +45,9 @@ export function CategoryList() {
         </PressableScale>
       }
     >
-      {rows.length === 0 ? (
+      {status === 'pending' ? (
+        <View className="flex-1" />
+      ) : rows.length === 0 ? (
         <View className="px-5">
           <EmptyState
             icon={Tags}
@@ -91,7 +94,7 @@ function Row({ item, index, onPress }: { item: CategoryWithUsage; index: number;
           <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
             {item.transactionCount === 0
               ? 'Not used yet'
-              : `${item.transactionCount.toLocaleString('en-IN')} ${item.transactionCount === 1 ? 'transaction' : 'transactions'}`}
+              : `${formatCount(item.transactionCount)} ${item.transactionCount === 1 ? 'transaction' : 'transactions'}`}
           </Text>
         </View>
         <ChevronRight size={18} color={colors.subtle} />

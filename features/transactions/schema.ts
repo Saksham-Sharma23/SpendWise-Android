@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { fromISODate, toISODate } from '../../lib/dates';
 import { parseAmountToPaise } from '../../lib/money';
 import type { TransactionInput } from './queries';
 
@@ -32,13 +33,14 @@ export const transactionFormSchema = z.object({
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Pick a date')
-    .refine((v) => !Number.isNaN(Date.parse(v)), 'That date does not exist'),
+    // Date.parse accepts 2026-02-31 in most engines, so round-trip instead:
+    // an impossible date comes back as a different string.
+    .refine((v) => toISODate(fromISODate(v)) === v, 'That date does not exist'),
 
   categoryId: z.number().int().positive().nullable(),
 
   note: z.string().trim().max(MAX_NOTE, `Keep it under ${MAX_NOTE} characters`).optional(),
 
-  isRecurring: z.boolean(),
 });
 
 export type TransactionFormValues = z.infer<typeof transactionFormSchema>;
@@ -49,7 +51,6 @@ export const emptyTransactionForm = (date: string): TransactionFormValues => ({
   date,
   categoryId: null,
   note: '',
-  isRecurring: false,
 });
 
 /**
@@ -68,6 +69,5 @@ export function toTransactionInput(values: TransactionFormValues): TransactionIn
     date: values.date,
     note: values.note?.trim() ? values.note.trim() : null,
     categoryId: values.categoryId,
-    isRecurring: values.isRecurring,
   };
 }

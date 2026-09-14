@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CalendarDays, ChevronLeft, ChevronRight, Repeat, StickyNote, Trash2, X } from 'lucide-react-native';
-import { useEffect } from 'react';
+import { CalendarDays, ChevronLeft, ChevronRight, StickyNote, Trash2, X } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
@@ -11,7 +11,7 @@ import { toast } from 'sonner-native';
 import { CategoryIcon } from '../../components/ui/CategoryIcon';
 import { PressableScale } from '../../components/ui/PressableScale';
 import { Segmented } from '../../components/ui/Segmented';
-import { colorForCategory } from '../../features/transactions/components/TransactionRow';
+import { colorForCategory } from '../../lib/categoryColor';
 import {
   createTransaction,
   getTransaction,
@@ -26,7 +26,8 @@ import {
   transactionFormSchema,
   type TransactionFormValues,
 } from '../../features/transactions/schema';
-import { addDays, formatDayMonth, todayISO } from '../../lib/dates';
+import { addDays, formatDayMonth } from '../../lib/dates';
+import { useToday } from '../../lib/today';
 import { paiseToDecimalString } from '../../lib/money';
 import { colors, fonts, withAlpha } from '../../lib/theme';
 
@@ -43,8 +44,7 @@ import { colors, fonts, withAlpha } from '../../lib/theme';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function dateLabel(date: string): string {
-  const today = todayISO();
+function dateLabel(date: string, today: string): string {
   if (date === today) return 'Today';
   if (date === addDays(today, -1)) return 'Yesterday';
   if (date === addDays(today, 1)) return 'Tomorrow';
@@ -57,66 +57,80 @@ export default function TransactionModal() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id?: string }>();
   const editingId = params.id ? Number(params.id) : null;
+  // Moves at midnight, so an add form left open overnight defaults to the right day.
+  const today = useToday();
 
   const { data: categories = [] } = useCategories();
+
+  // Read the edited row BEFORE the first paint (it is a synchronous local
+  // read), so the form never flashes empty defaults — and never animates them.
+  const [initial] = useState(() => (editingId != null ? getTransaction(editingId) : undefined));
+  const missing = editingId != null && !initial;
 
   const {
     control,
     handleSubmit,
-    reset,
     watch,
     setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
-    defaultValues: emptyTransactionForm(todayISO()),
+    defaultValues: initial
+      ? {
+          type: initial.type,
+          // Rendered back through paiseToDecimalString rather than a float
+          // division, so a value never changes just by being opened and saved.
+          amount: paiseToDecimalString(initial.amountPaise),
+          date: initial.date,
+          categoryId: initial.categoryId,
+          note: initial.note ?? '',
+        }
+      : emptyTransactionForm(today),
     mode: 'onTouched',
   });
 
-  // Load the existing row when editing. Amount is rendered back through
-  // paiseToDecimalString rather than a float division, so a value never
-  // changes just by being opened and saved again.
   useEffect(() => {
-    if (editingId == null) return;
-    const row = getTransaction(editingId);
-    if (!row) {
-      toast.error('That transaction no longer exists');
-      router.back();
-      return;
-    }
-    reset({
-      type: row.type,
-      amount: paiseToDecimalString(row.amountPaise),
-      date: row.date,
-      categoryId: row.categoryId,
-      note: row.note ?? '',
-      isRecurring: row.isRecurring,
-    });
-  }, [editingId, reset, router]);
+    if (!missing) return;
+    toast.error('That transaction no longer exists');
+    router.back();
+  }, [missing, router]);
 
   const type = watch('type');
   const date = watch('date');
   const isIncome = type === 'income';
   const tone = isIncome ? colors.income : colors.expense;
 
+  // Double-tap guard. handleSubmit validates asynchronously, so two quick
+  // taps both reach onSubmit before any re-render could disable the button —
+  // and with no server, nothing would ever deduplicate the second row.
+  const submitting = useRef(false);
+  const [saving, setSaving] = useState(false);
+
   const onSubmit = (values: TransactionFormValues) => {
+    if (submitting.current) return;
+    submitting.current = true;
+    setSaving(true);
+
     const input = toTransactionInput(values);
-    if (editingId != null) {
-      updateTransaction(editingId, input);
-      toast.success('Transaction updated');
-    } else {
-      createTransaction(input);
-      toast.success(isIncome ? 'Income added' : 'Expense added');
+    const result = editingId != null ? updateTransaction(editingId, input) : createTransaction(input);
+
+    if (!result.ok) {
+      // safeWrite already showed why. Stay open so nothing typed is lost.
+      submitting.current = false;
+      setSaving(false);
+      return;
     }
-    // No cache to invalidate: useLiveQuery re-runs every subscribed query on
-    // write, so the ledger and dashboard are already correct by now.
+    toast.success(editingId != null ? 'Transaction updated' : isIncome ? 'Income added' : 'Expense added');
+    // No cache to invalidate: live queries re-run on write, so the ledger and
+    // dashboard are already correct by now.
     router.back();
   };
 
   const onDelete = () => {
-    if (editingId == null) return;
+    if (editingId == null || submitting.current) return;
     const id = editingId;
-    softDeleteTransaction(id);
+    if (!softDeleteTransaction(id).ok) return;
+    submitting.current = true;
     toast.success('Transaction deleted', {
       action: { label: 'Undo', onClick: () => restoreTransactions([id]) },
     });
@@ -267,7 +281,7 @@ export default function TransactionModal() {
             </RoundButton>
             <View className="flex-1 flex-row items-center justify-center gap-2">
               <CalendarDays size={16} color={colors.primary} />
-              <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>{dateLabel(date)}</Text>
+              <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>{dateLabel(date, today)}</Text>
             </View>
             <RoundButton label="Next day" onPress={() => setValue('date', addDays(date, 1), { shouldValidate: true })} plain>
               <ChevronRight size={18} color={colors.foreground} />
@@ -275,8 +289,8 @@ export default function TransactionModal() {
           </View>
           <View className="mt-2 flex-row gap-2">
             {[
-              { label: 'Today', value: todayISO() },
-              { label: 'Yesterday', value: addDays(todayISO(), -1) },
+              { label: 'Today', value: today },
+              { label: 'Yesterday', value: addDays(today, -1) },
             ].map((d) => {
               const on = date === d.value;
               return (
@@ -327,37 +341,13 @@ export default function TransactionModal() {
           />
           {errors.note?.message ? <ErrorText>{errors.note.message}</ErrorText> : null}
 
-          <Controller
-            control={control}
-            name="isRecurring"
-            render={({ field }) => (
-              <View
-                className="flex-row items-center rounded-2xl border px-4 py-3"
-                style={{ backgroundColor: colors.card, borderColor: colors.border }}
-              >
-                <Repeat size={17} color={field.value ? colors.primary : colors.muted} />
-                <View className="ml-3 flex-1 pr-3">
-                  <Text style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 15 }}>Recurring</Text>
-                  <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
-                    Marks the entry only — no future copies are created.
-                  </Text>
-                </View>
-                <Switch
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  trackColor={{ false: colors.elevated, true: withAlpha(colors.primary, 0.45) }}
-                  thumbColor={field.value ? colors.primary : colors.muted}
-                />
-              </View>
-            )}
-          />
         </Animated.View>
       </ScrollView>
 
       <View className="px-5 pt-3" style={{ paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.border }}>
         <PressableScale
           accessibilityRole="button"
-          disabled={isSubmitting}
+          disabled={saving}
           onPress={handleSubmit(onSubmit)}
           className="items-center rounded-full py-4"
           style={{

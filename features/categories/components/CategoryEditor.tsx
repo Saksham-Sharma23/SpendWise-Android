@@ -12,6 +12,7 @@ import {
   CategoryIcon,
 } from '../../../components/ui/CategoryIcon';
 import { PressableScale } from '../../../components/ui/PressableScale';
+import { formatCount } from '../../../lib/money';
 import { colors, fonts, withAlpha } from '../../../lib/theme';
 import {
   CategoryError,
@@ -80,7 +81,7 @@ export function CategoryEditor() {
     if (editingId == null || !existing) return;
     Alert.alert(
       `Merge into ${targetName}?`,
-      `${usage.toLocaleString('en-IN')} ${usage === 1 ? 'transaction moves' : 'transactions move'} to ${targetName}, and “${existing.name}” is removed. This cannot be undone.`,
+      `${formatCount(usage)} ${usage === 1 ? 'transaction moves' : 'transactions move'} to ${targetName}, and “${existing.name}” is removed. This cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -89,7 +90,7 @@ export function CategoryEditor() {
           onPress: () => {
             try {
               const { moved } = mergeCategory(editingId, targetId);
-              toast.success(`Merged — ${moved.toLocaleString('en-IN')} moved to ${targetName}`);
+              toast.success(`Merged — ${formatCount(moved)} moved to ${targetName}`);
               router.back();
             } catch (e) {
               report(e, 'Could not merge');
@@ -105,7 +106,7 @@ export function CategoryEditor() {
     Alert.alert(
       `Delete ${existing.name}?`,
       usage > 0
-        ? `${usage.toLocaleString('en-IN')} ${usage === 1 ? 'transaction becomes' : 'transactions become'} Uncategorised. Nothing else is deleted.`
+        ? `${formatCount(usage)} ${usage === 1 ? 'transaction becomes' : 'transactions become'} Uncategorised. Nothing else is deleted.`
         : 'It is not used by any transaction.',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -159,7 +160,7 @@ export function CategoryEditor() {
           </Text>
           {editingId != null ? (
             <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 4 }}>
-              {usage === 0 ? 'Not used yet' : `Used by ${usage.toLocaleString('en-IN')} ${usage === 1 ? 'transaction' : 'transactions'}`}
+              {usage === 0 ? 'Not used yet' : `Used by ${formatCount(usage)} ${usage === 1 ? 'transaction' : 'transactions'}`}
             </Text>
           ) : null}
         </Animated.View>

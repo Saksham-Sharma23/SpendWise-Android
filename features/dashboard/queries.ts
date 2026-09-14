@@ -1,16 +1,22 @@
-import { and, desc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { and, asc, desc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 
-import { db } from '../../db/client';
-import { categories, transactions } from '../../db/schema';
+import { setMeta } from '../../db/seed';
+import { readDb } from '../../db/read';
+import { appMeta, categories, META_KEYS, subscriptions, transactions } from '../../db/schema';
+import type { BillingCycle, SubscriptionStatus } from '../../db/schema';
+import { useDbQuery, type DbQueryResult } from '../../lib/db/useDbQuery';
 import { addMonthsClamped, startOfMonth, type ISODate } from '../../lib/dates';
 
 /**
  * The dashboard's query boundary.
  *
- * Home shows six things at once, and every write re-runs every subscribed
- * query (CLAUDE.md #6) — so each figure here is ONE small aggregate, bounded
- * by a date range on tx_date_idx, never a scan of the ledger.
+ * Home shows several figures at once and every write re-runs the subscribed
+ * queries, so each figure is ONE small aggregate on an index, executed off the
+ * JS thread (db/read.ts), re-run at most once per burst of writes, and only
+ * while Home is focused (lib/db/useDbQuery.ts).
+ *
+ * Every hook returns the full `DbQueryResult` so a screen can tell "no data
+ * yet" (pending) from "genuinely empty" (ok + empty) from "failed" (error).
  */
 
 const income = sql<number>`coalesce(sum(case when ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`;
@@ -21,42 +27,57 @@ export interface MonthOverview {
   expensePaise: number;
   lastIncomePaise: number;
   lastExpensePaise: number;
+  /**
+   * Last month's expenses up to the same day of the month as today (clamped to
+   * last month's length). Compares like with like: on the 10th, this month's
+   * ten days against last month's first ten, not against all of last month.
+   */
+  lastExpenseToDatePaise: number;
   count: number;
 }
 
+const EMPTY_OVERVIEW: MonthOverview = {
+  incomePaise: 0,
+  expensePaise: 0,
+  lastIncomePaise: 0,
+  lastExpensePaise: 0,
+  lastExpenseToDatePaise: 0,
+  count: 0,
+};
+
 /**
- * This month and last month, side by side, in a single query: the CASE
- * expressions split one indexed range into four sums.
+ * This month and last month side by side in a single query: one range scan
+ * on tx_ledger_idx, split into sums by CASE.
  */
-export function useMonthOverview(today: ISODate): MonthOverview {
+export function useMonthOverview(today: ISODate): DbQueryResult<MonthOverview> {
+  const thisStart = startOfMonth(today);
+  const lastToDate = addMonthsClamped(today, -1);
+
+  return useDbQuery(
+    async () => (await dashboardQueries.overview(today))[0] ?? EMPTY_OVERVIEW,
+    ['transactions'],
+    [thisStart, lastToDate],
+    EMPTY_OVERVIEW,
+  );
+}
+
+function overviewQuery(today: ISODate) {
   const thisStart = startOfMonth(today);
   const lastStart = addMonthsClamped(thisStart, -1);
   const nextStart = addMonthsClamped(thisStart, 1);
-
+  const lastToDate = addMonthsClamped(today, -1);
   const inThis = sql`${transactions.date} >= ${thisStart}`;
-  const { data } = useLiveQuery(
-    db
-      .select({
-        incomePaise: sql<number>`coalesce(sum(case when ${inThis} and ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
-        expensePaise: sql<number>`coalesce(sum(case when ${inThis} and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
-        lastIncomePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
-        lastExpensePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
-        count: sql<number>`coalesce(sum(case when ${inThis} then 1 else 0 end), 0)`,
-      })
-      .from(transactions)
-      .where(
-        and(
-          isNull(transactions.deletedAt),
-          gte(transactions.date, lastStart),
-          lt(transactions.date, nextStart),
-        ),
-      ),
-    [thisStart],
-  );
-
-  return (
-    data[0] ?? { incomePaise: 0, expensePaise: 0, lastIncomePaise: 0, lastExpensePaise: 0, count: 0 }
-  );
+  return readDb
+        .select({
+          incomePaise: sql<number>`coalesce(sum(case when ${inThis} and ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
+          expensePaise: sql<number>`coalesce(sum(case when ${inThis} and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
+          lastIncomePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
+          lastExpensePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
+          lastExpenseToDatePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.date} <= ${lastToDate} and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
+          count: sql<number>`coalesce(sum(case when ${inThis} then 1 else 0 end), 0)`,
+        })
+        .from(transactions)
+        .where(and(isNull(transactions.deletedAt), gte(transactions.date, lastStart), lt(transactions.date, nextStart)));
 }
 
 export interface TrendPoint {
@@ -66,38 +87,35 @@ export interface TrendPoint {
   expensePaise: number;
 }
 
+const EMPTY_TREND: { month: string; incomePaise: number; expensePaise: number }[] = [];
+
 /**
  * Income vs expense per month for the last `months` months, oldest first.
  *
- * SQLite only returns months that HAVE rows, so the gaps are filled here —
- * a chart that silently skips an empty month misrepresents the trend.
+ * Filters and groups on the generated `month` column so SQLite walks
+ * tx_month_idx in order with no temporary sort. SQLite only returns months
+ * that HAVE rows, so gaps are filled here — a chart that silently skips an
+ * empty month misrepresents the trend.
  */
-export function useMonthlyTrend(months: number, today: ISODate): TrendPoint[] {
+export function useMonthlyTrend(months: number, today: ISODate): DbQueryResult<TrendPoint[]> {
   const firstMonth = addMonthsClamped(startOfMonth(today), -(months - 1));
-  const monthExpr = sql<string>`substr(${transactions.date}, 1, 7)`;
+  const firstKey = firstMonth.slice(0, 7);
 
-  const { data } = useLiveQuery(
-    db
-      .select({ month: monthExpr, incomePaise: income, expensePaise: expense })
-      .from(transactions)
-      .where(and(isNull(transactions.deletedAt), gte(transactions.date, firstMonth)))
-      .groupBy(monthExpr)
-      .orderBy(monthExpr),
-    [firstMonth],
+  const result = useDbQuery(
+    () => dashboardQueries.trend(months, today),
+    ['transactions'],
+    [firstKey],
+    EMPTY_TREND,
   );
 
-  const byMonth = new Map(data.map((r) => [r.month, r]));
-  const out: TrendPoint[] = [];
+  const byMonth = new Map(result.data.map((r) => [r.month, r]));
+  const points: TrendPoint[] = [];
   for (let i = 0; i < months; i++) {
     const key = addMonthsClamped(firstMonth, i).slice(0, 7);
     const row = byMonth.get(key);
-    out.push({
-      month: key,
-      incomePaise: row?.incomePaise ?? 0,
-      expensePaise: row?.expensePaise ?? 0,
-    });
+    points.push({ month: key, incomePaise: row?.incomePaise ?? 0, expensePaise: row?.expensePaise ?? 0 });
   }
-  return out;
+  return { ...result, data: points };
 }
 
 export interface CategorySpend {
@@ -108,36 +126,19 @@ export interface CategorySpend {
   totalPaise: number;
 }
 
+const EMPTY_SPEND: CategorySpend[] = [];
+
 /** This month's biggest expense categories. */
-export function useTopCategories(today: ISODate, limit = 4): CategorySpend[] {
+export function useTopCategories(today: ISODate, limit = 4): DbQueryResult<CategorySpend[]> {
   const thisStart = startOfMonth(today);
-  const total = sql<number>`sum(${transactions.amountPaise})`;
 
-  const { data } = useLiveQuery(
-    db
-      .select({
-        id: categories.id,
-        name: categories.name,
-        color: categories.color,
-        icon: categories.icon,
-        totalPaise: total,
-      })
-      .from(transactions)
-      .leftJoin(categories, eq(transactions.categoryId, categories.id))
-      .where(
-        and(
-          isNull(transactions.deletedAt),
-          eq(transactions.type, 'expense'),
-          gte(transactions.date, thisStart),
-        ),
-      )
-      .groupBy(transactions.categoryId)
-      .orderBy(desc(total))
-      .limit(limit),
+  return useDbQuery(
+    async () => (await dashboardQueries.topCategories(today, limit)) as CategorySpend[],
+    // categories too: a rename or recolour must refresh the bars.
+    ['transactions', 'categories'],
     [thisStart, limit],
+    EMPTY_SPEND,
   );
-
-  return data as CategorySpend[];
 }
 
 export interface RecentTransaction {
@@ -151,25 +152,155 @@ export interface RecentTransaction {
   categoryColor: string | null;
 }
 
-export function useRecentTransactions(limit = 5): RecentTransaction[] {
-  const { data } = useLiveQuery(
-    db
-      .select({
-        id: transactions.id,
-        type: transactions.type,
-        amountPaise: transactions.amountPaise,
-        date: transactions.date,
-        note: transactions.note,
-        categoryName: categories.name,
-        categoryIcon: categories.icon,
-        categoryColor: categories.color,
-      })
-      .from(transactions)
-      .leftJoin(categories, eq(transactions.categoryId, categories.id))
-      .where(isNull(transactions.deletedAt))
-      .orderBy(desc(transactions.date), desc(transactions.id))
-      .limit(limit),
+const EMPTY_RECENT: RecentTransaction[] = [];
+
+export function useRecentTransactions(limit = 5): DbQueryResult<RecentTransaction[]> {
+  return useDbQuery(
+    async () => (await dashboardQueries.recent(limit)) as RecentTransaction[],
+    ['transactions', 'categories'],
     [limit],
+    EMPTY_RECENT,
   );
-  return data as RecentTransaction[];
 }
+
+// ---------------------------------------------------------------------------
+// Query builders — shared by the hooks above and the dev benchmark
+// (features/devtools/benchmark.ts), so the timed SQL is exactly the shipped SQL.
+// ---------------------------------------------------------------------------
+
+function trendQuery(months: number, today: ISODate) {
+  const firstKey = addMonthsClamped(startOfMonth(today), -(months - 1)).slice(0, 7);
+  return readDb
+    .select({ month: sql<string>`${transactions.month}`, incomePaise: income, expensePaise: expense })
+    .from(transactions)
+    .where(and(isNull(transactions.deletedAt), gte(transactions.month, firstKey)))
+    .groupBy(transactions.month)
+    .orderBy(asc(transactions.month));
+}
+
+function topCategoriesQuery(today: ISODate, limit: number) {
+  const total = sql<number>`sum(${transactions.amountPaise})`;
+  return readDb
+    .select({ id: categories.id, name: categories.name, color: categories.color, icon: categories.icon, totalPaise: total })
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .where(and(isNull(transactions.deletedAt), eq(transactions.type, 'expense'), gte(transactions.date, startOfMonth(today))))
+    .groupBy(transactions.categoryId)
+    .orderBy(desc(total))
+    .limit(limit);
+}
+
+function recentQuery(limit: number) {
+  return readDb
+    .select({
+      id: transactions.id,
+      type: transactions.type,
+      amountPaise: transactions.amountPaise,
+      date: transactions.date,
+      note: transactions.note,
+      categoryName: categories.name,
+      categoryIcon: categories.icon,
+      categoryColor: categories.color,
+    })
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .where(isNull(transactions.deletedAt))
+    .orderBy(desc(transactions.date), desc(transactions.id))
+    .limit(limit);
+}
+
+export const dashboardQueries = {
+  overview: overviewQuery,
+  trend: trendQuery,
+  topCategories: topCategoriesQuery,
+  recent: recentQuery,
+};
+
+// ---------------------------------------------------------------------------
+// For the renewals card and first-run onboarding (wired by the Home screen)
+// ---------------------------------------------------------------------------
+
+export interface ActiveSubscription {
+  id: number;
+  name: string;
+  amountPaise: number;
+  billingCycle: BillingCycle;
+  status: SubscriptionStatus;
+  anchorDate: ISODate;
+  reminderDaysBefore: number;
+  categoryName: string | null;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+}
+
+const EMPTY_SUBS: ActiveSubscription[] = [];
+
+/**
+ * Live, non-deleted ACTIVE subscriptions with their category's look. Renewal
+ * dates are computed on read from these (lib/renewals.ts), never stored.
+ * Shape matches lib/renewals `SubscriptionLike`.
+ */
+export function useActiveSubscriptions(): DbQueryResult<ActiveSubscription[]> {
+  return useDbQuery(
+    async () =>
+      (await readDb
+        .select({
+          id: subscriptions.id,
+          name: subscriptions.name,
+          amountPaise: subscriptions.amountPaise,
+          billingCycle: subscriptions.billingCycle,
+          status: subscriptions.status,
+          anchorDate: subscriptions.anchorDate,
+          reminderDaysBefore: subscriptions.reminderDaysBefore,
+          categoryName: categories.name,
+          categoryIcon: categories.icon,
+          categoryColor: categories.color,
+        })
+        .from(subscriptions)
+        .leftJoin(categories, eq(subscriptions.categoryId, categories.id))
+        .where(and(isNull(subscriptions.deletedAt), eq(subscriptions.status, 'active')))
+        .orderBy(asc(subscriptions.name))) as ActiveSubscription[],
+    ['subscriptions', 'categories'],
+    [],
+    EMPTY_SUBS,
+  );
+}
+
+/** Whether the ledger holds any live transaction — one indexed probe, never a count. */
+export function useHasTransactions(): DbQueryResult<boolean> {
+  return useDbQuery(
+    async () => {
+      const rows = await readDb
+        .select({ id: transactions.id })
+        .from(transactions)
+        .where(isNull(transactions.deletedAt))
+        .limit(1);
+      return rows.length > 0;
+    },
+    ['transactions'],
+    [],
+    false,
+  );
+}
+
+/** Whether the user dismissed first-run onboarding (app_meta `onboarding_dismissed`). */
+export function useOnboardingDismissed(): DbQueryResult<boolean> {
+  return useDbQuery(
+    async () => {
+      const rows = await readDb
+        .select({ value: appMeta.value })
+        .from(appMeta)
+        .where(eq(appMeta.key, META_KEYS.ONBOARDING_DISMISSED))
+        .limit(1);
+      return rows[0]?.value === '1';
+    },
+    ['app_meta'],
+    [],
+    false,
+  );
+}
+
+export function dismissOnboarding(): void {
+  setMeta(META_KEYS.ONBOARDING_DISMISSED, '1');
+}
+

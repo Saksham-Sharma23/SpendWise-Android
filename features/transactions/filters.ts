@@ -81,3 +81,29 @@ export function currentMonthFilters(): TransactionFilters {
   const today = todayISO();
   return { ...EMPTY_FILTERS, dateFrom: `${today.slice(0, 7)}-01`, dateTo: today };
 }
+
+// ---------------------------------------------------------------------------
+// Keyset bounds — the ledger's paging (see ./pages.ts)
+// ---------------------------------------------------------------------------
+
+export interface LedgerKey {
+  date: string;
+  id: number;
+}
+
+/**
+ * Rows strictly OLDER than `key` in `date DESC, id DESC` order.
+ *
+ * Written as a row-value comparison so SQLite can walk the ledger index from
+ * the key downwards: the index on `date` carries the rowid, which is `id`, so
+ * `(date, id) < (?, ?)` is a range scan with no sort — unlike OFFSET, whose
+ * cost grows with every page scrolled.
+ */
+export function olderThan(key: LedgerKey): SQL {
+  return sql`(${transactions.date}, ${transactions.id}) < (${key.date}, ${key.id})`;
+}
+
+/** Rows at or NEWER than `key` — the live page once older pages are loaded. */
+export function atOrNewerThan(key: LedgerKey): SQL {
+  return sql`(${transactions.date}, ${transactions.id}) >= (${key.date}, ${key.id})`;
+}

@@ -47,8 +47,8 @@ function addTx(sqlite: Database.Database, categoryId: number | null, deleted = f
   return Number(
     sqlite
       .prepare(
-        `INSERT INTO transactions (type, amount_paise, date, category_id, is_recurring, created_at, updated_at, deleted_at)
-         VALUES ('expense', 1000, '2026-09-01', ?, 0, 'now', 'now', ?)`,
+        `INSERT INTO transactions (type, amount_paise, date, category_id, created_at, updated_at, deleted_at)
+         VALUES ('expense', 1000, '2026-09-01', ?, 'now', 'now', ?)`,
       )
       .run(categoryId, deleted ? '2026-09-02' : null).lastInsertRowid,
   );

@@ -2,6 +2,8 @@ import { and, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
 import * as schema from '../../db/schema';
+import { nowISO } from '../../lib/dates';
+import { runWriteTx } from '../../db/tx';
 import { budgets, categories, subscriptions, transactions } from '../../db/schema';
 
 /**
@@ -13,12 +15,12 @@ import { budgets, categories, subscriptions, transactions } from '../../db/schem
  * migrated schema. (queries.ts binds these to the app's `db`.)
  *
  * Two schema facts shape all of it:
- *   - `cat_name_unique` is a unique index on lower(name) that does NOT exclude
- *     soft-deleted rows. So a deleted category's name is rewritten to a
- *     tombstone; otherwise "Food" could never be created again after deleting
- *     "Food".
- *   - `budget_cat_unique` is unique on category_id, also including deleted
- *     rows — which is what makes moving budgets during a merge subtle.
+ *   - A deleted category's name is rewritten to a tombstone. Before migration
+ *     0006 made `cat_name_unique` partial (live rows only) this was required;
+ *     it is now merely tidy — the tombstone keeps "Food ⟨deleted #7⟩" readable
+ *     in a future "Recently deleted" list without clashing with a new "Food".
+ *   - `budget_cat_unique` is unique on category_id among LIVE budgets since
+ *     migration 0001, so a soft-deleted budget no longer blocks moving one in.
  */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,8 +46,9 @@ export function tombstoneName(name: string, id: number): string {
   return `${name} ⟨deleted #${id}⟩`;
 }
 
+/** One timestamp format everywhere — see lib/dates `nowISO`. */
 function now(): string {
-  return new Date().toISOString();
+  return nowISO();
 }
 
 function liveCategory(database: SyncDb, id: number) {
@@ -138,7 +141,7 @@ export function mergeCategory(database: SyncDb, sourceId: number, targetId: numb
   liveCategory(database, targetId);
   if (source.isSystem) throw new CategoryError('Built-in categories can be merged into, but not merged away');
 
-  return database.transaction((tx) => {
+  return runWriteTx(database, (tx) => {
     // Includes soft-deleted transactions, so undoing a delete later restores
     // the row into a category that still exists.
     const moved = countTransactions(tx as SyncDb, sourceId);
@@ -176,7 +179,7 @@ export function deleteCategory(database: SyncDb, id: number): { uncategorised: n
   const cat = liveCategory(database, id);
   if (cat.isSystem) throw new CategoryError('Built-in categories cannot be deleted — merge or rename them instead');
 
-  return database.transaction((tx) => {
+  return runWriteTx(database, (tx) => {
     const uncategorised = countTransactions(tx as SyncDb, id);
     tx.update(transactions).set({ categoryId: null }).where(eq(transactions.categoryId, id)).run();
     tx.update(subscriptions).set({ categoryId: null }).where(eq(subscriptions.categoryId, id)).run();

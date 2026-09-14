@@ -1,12 +1,18 @@
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useIsFocused } from 'expo-router';
+import { addDatabaseChangeListener } from 'expo-sqlite';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { db } from '../../db/client';
+import { readDb } from '../../db/read';
+import { safeWrite, type WriteResult } from '../../lib/db/safeWrite';
+import { useDbQuery } from '../../lib/db/useDbQuery';
 import { categories, transactions } from '../../db/schema';
 import type { TransactionType } from '../../db/schema';
 import { makeDedupeHash } from '../../lib/dedupe';
-import type { ISODate } from '../../lib/dates';
-import { buildWhere, type TransactionFilters } from './filters';
+import { nowISO, type ISODate } from '../../lib/dates';
+import { atOrNewerThan, buildWhere, olderThan, type LedgerKey, type TransactionFilters } from './filters';
+import { idsNotInPages, keyOf, stalePages, type OlderPage } from './pages';
 
 /**
  * The transactions query boundary.
@@ -41,7 +47,6 @@ const listColumns = {
   amountPaise: transactions.amountPaise,
   date: transactions.date,
   note: transactions.note,
-  isRecurring: transactions.isRecurring,
   categoryId: transactions.categoryId,
   categoryName: categories.name,
   categoryIcon: categories.icon,
@@ -54,35 +59,181 @@ export type TransactionRow = {
   amountPaise: number;
   date: string;
   note: string | null;
-  isRecurring: boolean;
   categoryId: number | null;
   categoryName: string | null;
   categoryIcon: string | null;
   categoryColor: string | null;
 };
 
+export const LEDGER_PAGE = 40;
+
+const EMPTY_ROWS: TransactionRow[] = [];
+
+export interface TransactionPages {
+  rows: TransactionRow[];
+  status: 'pending' | 'ok' | 'error';
+  /** Load the next older page. Safe to call repeatedly (onEndReached). */
+  loadMore: () => void;
+  /** Collapse back to the live first page (pull-to-refresh). */
+  reset: () => void;
+  hasMore: boolean;
+}
+
 /**
- * A live, windowed page of the ledger.
+ * The ledger, paged by KEYSET (decision F0-S4, CLAUDE.md navigation).
  *
- * `limit` is a window, not a page number: the caller grows it as the user
- * scrolls. That keeps infinite scroll compatible with `useLiveQuery`, which
- * re-runs the whole query on any write — with OFFSET paging, a row inserted
- * at the top would shift every later page by one and duplicate a row on screen.
- *
- * Ordered by date then id so the order is total and stable; two transactions
- * on the same day would otherwise be free to swap places between renders.
+ * Page 1 is live through useDbQuery. Until an older page exists it is the
+ * newest LEDGER_PAGE rows; once one does, it becomes "every row at or newer
+ * than the first boundary", so a row added at the top grows page 1 instead of
+ * pushing a row into a gap. Older pages are fetched once with
+ * `(date, id) < (lastDate, lastId)` and refetched only when a change touches
+ * them (see ./pages.ts): scrolling 2,000 rows deep and adding a transaction
+ * re-sends page 1, not the whole window.
  */
-export function useTransactions(filters: TransactionFilters, limit: number) {
-  return useLiveQuery(
-    db
-      .select(listColumns)
-      .from(transactions)
-      .leftJoin(categories, eq(transactions.categoryId, categories.id))
-      .where(buildWhere(filters))
-      .orderBy(desc(transactions.date), desc(transactions.id))
-      .limit(limit),
-    [JSON.stringify(filters), limit],
+export function useTransactionPages(filters: TransactionFilters): TransactionPages {
+  const filterKey = JSON.stringify(filters);
+  const [older, setOlder] = useState<OlderPage<TransactionRow>[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const loading = useRef(false);
+  // Bumped on every filter change or reset, so a slow page answering for an
+  // old filter can never be appended to the new list.
+  const generation = useRef(0);
+
+  useEffect(() => {
+    generation.current += 1;
+    loading.current = false;
+    setOlder([]);
+    setHasMore(true);
+  }, [filterKey]);
+
+  const boundary = older[0]?.upper ?? null;
+  const live = useDbQuery(
+    async () =>
+      (await (boundary
+        ? transactionQueries.atOrNewer(filters, boundary)
+        : transactionQueries.ledger(filters, LEDGER_PAGE))) as TransactionRow[],
+    // categories too: a rename must refresh the names shown on every row.
+    ['transactions', 'categories'],
+    [filterKey, boundary?.date, boundary?.id],
+    EMPTY_ROWS,
   );
+
+  const olderRef = useRef(older);
+  olderRef.current = older;
+  const liveRef = useRef(live.data);
+  liveRef.current = live.data;
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+
+  const loadMore = useCallback(() => {
+    if (loading.current || !hasMore || live.status !== 'ok') return;
+    const pages = olderRef.current;
+    if (pages.length === 0 && liveRef.current.length < LEDGER_PAGE) {
+      // Page 1 is not even full: nothing older exists.
+      setHasMore(false);
+      return;
+    }
+    const tail = pages.length > 0 ? pages[pages.length - 1]!.lower : liveRef.current.at(-1);
+    if (!tail) {
+      setHasMore(false);
+      return;
+    }
+    const upper = keyOf(tail);
+    loading.current = true;
+    const gen = generation.current;
+    void (transactionQueries.olderThan(filtersRef.current, upper, LEDGER_PAGE) as Promise<TransactionRow[]>).then(
+      (rows) => {
+        loading.current = false;
+        if (gen !== generation.current) return;
+        if (rows.length < LEDGER_PAGE) setHasMore(false);
+        if (rows.length === 0) return;
+        setOlder((prev) => [...prev, { upper, lower: keyOf(rows[rows.length - 1]!), rows }]);
+      },
+      () => {
+        loading.current = false;
+      },
+    );
+  }, [hasMore, live.status]);
+
+  const reset = useCallback(() => {
+    generation.current += 1;
+    loading.current = false;
+    setOlder([]);
+    setHasMore(true);
+  }, []);
+
+  // Targeted refresh of OLDER pages. Page 1 refreshes itself via useDbQuery;
+  // here changed row ids are collected for a moment, mapped to the older
+  // pages they touch, and only those pages are refetched. Deferred while the
+  // tab is unfocused, then applied once on focus.
+  const isFocused = useIsFocused();
+  const focusedRef = useRef(isFocused);
+  focusedRef.current = isFocused;
+  const pendingTx = useRef(new Set<number>());
+  const pendingCat = useRef(new Set<number>());
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flush = useCallback(async () => {
+    flushTimer.current = null;
+    if (!focusedRef.current) return;
+    const pages = olderRef.current;
+    const txIds = new Set(pendingTx.current);
+    const categoryIds = new Set(pendingCat.current);
+    pendingTx.current.clear();
+    pendingCat.current.clear();
+    if (pages.length === 0 || (txIds.size === 0 && categoryIds.size === 0)) return;
+
+    const gen = generation.current;
+    const unknown = idsNotInPages(pages, txIds);
+    const unknownKeys = unknown.length > 0 ? await transactionQueries.keysFor(unknown) : [];
+    if (gen !== generation.current) return;
+
+    const { pages: stale, belowLoaded } = stalePages(pages, { txIds, categoryIds, unknownKeys });
+    if (belowLoaded) setHasMore(true);
+    if (stale.size === 0) return;
+
+    const refreshed = await Promise.all(
+      [...stale].map(async (i) => {
+        const p = pages[i]!;
+        const rows = (await transactionQueries.between(filtersRef.current, p.upper, p.lower)) as TransactionRow[];
+        return [i, rows] as const;
+      }),
+    );
+    if (gen !== generation.current) return;
+    setOlder((prev) => {
+      const next = prev.slice();
+      for (const [i, rows] of refreshed) {
+        const page = next[i];
+        if (page) next[i] = { ...page, rows };
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const sub = addDatabaseChangeListener((event) => {
+      if (event.tableName === 'transactions') pendingTx.current.add(event.rowId);
+      else if (event.tableName === 'categories') pendingCat.current.add(event.rowId);
+      else return;
+      if (!flushTimer.current) flushTimer.current = setTimeout(() => void flush(), 32);
+    });
+    return () => {
+      sub.remove();
+      if (flushTimer.current) clearTimeout(flushTimer.current);
+      flushTimer.current = null;
+    };
+  }, [flush]);
+
+  useEffect(() => {
+    if (isFocused && (pendingTx.current.size > 0 || pendingCat.current.size > 0)) void flush();
+  }, [isFocused, flush]);
+
+  const rows = useMemo(
+    () => (older.length === 0 ? live.data : live.data.concat(...older.map((p) => p.rows))),
+    [live.data, older],
+  );
+
+  return { rows, status: live.status, loadMore, reset, hasMore };
 }
 
 /**
@@ -93,17 +244,12 @@ export function useTransactions(filters: TransactionFilters, limit: number) {
  * crossing the bridge with all of them.
  */
 export function useTransactionSummary(filters: TransactionFilters) {
-  return useLiveQuery(
-    db
-      .select({
-        count: sql<number>`count(*)`,
-        incomePaise: sql<number>`coalesce(sum(case when ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
-        expensePaise: sql<number>`coalesce(sum(case when ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
-      })
-      .from(transactions)
-      .leftJoin(categories, eq(transactions.categoryId, categories.id))
-      .where(buildWhere(filters)),
+  return useDbQuery(
+    () => transactionQueries.summary(filters),
+    // Search matches category names, so a rename can change the counts.
+    ['transactions', 'categories'],
     [JSON.stringify(filters)],
+    [],
   );
 }
 
@@ -130,6 +276,60 @@ export function getTransactionsPage(
     .all() as TransactionRow[];
 }
 
+/** Query builders shared by the hooks above and the dev benchmark (features/devtools). */
+export const transactionQueries = {
+  /** The newest `limit` rows: page 1 before any older page is loaded. */
+  ledger: (filters: TransactionFilters, limit: number) =>
+    readDb
+      .select(listColumns)
+      .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(buildWhere(filters))
+      .orderBy(desc(transactions.date), desc(transactions.id))
+      .limit(limit),
+  /** Page 1 once older pages exist: every row at or newer than the first boundary. */
+  atOrNewer: (filters: TransactionFilters, key: LedgerKey) =>
+    readDb
+      .select(listColumns)
+      .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(and(buildWhere(filters), atOrNewerThan(key)))
+      .orderBy(desc(transactions.date), desc(transactions.id)),
+  /** The next older page below `key`. */
+  olderThan: (filters: TransactionFilters, key: LedgerKey, limit: number) =>
+    readDb
+      .select(listColumns)
+      .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(and(buildWhere(filters), olderThan(key)))
+      .orderBy(desc(transactions.date), desc(transactions.id))
+      .limit(limit),
+  /** An older page's fixed slice: lower <= key < upper. */
+  between: (filters: TransactionFilters, upper: LedgerKey, lower: LedgerKey) =>
+    readDb
+      .select(listColumns)
+      .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(and(buildWhere(filters), olderThan(upper), atOrNewerThan(lower)))
+      .orderBy(desc(transactions.date), desc(transactions.id)),
+  /** Current (date, id) keys for changed rows, soft-deleted ones included. */
+  keysFor: (ids: number[]) =>
+    readDb
+      .select({ date: transactions.date, id: transactions.id })
+      .from(transactions)
+      .where(inArray(transactions.id, ids.slice(0, 500))),
+  summary: (filters: TransactionFilters) =>
+    readDb
+      .select({
+        count: sql<number>`count(*)`,
+        incomePaise: sql<number>`coalesce(sum(case when ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
+        expensePaise: sql<number>`coalesce(sum(case when ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
+      })
+      .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(buildWhere(filters)),
+};
+
 /** One transaction by id, for the edit form. */
 export function getTransaction(id: number): TransactionRow | undefined {
   const rows = db
@@ -144,12 +344,11 @@ export function getTransaction(id: number): TransactionRow | undefined {
 
 /** All live categories, for pickers and the filter sheet. */
 export function useCategories() {
-  return useLiveQuery(
-    db
-      .select()
-      .from(categories)
-      .where(isNull(categories.deletedAt))
-      .orderBy(categories.name),
+  return useDbQuery(
+    () => readDb.select().from(categories).where(isNull(categories.deletedAt)).orderBy(categories.name),
+    ['categories'],
+    [],
+    [],
   );
 }
 
@@ -164,74 +363,77 @@ export interface TransactionInput {
   date: ISODate;
   note?: string | null;
   categoryId?: number | null;
-  isRecurring?: boolean;
 }
 
-export function createTransaction(input: TransactionInput): number {
-  const now = new Date().toISOString();
-  const row = db
-    .insert(transactions)
-    .values({
-      type: input.type,
-      amountPaise: input.amountPaise,
-      date: input.date,
-      note: input.note ?? null,
-      categoryId: input.categoryId ?? null,
-      isRecurring: input.isRecurring ?? false,
-      // Written on every create so Phase 6's importer can find existing rows
-      // by an indexed lookup rather than scanning the table per candidate.
-      dedupeHash: makeDedupeHash(input.date, input.amountPaise, input.note),
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning({ id: transactions.id })
-    .all();
-  return row[0]!.id;
+/**
+ * Writes return a WriteResult instead of throwing: on failure the user has
+ * already seen a specific toast, and the caller only decides whether to stay
+ * open (CLAUDE.md #18).
+ */
+export function createTransaction(input: TransactionInput): WriteResult<number> {
+  return safeWrite('save the transaction', () => {
+    const now = nowISO();
+    const row = db
+      .insert(transactions)
+      .values({
+        type: input.type,
+        amountPaise: input.amountPaise,
+        date: input.date,
+        note: input.note ?? null,
+        categoryId: input.categoryId ?? null,
+        // Written on every create so Phase 6's importer can find existing rows
+        // by an indexed lookup rather than scanning the table per candidate.
+        dedupeHash: makeDedupeHash(input.date, input.amountPaise, input.note),
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning({ id: transactions.id })
+      .all();
+    return row[0]!.id;
+  });
 }
 
-export function updateTransaction(id: number, input: TransactionInput): void {
-  db.update(transactions)
-    .set({
-      type: input.type,
-      amountPaise: input.amountPaise,
-      date: input.date,
-      note: input.note ?? null,
-      categoryId: input.categoryId ?? null,
-      isRecurring: input.isRecurring ?? false,
-      // Recomputed: the fields it is derived from may all have changed.
-      dedupeHash: makeDedupeHash(input.date, input.amountPaise, input.note),
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(transactions.id, id))
-    .run();
+export function updateTransaction(id: number, input: TransactionInput): WriteResult<void> {
+  return safeWrite('save the changes', () => {
+    db.update(transactions)
+      .set({
+        type: input.type,
+        amountPaise: input.amountPaise,
+        date: input.date,
+        note: input.note ?? null,
+        categoryId: input.categoryId ?? null,
+        // Recomputed: the fields it is derived from may all have changed.
+        dedupeHash: makeDedupeHash(input.date, input.amountPaise, input.note),
+        updatedAt: nowISO(),
+      })
+      .where(eq(transactions.id, id))
+      .run();
+  });
 }
 
 /**
  * Soft delete. The row stays so the undo toast can put it back, and so a
  * whole import batch can be reversed later.
  */
-export function softDeleteTransaction(id: number): void {
-  db.update(transactions)
-    .set({ deletedAt: new Date().toISOString() })
-    .where(eq(transactions.id, id))
-    .run();
+export function softDeleteTransaction(id: number): WriteResult<void> {
+  return safeWrite('delete the transaction', () => {
+    db.update(transactions).set({ deletedAt: nowISO() }).where(eq(transactions.id, id)).run();
+  });
 }
 
-export function softDeleteTransactions(ids: number[]): void {
-  if (ids.length === 0) return;
-  db.update(transactions)
-    .set({ deletedAt: new Date().toISOString() })
-    .where(inArray(transactions.id, ids))
-    .run();
+export function softDeleteTransactions(ids: number[]): WriteResult<void> {
+  return safeWrite('delete those transactions', () => {
+    if (ids.length === 0) return;
+    db.update(transactions).set({ deletedAt: nowISO() }).where(inArray(transactions.id, ids)).run();
+  });
 }
 
 /** Undo a soft delete. Drives the toast action. */
-export function restoreTransactions(ids: number[]): void {
-  if (ids.length === 0) return;
-  db.update(transactions)
-    .set({ deletedAt: null })
-    .where(inArray(transactions.id, ids))
-    .run();
+export function restoreTransactions(ids: number[]): WriteResult<void> {
+  return safeWrite('restore', () => {
+    if (ids.length === 0) return;
+    db.update(transactions).set({ deletedAt: null }).where(inArray(transactions.id, ids)).run();
+  });
 }
 
 // ---------------------------------------------------------------------------

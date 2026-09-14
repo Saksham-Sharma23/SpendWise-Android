@@ -1,148 +1,81 @@
-import { sqliteDb } from './client';
+import { sqliteDb } from './connection';
 
 /**
- * Phase 1 exit criterion: time every analytics query against a populated
- * database, on the real device.
+ * Query timing for the dev harness — the instrument behind the Phase 1 exit
+ * criterion ("24-month trend under ~50 ms on the device").
  *
- * These are the exact queries Phase 5 will ship. Writing them now — before
- * any chart exists — means a slow one is a five-minute index fix rather than
- * a redesign of the Analytics screen.
+ * It times the SHIPPED query builders (each feature exposes its list, e.g.
+ * features/dashboard/benchmark.ts), executed the way screens execute them:
+ * through db/read.ts on expo-sqlite's native thread. The previous version timed
+ * hand-written raw SQL with getAllSync, which measured a query no screen ran.
  *
- * The governing rule (CLAUDE.md #5): never SELECT rows you intend to sum.
- * Every query below returns tens of rows regardless of ledger size.
+ * Plans are reported alongside timings. A plan with a TEMP B-TREE (a sort step)
+ * or a full SCAN is flagged even when it is fast today, because that is what
+ * stops being fast at 200k rows.
  */
 
 export interface BenchResult {
   name: string;
+  /** Median of the timed runs, in ms. */
   ms: number;
   rows: number;
-  /** True when SQLite reported a full table scan — the thing to avoid. */
+  /** A full table scan of transactions. */
   scan: boolean;
+  /** A temporary B-tree: SQLite had to sort or group without an index. */
+  tempSort: boolean;
   plan: string;
 }
 
-function timeQuery(name: string, query: string, params: unknown[] = []): BenchResult {
-  // EXPLAIN QUERY PLAN tells us whether an index was used. A query that is
-  // fast on 50k rows but scanning will not stay fast at 200k.
+export interface BenchQuery {
+  name: string;
+  /** Build a fresh query each run (a Drizzle builder from the feature's query file). */
+  build: () => PromiseLike<unknown> & { toSQL(): { sql: string; params: unknown[] } };
+}
+
+const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+export async function timeQuery({ name, build }: BenchQuery, runs = 5): Promise<BenchResult> {
+  const { sql, params } = build().toSQL();
   const plan = sqliteDb
-    .getAllSync<{ detail: string }>(`EXPLAIN QUERY PLAN ${query}`, params as never[])
+    .getAllSync<{ detail: string }>(`EXPLAIN QUERY PLAN ${sql}`, params as never[])
     .map((r) => r.detail)
     .join(' | ');
 
-  const t0 = Date.now();
-  const rows = sqliteDb.getAllSync(query, params as never[]);
-  const ms = Date.now() - t0;
+  await build(); // warm the statement cache and page cache
+  const times: number[] = [];
+  let rows = 0;
+  for (let i = 0; i < runs; i++) {
+    const t0 = now();
+    const out = await build();
+    times.push(now() - t0);
+    rows = Array.isArray(out) ? out.length : out == null ? 0 : 1;
+  }
+  times.sort((a, b) => a - b);
 
   return {
     name,
-    ms,
-    rows: rows.length,
-    scan: /SCAN/i.test(plan) && !/USING (COVERING )?INDEX/i.test(plan),
+    ms: Math.round(times[Math.floor(times.length / 2)]! * 10) / 10,
+    rows,
+    scan: /SCAN transactions(?! USING)/i.test(plan),
+    tempSort: /TEMP B-TREE/i.test(plan),
     plan,
   };
 }
 
-/** ISO date N months back from today, as 'YYYY-MM-DD'. */
-function monthsAgo(n: number): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() - n);
-  return d.toISOString().slice(0, 10);
-}
-
-export function runAnalyticsBenchmark(): BenchResult[] {
+export async function runBenchmark(queries: readonly BenchQuery[]): Promise<BenchResult[]> {
   const results: BenchResult[] = [];
-
-  // 1. The trend query — the most important one in the app. Aggregates the
-  //    whole ledger down to at most 24 rows.
-  results.push(
-    timeQuery(
-      'trend (24 months)',
-      `SELECT substr(date,1,7) AS month,
-              SUM(CASE WHEN type='income'  THEN amount_paise ELSE 0 END) AS income_paise,
-              SUM(CASE WHEN type='expense' THEN amount_paise ELSE 0 END) AS expense_paise
-         FROM transactions
-        WHERE deleted_at IS NULL AND date >= ?
-        GROUP BY month
-        ORDER BY month`,
-      [monthsAgo(24)],
-    ),
-  );
-
-  // 2. Category donut for a single month.
-  results.push(
-    timeQuery(
-      'category breakdown (1 month)',
-      `SELECT c.id, c.name, c.color, SUM(t.amount_paise) AS total_paise
-         FROM transactions t
-         LEFT JOIN categories c ON c.id = t.category_id
-        WHERE t.deleted_at IS NULL
-          AND t.type = 'expense'
-          AND t.date >= ? AND t.date < ?
-        GROUP BY c.id
-        ORDER BY total_paise DESC`,
-      [monthsAgo(1), monthsAgo(0)],
-    ),
-  );
-
-  // 3. Summary cards — one row.
-  results.push(
-    timeQuery(
-      'summary (1 month)',
-      `SELECT SUM(CASE WHEN type='income'  THEN amount_paise ELSE 0 END) AS income_paise,
-              SUM(CASE WHEN type='expense' THEN amount_paise ELSE 0 END) AS expense_paise,
-              COUNT(*) AS n
-         FROM transactions
-        WHERE deleted_at IS NULL AND date >= ?`,
-      [monthsAgo(1)],
-    ),
-  );
-
-  // 4. The ledger's first page — what Transactions renders on open.
-  results.push(
-    timeQuery(
-      'ledger page (50 rows)',
-      `SELECT * FROM transactions
-        WHERE deleted_at IS NULL
-        ORDER BY date DESC, id DESC
-        LIMIT 50`,
-    ),
-  );
-
-  // 5. Biggest expense — a stat card.
-  results.push(
-    timeQuery(
-      'biggest expense (1 month)',
-      `SELECT * FROM transactions
-        WHERE deleted_at IS NULL AND type='expense' AND date >= ?
-        ORDER BY amount_paise DESC
-        LIMIT 1`,
-      [monthsAgo(1)],
-    ),
-  );
-
-  // 6. Duplicate lookup — the Phase 6 importer runs this once per import,
-  //    and it must not degrade into a scan.
-  results.push(
-    timeQuery(
-      'dedupe hash lookup',
-      `SELECT id FROM transactions WHERE dedupe_hash = ? LIMIT 1`,
-      ['nonexistent-probe-hash'],
-    ),
-  );
-
+  for (const q of queries) results.push(await timeQuery(q));
   return results;
 }
 
 export function countTransactions(): number {
-  const row = sqliteDb.getFirstSync<{ n: number }>(
-    'SELECT COUNT(*) AS n FROM transactions WHERE deleted_at IS NULL',
-  );
+  const row = sqliteDb.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM transactions WHERE deleted_at IS NULL');
   return row?.n ?? 0;
 }
 
 /** Approximate on-disk size in bytes — surfaced in Settings in Phase 7. */
 export function databaseSizeBytes(): number {
-  const page = sqliteDb.getFirstSync<{ v: number }>('PRAGMA page_size');
-  const count = sqliteDb.getFirstSync<{ v: number }>('PRAGMA page_count');
-  return (page?.v ?? 0) * (count?.v ?? 0);
+  const page = sqliteDb.getFirstSync<{ page_size: number }>('PRAGMA page_size');
+  const count = sqliteDb.getFirstSync<{ page_count: number }>('PRAGMA page_count');
+  return (page?.page_size ?? 0) * (count?.page_count ?? 0);
 }

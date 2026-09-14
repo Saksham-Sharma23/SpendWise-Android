@@ -10,7 +10,6 @@ export interface LedgerRowData {
   amountPaise: number;
   date: string;
   note: string | null;
-  isRecurring?: boolean;
   categoryName: string | null;
   categoryIcon: string | null;
   categoryColor: string | null;
@@ -34,7 +33,6 @@ export function LedgerRow({ row, selected = false, hideDate = false }: Props) {
   const subtitle = [
     row.categoryName ?? 'Uncategorised',
     hideDate ? null : formatDayMonth(row.date),
-    row.isRecurring ? 'Recurring' : null,
   ]
     .filter(Boolean)
     .join(' · ');

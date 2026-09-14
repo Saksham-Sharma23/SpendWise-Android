@@ -1,12 +1,11 @@
 import '../global.css';
 
-import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Toaster } from 'sonner-native';
@@ -18,61 +17,23 @@ import {
   PlusJakartaSans_700Bold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 
-import { configureConnection, db } from '../db/client';
-import { getOrCreateDatabaseKey } from '../db/encryption';
-import migrations from '../db/migrations/migrations';
-import { seedIfNeeded } from '../db/seed';
+import { bootDatabase, type BootOutcome } from '../db/boot';
+import { checkpointWal } from '../db/connection';
+import { BootFailure } from '../features/boot/components/BootFailure';
 import { colors } from '../lib/theme';
 
-// Keep the splash up until migrations AND seeding finish. Flashing an empty
-// shell while the schema is still being created is how a launch reads as broken.
+// Keep the splash up until the database is open, migrated and seeded. Flashing
+// an empty shell while the schema is still being created reads as broken.
 void SplashScreen.preventAutoHideAsync();
 
-type BootState =
-  | { phase: 'booting' }
-  | { phase: 'ready' }
-  | { phase: 'failed'; error: string };
-
+/**
+ * The root. The ONE place in app/ allowed to touch db/ (CLAUDE.md #10 exception):
+ * nothing else may mount until `bootDatabase()` says the database is ready.
+ * Boot order and failure handling live in db/boot.ts.
+ */
 export default function RootLayout() {
-  const [keyReady, setKeyReady] = useState(false);
-  const [keyError, setKeyError] = useState<string | null>(null);
-
-  // 1. Unlock the database before anything touches it. PRAGMA key must be the
-  //    first statement on the connection.
-  //
-  //    Migrations are NOT allowed to start until this resolves, which is why
-  //    they live in a child component that is only mounted afterwards. Calling
-  //    useMigrations here, alongside this effect, lets its effect run while the
-  //    key is still being read from SecureStore — the first launch then writes
-  //    an UNENCRYPTED database, and the later PRAGMA key fails with
-  //    "file is not a database". Found on device, 2026-09-13.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const key = await getOrCreateDatabaseKey();
-        if (cancelled) return;
-        configureConnection(key);
-        setKeyReady(true);
-      } catch (e) {
-        if (!cancelled) {
-          setKeyError(e instanceof Error ? e.message : 'Could not unlock the database.');
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (keyError) return <BootFailure error={keyError} />;
-  if (!keyReady) return <BootSpinner />;
-  return <MigratedApp />;
-}
-
-/** Mounted only after the connection is keyed. */
-function MigratedApp() {
-  const [boot, setBoot] = useState<BootState>({ phase: 'booting' });
+  const [outcome, setOutcome] = useState<BootOutcome | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
@@ -81,48 +42,40 @@ function MigratedApp() {
     PlusJakartaSans_700Bold,
   });
 
-  // 2. Migrations — safe now, the connection is keyed.
-  const { success: migrated, error: migrationError } = useMigrations(db, migrations);
-
-  // 3. Seed, then release the splash.
   useEffect(() => {
-    if (!migrated) return;
     let cancelled = false;
-    (async () => {
-      try {
-        await seedIfNeeded();
-        if (!cancelled) setBoot({ phase: 'ready' });
-      } catch (e) {
-        if (!cancelled) {
-          setBoot({
-            phase: 'failed',
-            error: e instanceof Error ? e.message : 'Could not prepare initial data.',
-          });
-        }
-      }
-    })();
+    void bootDatabase().then((o) => {
+      if (!cancelled) setOutcome(o);
+    });
     return () => {
       cancelled = true;
     };
-  }, [migrated]);
+  }, [attempt]);
 
+  const retry = useCallback(() => {
+    setOutcome(null);
+    setAttempt((a) => a + 1);
+  }, []);
+
+  const ready = outcome?.kind === 'ready';
+
+  // Fold the WAL into the main file whenever the app leaves the foreground, so
+  // Android auto-backup (which excludes -wal) always copies a complete database.
   useEffect(() => {
-    if (migrationError) {
-      setBoot({ phase: 'failed', error: migrationError.message });
-    }
-  }, [migrationError]);
+    if (!ready) return;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background') checkpointWal();
+    });
+    return () => sub.remove();
+  }, [ready]);
 
   const onReady = useCallback(() => {
     void SplashScreen.hideAsync();
   }, []);
 
-  const fontsSettled = fontsLoaded || Boolean(fontError);
-
-  // A failed migration is a permanently broken install with no server-side
-  // fix. Show a real recovery path rather than a crash loop. Restore lands
-  // in Phase 7; until then this at least explains what happened.
-  if (boot.phase === 'failed') return <BootFailure error={boot.error} />;
-  if (boot.phase === 'booting' || !fontsSettled) return <BootSpinner />;
+  if (!outcome) return <BootSpinner />;
+  if (outcome.kind !== 'ready') return <BootFailure outcome={outcome} onRetry={retry} />;
+  if (!(fontsLoaded || fontError)) return <BootSpinner />;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onReady}>
@@ -165,23 +118,6 @@ function BootSpinner() {
   return (
     <View className="flex-1 items-center justify-center bg-background">
       <ActivityIndicator color={colors.primary} />
-    </View>
-  );
-}
-
-function BootFailure({ error }: { error: string }) {
-  return (
-    <View
-      className="flex-1 items-center justify-center bg-background px-6"
-      onLayout={() => void SplashScreen.hideAsync()}
-    >
-      <Text className="mb-2 text-center text-lg text-foreground">SpendWise could not start</Text>
-      <Text className="mb-6 text-center text-sm text-muted-foreground">{error}</Text>
-      <Text className="text-center text-xs text-muted-foreground">
-        Your data has not been changed. Restoring from a backup will be offered here once that
-        screen exists.
-      </Text>
-      <StatusBar style="light" />
     </View>
   );
 }

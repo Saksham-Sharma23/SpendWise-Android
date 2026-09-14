@@ -1,0 +1,2 @@
+ALTER TABLE `transactions` ADD `month` text GENERATED ALWAYS AS (substr(date, 1, 7)) VIRTUAL;--> statement-breakpoint
+CREATE INDEX `tx_month_idx` ON `transactions` (`month`,`type`,`amount_paise`) WHERE deleted_at IS NULL;

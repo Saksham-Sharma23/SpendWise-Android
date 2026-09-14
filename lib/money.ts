@@ -95,6 +95,14 @@ export function groupIndianManually(value: number, fractionDigits = 2): string {
 // Formatting
 // ---------------------------------------------------------------------------
 
+/**
+ * A whole-number COUNT with Indian grouping: 50000 -> '50,000', 123456 -> '1,23,456'.
+ * For "50,000 entries", not money — money always goes through formatINR.
+ */
+export function formatCount(n: number): string {
+  return groupIndianManually(Math.trunc(Number.isFinite(n) ? n : 0), 0);
+}
+
 export interface FormatOptions {
   /** Drop the decimal part. Useful in dense chart axes. */
   whole?: boolean;

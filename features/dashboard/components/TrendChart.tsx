@@ -1,59 +1,72 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import { useState } from 'react';
+import { Text, View } from 'react-native';
 
+import { TrendChart as Chart, type TrendMode } from '../../../components/charts/TrendChart';
 import { Card } from '../../../components/ui/Card';
 import { Segmented } from '../../../components/ui/Segmented';
-import { MONTHS_SHORT, formatMonthYear, todayISO } from '../../../lib/dates';
+import { formatMonthYear } from '../../../lib/dates';
 import { formatINR, formatINRCompact } from '../../../lib/money';
 import { colors, fonts } from '../../../lib/theme';
-import { useMonthlyTrend, type TrendPoint } from '../queries';
-
-const CHART_HEIGHT = 150;
+import { useToday } from '../../../lib/today';
+import { useMonthlyTrend } from '../queries';
 
 type Range = '6' | '12';
 
 /**
- * Income vs expense, one pair of bars per month.
+ * Home's "Income vs Expense" card: the reusable chart
+ * (components/charts/TrendChart) plus the controls and figures around it.
  *
- * Tap a month to read its exact figures in the header; the other months dim
- * so the eye lands on the selection. Bars grow in with a stagger on mount and
- * re-spring whenever the data changes — which, with a live query, is every
- * time a transaction is written anywhere in the app.
+ * Two switches — Bar/Line and 6M/12M — and a tapped month's exact figures in
+ * the header. The chart itself only draws; the numbers come aggregated from
+ * SQL (useMonthlyTrend), at most 12 rows.
  */
 export function TrendChart() {
   const [range, setRange] = useState<Range>('6');
-  const points = useMonthlyTrend(Number(range), todayISO());
+  const [mode, setMode] = useState<TrendMode>('bar');
+  const today = useToday();
+  const { data: points, status } = useMonthlyTrend(Number(range), today);
   const [selected, setSelected] = useState<number | null>(null);
 
   // Default to the latest month; reset when the range changes length.
   const activeIndex = selected != null && selected < points.length ? selected : points.length - 1;
   const active = points[activeIndex];
-
-  const max = useMemo(
-    () => Math.max(1, ...points.map((p) => Math.max(p.incomePaise, p.expensePaise))),
-    [points],
-  );
-
-  const empty = points.every((p) => p.incomePaise === 0 && p.expensePaise === 0);
+  const empty = status === 'ok' && points.every((p) => p.incomePaise === 0 && p.expensePaise === 0);
 
   return (
     <Card className="p-5">
       <View className="flex-row items-start justify-between">
         <View className="flex-1 pr-3">
-          <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>
-            Income vs Expense
-          </Text>
+          <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>Income vs Expense</Text>
           <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
             {active ? formatMonthYear(active.month) : `Last ${range} months`}
           </Text>
         </View>
+        <View style={{ width: 112 }}>
+          <Segmented<TrendMode>
+            size="sm"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'bar', label: 'Bar' },
+              { value: 'line', label: 'Line' },
+            ]}
+          />
+        </View>
+      </View>
+
+      <View className="mt-4 flex-row gap-3">
+        <Figure label="Income" color={colors.income} paise={active?.incomePaise ?? 0} />
+        <Figure label="Expense" color={colors.expense} paise={active?.expensePaise ?? 0} />
+      </View>
+
+      <View className="mt-5">
+        <Chart points={points} mode={mode} selectedIndex={activeIndex} onSelect={setSelected} />
+      </View>
+
+      <View className="mt-4 flex-row items-center justify-between">
+        <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11 }}>
+          {empty ? 'Your trend appears as you add transactions.' : 'Tap a month for its figures'}
+        </Text>
         <View style={{ width: 104 }}>
           <Segmented
             size="sm"
@@ -69,49 +82,6 @@ export function TrendChart() {
           />
         </View>
       </View>
-
-      <View className="mt-4 flex-row gap-3">
-        <Figure label="Income" color={colors.income} paise={active?.incomePaise ?? 0} />
-        <Figure label="Expense" color={colors.expense} paise={active?.expensePaise ?? 0} />
-      </View>
-
-      <View className="mt-5 flex-row items-end" style={{ height: CHART_HEIGHT }}>
-        {points.map((p, i) => (
-          <MonthBars
-            key={p.month}
-            point={p}
-            index={i}
-            max={max}
-            dimmed={i !== activeIndex}
-            compact={points.length > 6}
-            onPress={() => setSelected(i)}
-          />
-        ))}
-      </View>
-      <View className="mt-2 flex-row">
-        {points.map((p, i) => (
-          <Text
-            key={p.month}
-            className="flex-1 text-center"
-            style={{
-              color: i === activeIndex ? colors.foreground : colors.subtle,
-              fontFamily: i === activeIndex ? fonts.semibold : fonts.regular,
-              fontSize: points.length > 6 ? 9 : 11,
-            }}
-          >
-            {MONTHS_SHORT[Number(p.month.slice(5, 7)) - 1]}
-          </Text>
-        ))}
-      </View>
-
-      {empty ? (
-        <Text
-          className="mt-3 text-center"
-          style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12 }}
-        >
-          Your trend appears as you add transactions.
-        </Text>
-      ) : null}
     </Card>
   );
 }
@@ -126,80 +96,11 @@ function Figure({ label, color, paise }: { label: string; color: string; paise: 
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit
-        style={{
-          color: colors.foreground,
-          fontFamily: fonts.bold,
-          fontSize: 16,
-          marginTop: 3,
-          fontVariant: ['tabular-nums'],
-        }}
+        style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 16, marginTop: 3, fontVariant: ['tabular-nums'] }}
       >
-        {paise >= 1_00_00_000 ? formatINRCompact(paise) : formatINR(paise, { whole: true })}
+        {/* Crore-scale month totals switch to the compact form so they fit. */}
+        {paise >= 1_00_00_000 * 100 ? formatINRCompact(paise) : formatINR(paise, { whole: true })}
       </Text>
     </View>
-  );
-}
-
-function MonthBars({
-  point,
-  index,
-  max,
-  dimmed,
-  compact,
-  onPress,
-}: {
-  point: TrendPoint;
-  index: number;
-  max: number;
-  dimmed: boolean;
-  compact: boolean;
-  onPress: () => void;
-}) {
-  const width = compact ? 6 : 12;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${formatMonthYear(point.month)}: income ${formatINR(point.incomePaise, { whole: true })}, expense ${formatINR(point.expensePaise, { whole: true })}`}
-      onPress={onPress}
-      className="h-full flex-1 flex-row items-end justify-center"
-      style={{ gap: compact ? 2 : 4 }}
-    >
-      <Bar value={point.incomePaise / max} color={colors.income} width={width} delay={index * 45} dimmed={dimmed} />
-      <Bar value={point.expensePaise / max} color={colors.expense} width={width} delay={index * 45 + 30} dimmed={dimmed} />
-    </Pressable>
-  );
-}
-
-function Bar({
-  value,
-  color,
-  width,
-  delay,
-  dimmed,
-}: {
-  value: number;
-  color: string;
-  width: number;
-  delay: number;
-  dimmed: boolean;
-}) {
-  const h = useSharedValue(0);
-  const o = useSharedValue(1);
-
-  useEffect(() => {
-    // A zero month still shows a sliver, so the axis reads as continuous.
-    h.value = withDelay(delay, withSpring(Math.max(3, value * CHART_HEIGHT), { damping: 15, stiffness: 120 }));
-  }, [value, delay, h]);
-
-  useEffect(() => {
-    o.value = withTiming(dimmed ? 0.3 : 1, { duration: 200 });
-  }, [dimmed, o]);
-
-  const style = useAnimatedStyle(() => ({ height: h.value, opacity: o.value }));
-
-  return (
-    <Animated.View
-      style={[{ width, borderRadius: width / 2, backgroundColor: color }, style]}
-    />
   );
 }

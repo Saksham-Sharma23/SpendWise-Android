@@ -14,7 +14,7 @@ import { paiseToDecimalString } from '../../lib/money';
 export const CSV_BOM = '﻿';
 export const CSV_EOL = '\r\n';
 
-export const CSV_COLUMNS = ['Date', 'Type', 'Amount', 'Category', 'Note', 'Recurring'] as const;
+export const CSV_COLUMNS = ['Date', 'Type', 'Amount', 'Category', 'Note'] as const;
 
 export interface CsvRow {
   date: string;
@@ -22,7 +22,6 @@ export interface CsvRow {
   amountPaise: number;
   categoryName: string | null;
   note: string | null;
-  isRecurring: boolean;
 }
 
 /**
@@ -51,7 +50,6 @@ export function csvLine(row: CsvRow): string {
       paiseToDecimalString(row.amountPaise),
       csvCell(row.categoryName),
       csvCell(row.note),
-      row.isRecurring ? 'Yes' : 'No',
     ].join(',') + CSV_EOL
   );
 }

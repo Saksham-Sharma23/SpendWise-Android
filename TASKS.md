@@ -16,8 +16,8 @@
 |---|---|---|---|
 | 0 | Foundations | 1–2 d | ✅ Done — verified on the phone 2026-09-13 |
 | 1 | Database foundation | 3–4 d | 🟡 50k rows seeded on device — benchmark tap + DB pull pending |
-| 2 | Transactions | 4–5 d | 🟡 In progress — list, form, filters done |
-| 3 | Home dashboard | 3 d | 🟡 In progress — dashboard UI + queries landed with the redesign |
+| 2 | Transactions | 4–5 d | ✅ Code complete 2026-09-14 — awaiting the user's on-device check |
+| 3 | Home dashboard | 3 d | ✅ Code complete 2026-09-14 — awaiting the user's on-device check |
 | 4 | Budgets & Tracker | 4 d | ⬜ Not started |
 | 5 | Analytics | 3 d | ⬜ Not started |
 | 6A | Sheets: import and workspaces | 7–8 d | ⬜ Not started |
@@ -77,7 +77,7 @@ to change later.
   *Why:* Every analytics query and the entire ledger read through these. Adding them now costs nothing; discovering they're missing at Phase 5 means re-timing every query.
 - [x] **Configure `drizzle.config.ts` and generate the initial migration**
   *Why:* This is the Alembic analogue and the part you least want to hand-write. Establishing the generate-don't-edit habit on migration zero is how it survives to migration twelve.
-- [x] **Enable SQLCipher via `useSQLCipher` in `app.config.ts`, key the DB at open**
+- [x] **Enable SQLCipher via `useSQLCipher` in `app.config.ts`, key the DB at open** *(superseded 2026-09-14 — main DB becomes unkeyed; SQLCipher kept for encrypted backup files. See TASKS2 F0 / batch 1B)*
   *Why:* **Must happen before there is data.** Retrofitting encryption onto a populated database is a migration nobody wants to write. The DB holds a complete picture of someone's finances and leaves the device twice — via auto-backup and via export.
 - [x] **Open the DB with `enableChangeListener: true`**
   *Why:* This single flag is what makes `useLiveQuery` work. Without it, writes don't re-render and you'll reach for a state library you don't need.
@@ -117,57 +117,60 @@ to change later.
 
 ## Phase 2 — Transactions
 **Goal:** Full CRUD over the local ledger, in mobile idioms.
-**Est:** 4–5 days · **Status:** 🟡 In progress
+**Est:** 4–5 days · **Status:** ✅ Code complete — the user verifies on the phone
 
 - [x] **`features/transactions/queries.ts`: list, create, update, soft delete, search**
   *Why:* Establishes the query-boundary pattern the whole app follows. Screens call typed functions and never see a table name — this is the boundary the API used to give you for free.
-- [x] **FlashList v2 over a windowed live query with `LIMIT`/`OFFSET` pagination**
+- [x] **FlashList v2 over a paginated query** *(keyset pages: page 1 live, older pages by `(date, id) < (?, ?)`, refetched only when a change touches them — `useTransactionPages`, `features/transactions/pages.ts`; TASKS2 4A)*
   *Why:* Virtualising the list is not enough — paginate the *query* too. Loading 20,000 rows into memory to show twelve is the mistake that makes the app feel heavy.
-- [x] **Sticky month header separators and pull-to-refresh**
+- [x] **Sticky month header separators and pull-to-refresh** *(built 2026-09-14 — the earlier tick was premature)*
   *Why:* A ledger without date grouping is unreadable at scroll speed. Pull-to-refresh is muscle memory even when data is local.
 - [x] **Add/edit modal with the segmented Expense/Income toggle at the top**
   *Why:* Direct port of the web app's most-used interaction. Type is the first decision, so it belongs at the top where the thumb lands.
-- [ ] **Port Zod schemas from the web repo; parse amounts to paise at the boundary**
+- [x] **Port Zod schemas from the web repo; parse amounts to paise at the boundary** *(plus impossible-date rejection, e.g. 31 Feb)*
   *Why:* Schemas port verbatim — free correctness. Converting to paise at the form boundary means nothing downstream ever handles a float.
-- [ ] **Swipe-to-delete with an undo toast**
+- [x] **Swipe-to-delete with an undo toast**
   *Why:* Swipe is the mobile idiom replacing a row menu. Undo is what makes an irreversible-feeling gesture safe, and `deleted_at` already supports it.
 - [x] **Long-press multi-select and bulk delete**
   *Why:* Replaces the web table's row-selection checkboxes, which have no touch equivalent.
-- [ ] **Filters bottom sheet compiling to SQL `WHERE` clauses; chips summarise active filters**
+- [x] **Filters bottom sheet compiling to SQL `WHERE` clauses; chips summarise active filters** *(native `formSheet`; one removable chip per filter)*
   *Why:* Filtering in SQL rather than in JS keeps it fast at any ledger size. Chips exist so the user can see *why* the list looks empty.
 - [x] **Search over note and category name**
   *Why:* Replaces the web app's global search. A `LIKE` against an indexed column is instant at this scale.
-- [ ] **CSV export via `expo-file-system` + share sheet**
+- [x] **CSV export via `expo-file-system` + share sheet** *(exports the current filter; paged append-only write; BOM, CRLF, formula-injection guard)*
   *Why:* Parity with the web app, and it doubles as a crude escape hatch before Phase 7's real backup exists.
-- [ ] **Category management: create, rename, recolour, merge**
+- [x] **Category management: create, rename, recolour, merge** *(plus icon and delete; More → Categories and the form's Manage link)*
   *Why:* The server used to own categories. Merge specifically matters because the Phase 6 importer will create near-duplicates ("Food" vs "food") that need cleaning up.
 
 **Exit criterion:** Every transaction operation works, and the list stays smooth scrolling the 50k-row debug database.
 
 **Discovered during this phase:**
-- _(none yet)_
+- **Folded in from TASKS2 while finishing this phase:** double-tap Save guard [D6], failed writes keep the form open with a specific toast via `safeWrite` [D9], selection clears when filters change [D8], 150 ms search debounce [S6], row `memo` compares drawn fields and `extraData` removed [S5], keyset pages [S4], `formatCount` replacing `toLocaleString` in counts [S7, partial].
+- **Category merge and delete are tested against the real migrated schema** (`features/categories/__tests__/mutations.test.ts`), including a forced mid-merge failure that must roll back.
+- **Keyset pages are proven in SQL** (`keyset.test.ts`): pages tile the ledger exactly once, a top insert doesn't shift older pages, and the page query has no temporary sort. The staleness rules are pure and unit-tested (`pages.test.ts`).
+- **Swipe-gesture cost [S5] is not measured yet** — it needs the phone's frame counter, so it stays in TASKS2 batch 4A.
 
 ---
 
 ## Phase 3 — Home dashboard
 **Goal:** The dashboard re-composed for one column, with the first real chart.
-**Est:** 3 days · **Status:** ⬜ Not started
+**Est:** 3 days · **Status:** ✅ Code complete — the user verifies on the phone
 
 - [x] **`features/dashboard/queries.ts`: summary, recent, 12-month trend** *(plus this-vs-last-month in one query, and top categories)*
   *Why:* Home fires the most queries of any screen. Writing them together makes it obvious where they overlap and can share.
-- [ ] **`components/charts/TrendChart` on victory-native with a Bar/Line toggle**
+- [x] **`components/charts/TrendChart` with a Bar/Line toggle** *(Reanimated bars + react-native-svg line instead of victory-native — no rebuild; see Discovered)*
   *Why:* First Skia chart — build it as a reusable wrapper, because Analytics reuses it in Phase 5. If charts ever need swapping, the change stays contained to these wrappers.
-- [ ] **Summary cards and the dynamic `FinancialInsight` banner**
+- [x] **Summary cards and the dynamic `FinancialInsight` banner** *(rules in `lib/insight.ts`, month-to-date vs the same days last month, 8 tests)*
   *Why:* The banner is what makes the dashboard feel like it's paying attention rather than just reporting.
 - [x] **Budget overview card that deep-links to Budgets** *(empty-state card for now — real progress needs Phase 4)*
   *Why:* This is *the* reason Budgets can live under More instead of taking a permanent tab slot.
-- [ ] **Upcoming renewals card that deep-links to Tracker**
+- [x] **Upcoming renewals card that deep-links to Tracker** *(computed on read in `lib/renewals.ts`, 6 tests; shows a Tracker prompt until subscriptions exist in Phase 4)*
   *Why:* Same argument for Tracker, and it's the in-app half of the reminder system built in Phase 8.
 - [x] **Recent transactions section**
   *Why:* Most sessions are "what did I just spend" — answering it on Home saves a tab switch.
-- [ ] **First-run onboarding: add first transaction · import a sheet · restore a backup**
+- [x] **First-run onboarding: add first transaction · import a sheet · restore a backup** *(shown while the ledger is empty and not skipped; `app_meta` `onboarding_dismissed`)*
   *Why:* There is no account with data to sync down. A new install is genuinely blank, and an empty dashboard with no next step reads as broken.
-- [ ] **Audit live-query subscriptions — narrow, per-widget, never app-wide**
+- [x] **Audit live-query subscriptions — narrow, per-widget, never app-wide** *(done in TASKS2 F3: every Home query is its own `useDbQuery` listing its base tables, coalesced per burst of writes, paused while Home is unfocused, executed off the JS thread)*
   *Why:* Home is where this bites first: six widgets subscribing broadly means every write re-runs every query. It presents as vague slowness, not an obvious bug, so catch it deliberately.
 
 **Exit criterion:** Home paints in a single frame on the 50k-row database, and a new install shows a useful empty state rather than a blank screen.
@@ -177,6 +180,8 @@ to change later.
 - **Decision: the trend chart uses Reanimated views, not victory-native.** Bars are animated `View`s. That needs no new native module (no APK rebuild) and handles 6–12 bars easily. Revisit victory-native/Skia in Phase 5, where the 24-month scrubbable area chart genuinely needs it.
 - **Reanimated rejects exponent notation in colour strings.** An animated `rgba(…, ${alpha})` template produced `2.1e-7` near the end of a timing curve and threw `Invalid color value`. Use `interpolateColor` instead.
 - **The design is dark-only for now,** matching the web app. A theme toggle belongs in Settings (Phase 9).
+- **Home waits for real answers before choosing a layout.** Welcome shows only when both "has transactions" and "onboarding dismissed" are `ok`; the insight and renewals render nothing while pending — so no empty state or welcome flashes on launch (convention #12).
+- **Presentational pieces live below features:** `components/charts/TrendChart`, `components/ui/InsightBanner`, `components/ui/RenewalsCard`, `components/layout/Welcome` take data and callbacks only, so Phase 5 Insights and Phase 4 Tracker can reuse them.
 
 ---
 
@@ -231,8 +236,8 @@ to change later.
   *Why:* Parity, and the most-looked-at chart in the web app.
 - [ ] **Stat cards: avg/day, biggest expense, top category, savings rate**
   *Why:* Parity. Each is a one-line SQL query, so they're nearly free once the query file exists.
-- [ ] **Make both chart wrappers theme-aware for system dark mode**
-  *Why:* Android users flip dark mode far more than web users, and Skia doesn't inherit CSS — colours must be passed explicitly.
+- [ ] **Take every chart colour from `lib/theme.ts` tokens — no literals**
+  *Why:* The app is dark-only in v1 (decided 2026-09-14), with a light theme arriving as a Settings toggle in Phase 9. Skia doesn't inherit CSS, so charts that read tokens switch for free; charts with hardcoded colours need rework then.
 - [ ] **Re-time every query on the 50k database, confirm no regression**
   *Why:* Closes the loop opened in Phase 1. Query performance drifts as `WHERE` clauses accumulate.
 
@@ -341,15 +346,15 @@ to change later.
 - [ ] **Export as `.json` with a `schema_version` header**
   *Why:* Readable, diffable, and still restorable if the schema moves on. `.db` is exact but opaque; `.json` is the long-term insurance.
 - [ ] **Optional passphrase on `.db` export, with a clear warning about losing it**
-  *Why:* An unencrypted export sitting in a Drive folder undoes the on-device encryption entirely. The warning matters — a forgotten passphrase means the backup is gone.
+  *Why:* The export is the copy that leaves the phone — Drive, WhatsApp, an SD card — so since 2026-09-14 it is the only place the app adds its own encryption. Write it with SQLCipher (`ATTACH '<file>' AS enc KEY '<passphrase>'` then `SELECT sqlcipher_export('enc')`); restore attaches with the same passphrase. The warning matters — a forgotten passphrase means the backup is gone.
 - [ ] **Include sheets in backup: the sheet tables AND the template files under `files/sheets/`**
   *Why:* A sheet restored without its original workbook can still be edited but can no longer export with its formatting. The templates live outside the database, so a `.db`-only backup would silently miss them.
 - [ ] **Restore: validate `schema_version` and row counts before touching anything**
   *Why:* Restoring a corrupt or wrong-version file over good data is the worst possible outcome. Validate first, refuse clearly, change nothing.
 - [ ] **Snapshot the current database before overwriting on restore**
   *Why:* Restore is the single most destructive action in the app. A user who picks the wrong file must not lose the right data.
-- [ ] **Enable Android auto-backup (`allowBackup`), confirm the DB is included**
-  *Why:* Nearly free durability for the common case of upgrading phones. Invisible to the user, which is exactly its value — and its limitation.
+- [ ] **Enable Android auto-backup (`allowBackup`), confirm the DB is included — and that it opens on a second device**
+  *Why:* Nearly free durability for the common case of upgrading phones. Invisible to the user, which is exactly its value — and its limitation. "Included" is not enough: a Keystore-keyed database was included and still unopenable after restore, which is why the main DB is unkeyed (TASKS2 F0).
 - [ ] **Surface database size and last-backup date in Settings**
   *Why:* The auto-backup cap is 25 MB and silent when exceeded. Showing size is how the user finds out before it matters.
 - [ ] **Monthly backup reminder, only when `last_backup_at` > 30 days old**
@@ -451,6 +456,10 @@ Record decisions made mid-build that future sessions need to know. Newest first.
 
 | Date | Decision | Reason |
 |---|---|---|
+| 2026-09-14 | **Main database unkeyed on device; SQLCipher kept only for passphrase-encrypted backup files** (TASKS2 F0) | A Keystore-held key never leaves the phone, so Android auto-backup restored a database nobody could open. FBE + the app sandbox already protect data at rest; exports are the copies that leave the device |
+| 2026-09-14 | Ledger pages by keyset `(date, id) < (?, ?)`, page 1 live (TASKS2 F0) | A growing `LIMIT` re-sends every loaded row on every write; a capped window can't scroll a 50k ledger end to end |
+| 2026-09-14 | `categories.kind` (`expense`/`income`/`both`) added; `transactions.is_recurring` dropped — both in migration 0001 (TASKS2 F0) | Salary was offered on expenses; the recurring flag did nothing and overlapped the Tracker. Phase 4 may add a nullable `subscription_id` |
+| 2026-09-14 | Dark-only confirmed for v1, including the native shell (TASKS2 F0) | Matches the redesign. Light theme stays a Phase 9 Settings toggle; tokens-only colours keep that cheap |
 | 2026-09-14 | **Imports become Sheets: separate, editable workspaces — not ledger rows** | The user's model: people already track money in spreadsheets and want to keep those files as their own thing. Each file is a sheet, viewed and edited individually |
 | 2026-09-14 | Sheets: the app edits its own copy; the original file changes only on explicit export | Chosen over live write-back. Avoids silent overwrites and conflicts with edits made in Excel; changes made in Excel come back through Refresh with a review step |
 | 2026-09-14 | Sheet rows count in totals only when the sheet opts in; mirrored rows never do | Per-sheet toggle, implemented as a `money_rows` UNION ALL view so dashboard/budget/analytics queries change once |

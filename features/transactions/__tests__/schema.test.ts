@@ -11,7 +11,6 @@ const base: TransactionFormValues = {
   date: '2026-09-13',
   categoryId: 1,
   note: 'Lunch',
-  isRecurring: false,
 };
 
 function parse(overrides: Partial<TransactionFormValues>) {
@@ -51,6 +50,13 @@ describe('transactionFormSchema', () => {
     expect(parse({ date: '13/09/2026' }).success).toBe(false);
     expect(parse({ date: '2026-9-3' }).success).toBe(false);
     expect(parse({ date: '2026-09-13' }).success).toBe(true);
+  });
+
+  it('rejects dates that do not exist, and accepts leap days that do', () => {
+    expect(parse({ date: '2026-02-31' }).success).toBe(false);
+    expect(parse({ date: '2026-02-29' }).success).toBe(false);
+    expect(parse({ date: '2026-13-01' }).success).toBe(false);
+    expect(parse({ date: '2028-02-29' }).success).toBe(true);
   });
 
   it('allows a null category', () => {
