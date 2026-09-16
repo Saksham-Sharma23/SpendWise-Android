@@ -1,0 +1,188 @@
+import type { LucideIcon } from 'lucide-react-native';
+import type { ReactNode } from 'react';
+import { BackHandler, KeyboardAvoidingView, Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { PressableScale } from '../../../components/ui/PressableScale';
+import { fonts, useColors, withAlpha, type Palette } from '../../../lib/theme';
+import type { Tone } from '../wording';
+
+/** The colour for a balance tone: owed to you, you owe, or neither. */
+export function toneColor(tone: Tone, colors: Palette): string {
+  return tone === 'good' ? colors.income : tone === 'bad' ? colors.expense : colors.muted;
+}
+
+export function SectionLabel({ children }: { children: string }) {
+  const colors = useColors();
+  return (
+    <Text
+      style={{
+        color: colors.muted,
+        fontFamily: fonts.semibold,
+        fontSize: 12,
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
+        marginBottom: 10,
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+export function ErrorText({ children }: { children: string }) {
+  const colors = useColors();
+  return <Text style={{ color: colors.expense, fontFamily: fonts.medium, fontSize: 12, marginTop: 6 }}>{children}</Text>;
+}
+
+export function RoundButton({
+  label,
+  onPress,
+  children,
+  tint,
+  filled = false,
+}: {
+  label: string;
+  onPress: () => void;
+  children: ReactNode;
+  tint?: string;
+  filled?: boolean;
+}) {
+  const colors = useColors();
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      scaleTo={0.88}
+      className="h-11 w-11 items-center justify-center rounded-full"
+      style={
+        filled
+          ? { backgroundColor: tint ?? colors.primary }
+          : {
+              backgroundColor: tint ? withAlpha(tint, 0.12) : colors.card,
+              borderWidth: 1,
+              borderColor: tint ? withAlpha(tint, 0.3) : colors.border,
+            }
+      }
+    >
+      {children}
+    </PressableScale>
+  );
+}
+
+/** A pill action under a header: "Settle up", "Balances", "Totals". */
+export function ActionPill({ icon: Icon, label, onPress, primary = false }: { icon: LucideIcon; label: string; onPress: () => void; primary?: boolean }) {
+  const colors = useColors();
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      onPress={onPress}
+      scaleTo={0.94}
+      className="flex-row items-center gap-1.5 rounded-full px-4 py-2.5"
+      style={
+        primary
+          ? { backgroundColor: colors.primary }
+          : { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }
+      }
+    >
+      <Icon size={15} color={primary ? colors.onPrimary : colors.foreground} strokeWidth={2.3} />
+      <Text style={{ color: primary ? colors.onPrimary : colors.foreground, fontFamily: fonts.semibold, fontSize: 13 }}>{label}</Text>
+    </PressableScale>
+  );
+}
+
+/** The big floating "Add expense" button at the bottom of a Groups screen. */
+export function FloatingAction({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  return (
+    <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: insets.bottom + 18, alignItems: 'center' }}>
+      <PressableScale
+        accessibilityRole="button"
+        onPress={onPress}
+        scaleTo={0.94}
+        className="flex-row items-center gap-2 rounded-full px-6 py-4"
+        style={{ backgroundColor: colors.primary, shadowColor: colors.shadow, shadowOpacity: colors.shadowOpacity, shadowRadius: 12, elevation: 6 }}
+      >
+        <Icon size={19} color={colors.onPrimary} strokeWidth={2.5} />
+        <Text style={{ color: colors.onPrimary, fontFamily: fonts.bold, fontSize: 15 }}>{label}</Text>
+      </PressableScale>
+    </View>
+  );
+}
+
+/**
+ * A bottom sheet that lives INSIDE a form screen, so a draft never crosses
+ * routes: the paid-by and split editors open over the expense form and edit
+ * its state directly. Android back closes the sheet, not the form — one of the
+ * three meanings of "back" CLAUDE.md warns must not fight.
+ */
+export function FormSheet({
+  visible,
+  title,
+  onClose,
+  children,
+  footer,
+}: {
+  visible: boolean;
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, onClose]);
+
+  if (!visible) return null;
+  return (
+    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+      <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(160)} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          onPress={onClose}
+          style={{ flex: 1, backgroundColor: withAlpha(colors.shadow, 0.45) }}
+        />
+      </Animated.View>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }} pointerEvents="box-none">
+        <Animated.View
+          entering={SlideInDown.springify().damping(22).stiffness(220)}
+          exiting={SlideOutDown.duration(180)}
+          style={{
+            maxHeight: '88%',
+            backgroundColor: colors.background,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            paddingBottom: insets.bottom + 12,
+          }}
+        >
+          <View className="items-center pt-2.5">
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong }} />
+          </View>
+          <View className="flex-row items-center justify-between px-5 pb-2 pt-3">
+            <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 18 }}>{title}</Text>
+            <PressableScale accessibilityRole="button" onPress={onClose} className="rounded-full px-4 py-2" style={{ backgroundColor: colors.primary }}>
+              <Text style={{ color: colors.onPrimary, fontFamily: fonts.semibold, fontSize: 14 }}>Done</Text>
+            </PressableScale>
+          </View>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+            {children}
+          </ScrollView>
+          {footer ? <View className="px-5 pt-2">{footer}</View> : null}
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}

@@ -13,6 +13,9 @@ import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-nativ
 import { MONTHS_SHORT, formatMonthYear } from '../../lib/dates';
 import { formatINR } from '../../lib/money';
 import { colors, fonts, useColors } from '../../lib/theme';
+import { smoothPath } from './geometry';
+
+export { smoothPath } from './geometry';
 
 /**
  * Income vs expense over months — the reusable chart for Home (Phase 3) and
@@ -184,30 +187,6 @@ function Bar({
 
 const PAD_TOP = 10;
 const PAD_BOTTOM = 4;
-
-/**
- * A smooth curve through the points (Catmull–Rom converted to cubic Béziers).
- * Tension is kept low so the curve never overshoots below zero or above the
- * month's real value by a visible amount.
- */
-export function smoothPath(xy: [number, number][]): string {
-  if (xy.length === 0) return '';
-  if (xy.length === 1) return `M${xy[0]![0]},${xy[0]![1]}`;
-  const t = 0.18;
-  let d = `M${xy[0]![0]},${xy[0]![1]}`;
-  for (let i = 0; i < xy.length - 1; i++) {
-    const p0 = xy[i - 1] ?? xy[i]!;
-    const p1 = xy[i]!;
-    const p2 = xy[i + 1]!;
-    const p3 = xy[i + 2] ?? p2;
-    const c1x = p1[0] + (p2[0] - p0[0]) * t;
-    const c1y = p1[1] + (p2[1] - p0[1]) * t;
-    const c2x = p2[0] - (p3[0] - p1[0]) * t;
-    const c2y = p2[1] - (p3[1] - p1[1]) * t;
-    d += ` C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
-  }
-  return d;
-}
 
 function LineMode({
   points,

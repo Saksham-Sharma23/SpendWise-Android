@@ -254,7 +254,7 @@ export function Ledger() {
               className="rounded-full px-4 py-2.5"
               style={{ backgroundColor: colors.expense }}
             >
-              <Text style={{ color: colors.background, fontFamily: fonts.semibold, fontSize: 13 }}>Delete</Text>
+              <Text style={{ color: colors.onAccent, fontFamily: fonts.semibold, fontSize: 13 }}>Delete</Text>
             </PressableScale>
           </View>
         ) : (
@@ -323,8 +323,8 @@ export function Ledger() {
             }}
             options={[
               { value: 'all', label: 'All' },
-              { value: 'income', label: 'Income', tint: colors.income, onTint: colors.background },
-              { value: 'expense', label: 'Expense', tint: colors.expense, onTint: colors.background },
+              { value: 'income', label: 'Income', tint: colors.income, onTint: colors.onAccent },
+              { value: 'expense', label: 'Expense', tint: colors.expense, onTint: colors.onAccent },
             ]}
           />
         </Animated.View>

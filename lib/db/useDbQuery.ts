@@ -38,7 +38,15 @@ export type TableName =
   | 'budgets'
   | 'subscriptions'
   | 'import_batches'
-  | 'app_meta';
+  | 'app_meta'
+  | 'people'
+  | 'split_groups'
+  | 'group_members'
+  | 'split_expenses'
+  | 'split_expense_payers'
+  | 'split_expense_shares'
+  | 'split_debts'
+  | 'settlements';
 
 export type QueryStatus = 'pending' | 'ok' | 'error';
 

@@ -105,7 +105,7 @@ function fingerprint(sqlite: Database.Database): Fingerprint {
   };
 }
 
-describe('migrations 0001–0005 on a populated 0000 database', () => {
+describe('migrations 0001–0008 on a populated 0000 database', () => {
   let sqlite: Database.Database;
   let before: Fingerprint;
 
@@ -198,6 +198,34 @@ describe('migrations 0001–0005 on a populated 0000 database', () => {
       ]),
     );
     expect(names).not.toContain('tx_date_idx');
+  });
+
+  it('[0007] creates the Groups tables and their indexes', () => {
+    const tables = (sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name);
+    expect(tables).toEqual(
+      expect.arrayContaining([
+        'people', 'split_groups', 'group_members', 'split_expenses',
+        'split_expense_payers', 'split_expense_shares', 'split_debts', 'settlements',
+      ]),
+    );
+    const names = (sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all() as { name: string }[]).map((r) => r.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'people_self_unique', 'split_group_direct_unique', 'group_member_unique', 'split_expense_group_idx',
+        'split_debt_group_idx', 'settlement_group_idx',
+      ]),
+    );
+  });
+
+  it('[0008] seeds exactly one "You", and the partial index refuses a second', () => {
+    const selves = sqlite.prepare('SELECT uid, name FROM people WHERE is_self = 1').all();
+    expect(selves).toEqual([{ uid: 'sys:self', name: 'You' }]);
+    expect(() => sqlite.prepare("INSERT INTO people (name, is_self) VALUES ('Also me', 1)").run()).toThrow(/UNIQUE/i);
+    expect(() => sqlite.prepare("INSERT INTO people (name) VALUES ('Rahul')").run()).not.toThrow();
+  });
+
+  it('[0007] leaves the ledger untouched — groups never write transactions', () => {
+    expect(fingerprint(sqlite).counts.transactions).toBe(before.counts.transactions);
   });
 
   it('records every migration as applied', () => {

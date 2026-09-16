@@ -117,6 +117,22 @@ function RootLayoutInner() {
           <Stack.Screen name="(modals)/category" options={{ presentation: 'modal' }} />
           <Stack.Screen name="(modals)/budget" options={{ presentation: 'modal' }} />
           <Stack.Screen name="(modals)/subscription" options={{ presentation: 'modal' }} />
+          {/* Groups: full-screen forms, and who-owes-whom as a sheet over the group. */}
+          <Stack.Screen name="(modals)/group" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="(modals)/friend" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="(modals)/split-expense" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="(modals)/settle-up" options={{ presentation: 'modal' }} />
+          <Stack.Screen
+            name="(modals)/balances"
+            options={{
+              presentation: 'formSheet',
+              sheetAllowedDetents: [0.7, 1],
+              sheetGrabberVisible: true,
+              sheetCornerRadius: 28,
+              sheetExpandsWhenScrolledToEdge: true,
+              contentStyle: { backgroundColor: colors.card },
+            }}
+          />
         </Stack>
         {/* Above the floating tab bar, so a toast never covers the add button. */}
         <Toaster position="bottom-center" richColors theme={theme} offset={110} />

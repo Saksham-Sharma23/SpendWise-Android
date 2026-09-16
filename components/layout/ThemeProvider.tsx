@@ -11,13 +11,20 @@ import { useSystemThemeSync } from '../../lib/themeStore';
  * lib/theme.ts. `lib/themeStore.ts` already drives the JS side at module
  * load, so nothing paints in the wrong palette; this keeps NativeWind in
  * step and re-resolves when the OS scheme changes.
+ *
+ * NativeWind is given the PREFERENCE, not the resolved theme. On Android
+ * `colorScheme.set` sets the app's night mode (AppCompat, scoped to this app —
+ * the phone's own dark-mode toggle is never touched): 'light'/'dark' force it,
+ * 'system' maps to MODE_NIGHT_FOLLOW_SYSTEM. Passing the resolved theme meant
+ * the app was ALWAYS forced, so choosing System never lifted the override and
+ * the app could not see the phone's real setting again.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const resolved = useSystemThemeSync();
+  const { preference } = useSystemThemeSync();
 
   useEffect(() => {
-    colorScheme.set(resolved);
-  }, [resolved]);
+    colorScheme.set(preference);
+  }, [preference]);
 
   return <>{children}</>;
 }

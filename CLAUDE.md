@@ -90,7 +90,7 @@ privacy policy about transmitted data because it transmits none.
 | Client state | `zustand` | Filters, theme, import wizard draft only |
 | Forms | `react-hook-form` + `zod` | Zod at the form boundary, Drizzle types at the DB boundary |
 | Lists | `@shopify/flash-list` v2 | JS-only rewrite for Fabric, no size estimates |
-| Charts | `victory-native` + `@shopify/react-native-skia` | GPU rendering, Reanimated gestures |
+| Charts | `react-native-svg` + Reanimated *(decided Phase 5, 2026-09-15)* | Presentational wrappers in `components/charts/`, pure maths in `geometry.ts`. Animations and the scrubber run in worklets; no Skia, so no native rebuild |
 | Animation | `react-native-reanimated` v4, `react-native-gesture-handler` | UI-thread |
 | Key-value | `react-native-mmkv` | Prefs, import presets, widget snapshot. **Not for records** |
 | Toasts | `sonner-native` | Same API as the web's sonner |
@@ -145,8 +145,9 @@ D:\Projects\SpendWise_Android
 ├── features/
 │   ├── transactions/  { queries.ts  components/  schema.ts }
 │   ├── budgets/       { queries.ts  components/  schema.ts }
-│   ├── analytics/     { queries.ts  components/ }      ← the SQL lives here
+│   ├── analytics/     { sql.ts  queries.ts  period.ts  components/ }  ← the SQL lives here (builders take the db, so tests run the shipped SQL)
 │   ├── tracker/       { queries.ts  renewal.ts  notifications.ts }
+│   ├── groups/        { split.ts  debts.ts  balances.ts  draft.ts  sql.ts  writes.ts  queries.ts  mutations.ts  wording.ts  components/ }
 │   ├── dashboard/     { queries.ts  components/ }
 │   ├── sheets/        { queries.ts  parse.ts  map.ts  normalize.ts  export.ts  refresh.ts  link.ts }
 │   └── backup/        { export.ts  restore.ts  validate.ts }
@@ -224,8 +225,31 @@ export const transactions = sqliteTable("transactions", {
 ```
 
 Tables: `categories` · `transactions` · `budgets` · `subscriptions` · `import_batches` · `app_meta` —
-plus, in Phase 6, `sheets` · `sheet_columns` · `sheet_rows` · `sheet_links` · `sheet_row_links` and the
-`money_rows` view (see *Sheets*).
+plus Groups (migration 0007) and, in Phase 6, `sheets` · `sheet_columns` · `sheet_rows` · `sheet_links` ·
+`sheet_row_links` and the `money_rows` view (see *Sheets*).
+
+### Groups — split expenses *(built 2026-09-15, TASKS "Groups")*
+
+**Separate from the ledger:** nothing in Groups creates a transaction or moves a budget, Home or
+Insights figure. Friends are typed names (no contacts permission).
+
+| Table | Holds |
+|---|---|
+| `people` | Friends **and you** — exactly one `is_self` row, uid `sys:self`, seeded by custom migration 0008 |
+| `split_groups` | name, icon, `simplify_debts`; `direct_person_id` set on the **hidden group behind a 1:1 friendship**, so friend expenses use the same balance code |
+| `group_members` | Soft-removable, only once that member's balance in the group is 0 |
+| `split_expenses` + `split_expense_payers` + `split_expense_shares` | Payers and shares each sum to the amount **exactly**; shares keep the typed `input` (basis points / share units / paise) so edits rebuild |
+| `split_debts` | **Derived** pairwise debts, rewritten with its expense in one `writeTx` |
+| `settlements` | A payment between two members |
+
+- **Balances are never stored.** `netsQuery` sums paid − owed + sent − received per (group, person);
+  JS runs `simplifyDebts` over those rows (pairing pre-pass, then two max-heaps, ≤ n − 1 payments) or
+  `pairwiseNet` when simplify is off. Money core: `lib/heap.ts`, `features/groups/{split,debts,balances,draft}.ts`.
+- **Gotcha:** in a single-table Drizzle select, `${table.column}` renders unqualified — inside a
+  correlated subquery SQLite binds it to the inner table. Write `split_groups.id` literally there.
+- **Gotcha:** through `readDb` (sqlite-proxy) a raw `db.all(sql\`…\`)` returns value arrays with no
+  field names. Wrap raw SQL as `select({...}).from(sql\`(…) x\`)`.
+- Diagram: `docs/diagrams/01-debt-simplification.mmd`.
 
 ---
 
@@ -278,7 +302,7 @@ five-minute fix; finding it in Phase 5 is a redesign.
    ├ trend       ├ swipe delete    ├ donut         ├ Sheets
    ├ budgets →   ├ long-press sel. ├ month sel.    ├ Backup & restore
    ├ renewals →  ├ filter chips    └ stat cards    ├ Settings
-   └ recent      └ search (LIKE)                   └ Groups (v1.1)
+   └ recent      └ search (LIKE)                   └ Groups & friends
 
 [ Home ] [ Transactions ] ( + ) [ Insights ] [ More ]
                             tap: add · hold: import
@@ -545,6 +569,7 @@ Full detail with checkboxes in [`TASKS.md`](TASKS.md) and the [live plan](https:
 | 7 | **Backup & restore** | 3–4 d |
 | 8 | Native layer | 3–4 d |
 | 9 | Hardening & Play Store | 4–5 d |
+| G | Groups — split expenses (pulled forward from v1.1) | 6.5 d |
 
 **Total: ~31–40 working days solo** (6–8 weeks of evenings and weekends). Phase 6 grew on
 2026-09-14 from a one-way import into sheets + linking; auth, HTTP, caching and offline queueing
@@ -559,7 +584,6 @@ what everything else sits on, and all four are expensive to change later.
 
 | Item | Why | Cost to add later |
 |---|---|---|
-| **Groups (split expenses)** | Not in v1 | **Dearer than it looks.** With a backend the exact-paise split and greedy min-cash-flow simplification already existed. Standalone, both must be written in TS and tested carefully — a rounding error in a split is money that silently vanishes. Budget 4 days, not 2 |
 | **Multi-device sync** | No server by design | A real project, not a switch. The schema allows it: add a UUID column and `updated_at` per row (both additive), and only `features/*/queries.ts` changes |
 | **Precomputed rollup tables** | Premature | Only if a real ledger measurably janks. Measure before believing it |
 | **Multi-currency** | Web app is INR-only too | Follows the web app's lead |

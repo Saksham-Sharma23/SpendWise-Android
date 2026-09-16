@@ -197,7 +197,8 @@ export function CategoryEditor() {
                 className="h-11 w-11 items-center justify-center rounded-full"
                 style={{ backgroundColor: c, borderWidth: on ? 3 : 0, borderColor: colors.foreground }}
               >
-                {on ? <Check size={18} color={colors.background} strokeWidth={3} /> : null}
+                {/* The swatch is a fixed bright colour, so the tick stays dark in both themes. */}
+                {on ? <Check size={18} color={colors.onBrightFill} strokeWidth={3} /> : null}
               </PressableScale>
             );
           })}

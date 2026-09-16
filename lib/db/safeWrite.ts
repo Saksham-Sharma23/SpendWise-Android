@@ -1,5 +1,7 @@
 import { toast } from 'sonner-native';
 
+import { UserFacingError } from './errors';
+
 /**
  * Run a database write and turn a failure into a toast + a result the caller
  * can branch on.
@@ -12,8 +14,11 @@ import { toast } from 'sonner-native';
 
 export type WriteResult<T> = { ok: true; value: T } | { ok: false; message: string };
 
+export { UserFacingError };
+
 /** Map SQLite's terse errors to something a person can act on. Pure, so it is tested. */
 export function describeWriteError(e: unknown, action: string): string {
+  if (e instanceof UserFacingError) return e.message;
   const raw = e instanceof Error ? e.message : String(e);
   if (/SQLITE_FULL|database or disk is full/i.test(raw)) {
     return `Couldn't ${action} — your phone's storage is full`;

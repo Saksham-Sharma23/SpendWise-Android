@@ -176,8 +176,8 @@ export default function TransactionModal() {
                 value={field.value}
                 onChange={field.onChange}
                 options={[
-                  { value: 'expense', label: 'Expense', tint: colors.expense, onTint: colors.background },
-                  { value: 'income', label: 'Income', tint: colors.income, onTint: colors.background },
+                  { value: 'expense', label: 'Expense', tint: colors.expense, onTint: colors.onAccent },
+                  { value: 'income', label: 'Income', tint: colors.income, onTint: colors.onAccent },
                 ]}
               />
             )}

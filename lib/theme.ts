@@ -17,14 +17,15 @@ import { useSyncExternalStore } from 'react';
  * ## The light palette is not "dark inverted"
  *
  * Pure white (#FFF) as the page with white cards gives nothing to separate
- * them, so the ground is a warm off-white and cards are true white: the
+ * them, so the ground is a faint sage off-white and cards are true white: the
  * card floats above the page instead of dissolving into it. Dark mode does
  * the reverse — a near-black page with lighter graphite cards. Both directions
  * mean "the card is nearer to you".
  *
  * The lime is the brand, but at 67% lightness it cannot carry white text and
- * glares as a large fill on a white page. Light mode uses a deeper olive of
- * the same hue: recognisably SpendWise, and readable with white text on it.
+ * glares as a large fill on a white page. Light mode uses a leaf green from
+ * the same family: recognisably SpendWise, readable with white text on it,
+ * and readable AS text on a card.
  */
 
 export type ThemeName = 'light' | 'dark';
@@ -39,6 +40,54 @@ export type ThemePreference = 'system' | 'light' | 'dark';
  */
 export function resolveTheme(preference: ThemePreference, system: ThemeName): ThemeName {
   return preference === 'system' ? system : preference;
+}
+
+/**
+ * The theme state and its two transitions — pure, so the rules are tested in
+ * Node (lib/themeStore.ts applies them).
+ *
+ * ## Why the phone's theme cannot simply be read from `Appearance`
+ *
+ * Choosing Light or Dark forces the APP's night mode (Android
+ * `AppCompatDelegate.setDefaultNightMode`). That override is scoped to this
+ * app, and your phone's own dark-mode setting is untouched. But while
+ * it is in force, `Appearance.getColorScheme()` and its change events report
+ * the app's FORCED scheme, not the phone's. Taking those reports as "the
+ * phone's theme" is what made System stop following the phone: after picking
+ * Light, System stayed light on a dark phone.
+ *
+ * So a report only counts as the phone's theme while the preference is
+ * System, and switching back to System lifts the override (ThemeProvider
+ * passes 'system' to NativeWind, which maps to MODE_NIGHT_FOLLOW_SYSTEM).
+ */
+export interface ThemeState {
+  preference: ThemePreference;
+  /** The phone's theme, as last reliably known. */
+  system: ThemeName;
+  /** What is on screen. */
+  resolved: ThemeName;
+}
+
+export function applyPreference(state: ThemeState, preference: ThemePreference): ThemeState {
+  if (preference !== 'system') {
+    return { preference, system: state.system, resolved: preference };
+  }
+  if (state.preference === 'system') return state;
+  // Leaving a forced theme. `state.system` may be stale (reports were ignored
+  // while forced), and the phone's real value is not readable until the
+  // override lifts. Two cases, both handled:
+  //   - the phone matches what is on screen: lifting the override changes
+  //     nothing, Android sends no event, and this guess is simply correct;
+  //   - it does not: lifting the override changes the effective scheme,
+  //     Android reports the real value, and applySystemReport takes it.
+  return { preference, system: state.resolved, resolved: state.resolved };
+}
+
+export function applySystemReport(state: ThemeState, reported: ThemeName): ThemeState {
+  // While Light or Dark is forced, the report is the app's own override.
+  if (state.preference !== 'system') return state;
+  if (state.system === reported && state.resolved === reported) return state;
+  return { ...state, system: reported, resolved: reported };
 }
 
 export interface Palette {
@@ -61,6 +110,28 @@ export interface Palette {
   /** A wash of the accent, for selected chips and soft fills. */
   primarySoft: string;
   primaryBorder: string;
+
+  /**
+   * Text and icons drawn ON a saturated fill — an income/expense pill, a
+   * swipe-to-delete action, a selected colour swatch.
+   *
+   * NOT `background`. The two coincide in dark mode (a near-black glyph on a
+   * bright mint or coral reads perfectly), which is why call sites reached
+   * for `background` — but in light mode `background` is off-white, and
+   * off-white on the light palette's deepened coral falls to 4.12:1, under
+   * AA. These colours are chosen against the fills each theme actually uses.
+   */
+  onAccent: string;
+
+  /**
+   * A glyph drawn on a FIXED bright fill — one the theme does not choose, such
+   * as a `CATEGORY_COLORS` swatch or a user's own category colour.
+   *
+   * Constant across themes on purpose. Those fills stay bright in light mode,
+   * so the glyph must stay dark: white clears 3:1 on only 11 of the 18
+   * swatches (it fails on the lime at 1.23:1), while near-black clears all 18.
+   */
+  onBrightFill: string;
 
   income: string;
   incomeSoft: string;
@@ -90,6 +161,11 @@ const dark: Palette = {
   primarySoft: 'rgba(212, 245, 94, 0.10)',
   primaryBorder: 'rgba(212, 245, 94, 0.28)',
 
+  // The dark palette's fills are bright (mint #3DDC97, coral #F87171), so a
+  // near-black glyph is the readable choice: 11.2:1 and 7.2:1.
+  onAccent: '#0A0A0B',
+  onBrightFill: '#0A0A0B',
+
   income: '#3DDC97',
   incomeSoft: 'rgba(61, 220, 151, 0.12)',
   expense: '#F87171',
@@ -104,27 +180,35 @@ const dark: Palette = {
 };
 
 const light: Palette = {
-  // Warm off-white, not #FFF: it gives true-white cards something to sit on,
-  // and reads softer under a bright screen.
-  background: '#F7F6F3',
+  // A faint cool sage, not #FFF and not beige: it gives true-white cards
+  // something to sit on, and the green cast ties the neutrals to the brand —
+  // on the old warm beige the green read as khaki.
+  background: '#F4F7F2',
   card: '#FFFFFF',
-  elevated: '#F1F0EC',
-  border: '#E4E2DC',
-  borderStrong: '#D2CFC7',
+  elevated: '#ECF1E8',
+  border: '#DFE6DA',
+  borderStrong: '#C9D2C3',
 
-  // Near-black with a hint of warmth rather than #000 — pure black on white
-  // is harsh at text sizes.
-  foreground: '#1A1A18',
-  muted: '#6B6A65',
-  subtle: '#9A9891',
+  // A green-black ink rather than #000 — pure black on white is harsh at
+  // text sizes, and the tint keeps text in the same family as the ground.
+  foreground: '#121A15',
+  muted: '#56635B',
+  subtle: '#8A958E',
 
-  // The lime, deepened until white text clears 4.5:1 on it (this lands at
-  // 5.3:1) while keeping the hue. Large fills of the dark theme's lime would
-  // glare on a white page, and it cannot carry white text at all.
-  primary: '#5C7416',
+  // A leaf green in the lime's family, deep enough that white text clears
+  // 4.5:1 on it (5.06:1) AND that it reads as text on a white card (also
+  // 5.06:1) — primary is used both ways. The dark theme's lime cannot carry
+  // white text and glares as a fill on a white page.
+  primary: '#3F7D0B',
   onPrimary: '#FFFFFF',
-  primarySoft: 'rgba(92, 116, 22, 0.10)',
-  primaryBorder: 'rgba(92, 116, 22, 0.30)',
+  primarySoft: 'rgba(63, 125, 11, 0.10)',
+  primaryBorder: 'rgba(63, 125, 11, 0.28)',
+
+  // The light palette's fills are deep (leaf green, emerald, crimson),
+  // so white is the readable glyph — and the reason this token exists at all.
+  onAccent: '#FFFFFF',
+  // Deliberately the same near-black as dark mode: see the field's comment.
+  onBrightFill: '#0A0A0B',
 
   // Money colours are darkened too: the dark theme's mint and coral are built
   // to glow on black and turn pastel on white.
@@ -132,17 +216,23 @@ const light: Palette = {
   // They are also pulled APART in lightness, not just in hue. Equally dark
   // green and red differ only by hue, so red-green colourblind eyes see one
   // colour — and income and expense are the one pair in this app that must
-  // never be confused. The green is deliberately the darker of the two.
-  income: '#0B6B46',
-  incomeSoft: 'rgba(11, 107, 70, 0.10)',
-  expense: '#D14A21',
-  expenseSoft: 'rgba(209, 74, 33, 0.10)',
-  warning: '#9A6508',
-  warningSoft: 'rgba(154, 101, 8, 0.12)',
+  // never be confused. The emerald is deliberately the darker of the two
+  // (1.47:1 between them), and a different hue from primary (163° vs 93°) so
+  // a net balance in primary is never read as income.
+  income: '#08654A',
+  incomeSoft: 'rgba(8, 101, 74, 0.10)',
+  // A crimson-coral: white text on an expense pill clears 4.5:1 (4.80). Not
+  // taken darker: past this the red and green converge in lightness and the
+  // income/expense pair stops being distinguishable.
+  expense: '#D2383E',
+  expenseSoft: 'rgba(210, 56, 62, 0.10)',
+  // Amber, kept orange-leaning so it sits clear of both the crimson and the greens.
+  warning: '#B25E09',
+  warningSoft: 'rgba(178, 94, 9, 0.12)',
 
-  // On white, a soft grey-brown shadow is what makes a card read as raised.
-  shadow: '#3A3730',
-  shadowOpacity: 0.1,
+  // On white, a soft green-ink shadow is what makes a card read as raised.
+  shadow: '#1B2A1F',
+  shadowOpacity: 0.08,
 };
 
 export const PALETTES: Record<ThemeName, Palette> = { light, dark };
@@ -215,6 +305,26 @@ export const fonts = {
   bold: 'PlusJakartaSans_700Bold',
 } as const;
 
+/**
+ * Blend `color` into `over` at `amount` (0–1) and return an OPAQUE #RRGGBB.
+ *
+ * The opaque counterpart to `withAlpha`. Use it for a tinted SURFACE: a
+ * translucent background lets whatever sits behind the view show through it,
+ * which on Android includes an elevation shadow — the Home net-balance card
+ * read as two stacked grey boxes for exactly that reason. Keep `withAlpha`
+ * for overlays that are *meant* to let content through.
+ */
+export function mix(color: string, over: string, amount: number): string {
+  const a = Math.min(1, Math.max(0, amount));
+  const channel = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  const blended = [0, 1, 2].map((i) =>
+    Math.round(channel(color, i) * a + channel(over, i) * (1 - a))
+      .toString(16)
+      .padStart(2, '0'),
+  );
+  return `#${blended.join('')}`;
+}
+
 /** Add an alpha channel to a #RRGGBB colour. `alpha` is 0–1. */
 export function withAlpha(hex: string, alpha: number): string {
   const a = Math.round(Math.min(1, Math.max(0, alpha)) * 255)
@@ -229,6 +339,26 @@ export function withAlpha(hex: string, alpha: number): string {
  * Dark mode barely uses one (a black shadow on a near-black page is
  * invisible); light mode needs it, because a white card on an off-white page
  * has almost no edge contrast to separate it.
+ *
+ * ## Why this is platform-split
+ *
+ * `shadowColor` / `shadowOffset` / `shadowRadius` / `shadowOpacity` are
+ * **iOS-only**. Android ignores all four and draws from `elevation` alone,
+ * which is not a soft blur but a shadow cast from the view's OUTLINE.
+ *
+ * Android can only derive that outline when the view has an opaque, uniform
+ * background. A card that is translucent (the accent card is a 7% tint) or
+ * clips a child (`overflow: 'hidden'` + a glow `<Svg>`) gives it nothing to
+ * work from, so it falls back to filling the whole shadow area — painting a
+ * hard grey-olive rectangle AROUND the card. That is exactly what the Home
+ * net-balance card showed: a #C6C7BE box wrapping a #ECEDE4 one.
+ *
+ * So `elevation` is pinned to 0. The iOS props stay (they are inert on
+ * Android and correct on iOS), and depth on Android comes from the border
+ * every Card already draws — which costs nothing and cannot misrender.
+ *
+ * This module is imported by Node tests, so it must not import `Platform`
+ * from react-native; hence the constant rather than a platform branch.
  */
 export function shadow(elevation: 'sm' | 'md' | 'lg' = 'md') {
   const p = PALETTES[active];
@@ -238,7 +368,9 @@ export function shadow(elevation: 'sm' | 'md' | 'lg' = 'md') {
     shadowOffset: { width: 0, height: spec[0] },
     shadowRadius: spec[1],
     shadowOpacity: p.shadowOpacity,
-    elevation: spec[2],
+    // Android only. 0 because an elevation shadow on a translucent or
+    // clipping view renders as a hard rectangle — see the note above.
+    elevation: 0,
   };
 }
 
@@ -251,14 +383,14 @@ export function shadow(elevation: 'sm' | 'md' | 'lg' = 'md') {
  * Each light value is the same hue taken down to at least 3:1.
  */
 const ACCENT_HUES = {
-  lime: { dark: '#D4F55E', light: '#5C7416' },
-  violet: { dark: '#9B8CFF', light: '#5B45D6' },
-  orange: { dark: '#E8833A', light: '#9C4F12' },
-  blue: { dark: '#5EC8F5', light: '#0B6E96' },
-  mint: { dark: '#3DDC97', light: '#0B6B46' },
-  amber: { dark: '#F5B544', light: '#8A5A08' },
-  grey: { dark: '#B0B3BC', light: '#5E5D58' },
-  red: { dark: '#F87171', light: '#B3241F' },
+  lime: { dark: '#D4F55E', light: '#3F7D0B' },
+  violet: { dark: '#9B8CFF', light: '#6547DD' },
+  orange: { dark: '#E8833A', light: '#C2540A' },
+  blue: { dark: '#5EC8F5', light: '#0B72B0' },
+  mint: { dark: '#3DDC97', light: '#0C8158' },
+  amber: { dark: '#F5B544', light: '#9C6A06' },
+  grey: { dark: '#B0B3BC', light: '#5C6A62' },
+  red: { dark: '#F87171', light: '#C7303A' },
 } as const;
 
 export type AccentHue = keyof typeof ACCENT_HUES;

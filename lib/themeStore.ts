@@ -3,7 +3,14 @@ import { Appearance } from 'react-native';
 import { createMMKV } from 'react-native-mmkv';
 import { create } from 'zustand';
 
-import { resolveTheme, setActiveTheme, type ThemeName, type ThemePreference } from './theme';
+import {
+  applyPreference,
+  applySystemReport,
+  resolveTheme,
+  setActiveTheme,
+  type ThemeName,
+  type ThemePreference,
+} from './theme';
 
 /**
  * The theme preference: System, Light or Dark.
@@ -34,29 +41,32 @@ function systemTheme(): ThemeName {
   return Appearance.getColorScheme() === 'light' ? 'light' : 'dark';
 }
 
-interface ThemeState {
+interface ThemeStoreState {
   preference: ThemePreference;
-  /** What the OS currently reports. Only consulted when preference is 'system'. */
+  /** The phone's theme, as last reliably known. Only consulted when preference is 'system'. */
   system: ThemeName;
   /** What is actually on screen. */
   resolved: ThemeName;
   setPreference: (preference: ThemePreference) => void;
-  /** Called by the provider when the OS scheme changes. */
+  /**
+   * Called by the provider when Android reports a colour scheme. Ignored while
+   * Light or Dark is forced — see `applySystemReport` in lib/theme.ts.
+   */
   setSystem: (system: ThemeName) => void;
 }
 
 const initialPreference = readPreference();
 const initialSystem = systemTheme();
 
-export const useThemeStore = create<ThemeState>((set, get) => ({
+export const useThemeStore = create<ThemeStoreState>((set, get) => ({
   preference: initialPreference,
   system: initialSystem,
   resolved: resolveTheme(initialPreference, initialSystem),
 
   setPreference: (preference) => {
-    const resolved = resolveTheme(preference, get().system);
-    set({ preference, resolved });
-    setActiveTheme(resolved);
+    const next = applyPreference(get(), preference);
+    set(next);
+    setActiveTheme(next.resolved);
     try {
       storage.set(KEY, preference);
     } catch {
@@ -65,9 +75,11 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
 
   setSystem: (system) => {
-    const resolved = resolveTheme(get().preference, system);
-    set({ system, resolved });
-    setActiveTheme(resolved);
+    const current = get();
+    const next = applySystemReport(current, system);
+    if (next === current) return;
+    set(next);
+    setActiveTheme(next.resolved);
   },
 }));
 
@@ -77,10 +89,11 @@ setActiveTheme(resolveTheme(initialPreference, initialSystem));
 
 /**
  * Keeps the store in step with the OS setting. Mounted once, at the root.
- * Returns the resolved theme so the root can key its own styling off it.
+ * Returns the preference (what to hand NativeWind) and the resolved theme.
  */
-export function useSystemThemeSync(): ThemeName {
+export function useSystemThemeSync(): { preference: ThemePreference; resolved: ThemeName } {
   const setSystem = useThemeStore((s) => s.setSystem);
+  const preference = useThemeStore((s) => s.preference);
   const resolved = useThemeStore((s) => s.resolved);
 
   useEffect(() => {
@@ -90,5 +103,5 @@ export function useSystemThemeSync(): ThemeName {
     return () => sub.remove();
   }, [setSystem]);
 
-  return resolved;
+  return { preference, resolved };
 }

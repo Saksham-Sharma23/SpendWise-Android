@@ -1,15 +1,16 @@
-import { colorForCategory } from '../../lib/categoryColor';
+import { colorForCategory } from './categoryColor';
 
 /**
- * Deterministic look for a subscription, ported from the web app's
- * `lib/group-utils.ts`.
+ * Deterministic look for anything named — a subscription, a group, a friend —
+ * ported from the web app's `lib/group-utils.ts`.
  *
  * Nothing is persisted: the same name always produces the same icon and
  * colour, so Netflix looks the same on the phone and in the browser, and a
  * subscription with no category still gets something better than a grey blob.
  *
- * A subscription that HAS a category uses the category's icon and colour —
- * this is only the fallback (see ./renewal.ts `enrich`).
+ * Lives in lib/ because the Tracker and Groups both use it, and features may
+ * not import one another (CLAUDE.md #9). A subscription that HAS a category
+ * uses the category's look instead (features/tracker/renewal.ts `enrich`).
  */
 
 /**

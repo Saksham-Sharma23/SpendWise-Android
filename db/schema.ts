@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 /**
  * SpendWise local schema — the single source of truth for every type in the app.
@@ -219,6 +219,199 @@ export const subscriptions = sqliteTable(
 );
 
 // ---------------------------------------------------------------------------
+// Groups — split expenses with friends (features/groups)
+//
+// Kept entirely separate from the ledger (decided 2026-09-15): nothing here
+// creates a transaction or counts toward budgets or analytics.
+//
+// Balances are never stored. A person's net in a group is derived on read:
+//   paid (split_expense_payers) − owed (split_expense_shares)
+//   + settlements they sent − settlements they received.
+// `split_debts` is the one derived table, rewritten with its expense in one
+// transaction, so pairwise "who owes whom" is a GROUP BY rather than a read of
+// every expense. `groups` is avoided as a name: GROUPS is an SQLite keyword.
+// ---------------------------------------------------------------------------
+
+/** Friends, and exactly one row for you (`is_self`, uid `sys:self`, seeded by migration 0008). */
+export const people = sqliteTable(
+  'people',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    uid: text('uid').notNull().default(uidDefault),
+    name: text('name').notNull(),
+    isSelf: integer('is_self', { mode: 'boolean' }).notNull().default(false),
+    createdAt: text('created_at').notNull().default(nowDefault),
+    updatedAt: text('updated_at').notNull().default(nowDefault),
+    deletedAt: text('deleted_at'),
+  },
+  (t) => [
+    uniqueIndex('people_uid_unique').on(t.uid),
+    // Exactly one "you".
+    uniqueIndex('people_self_unique').on(t.isSelf).where(sql`is_self = 1`),
+  ],
+);
+
+export const splitGroups = sqliteTable(
+  'split_groups',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    uid: text('uid').notNull().default(uidDefault),
+    name: text('name').notNull(),
+    /** A CategoryIcon name; null falls back to the deterministic icon for the name. */
+    icon: text('icon'),
+    /** "Simplify group debts": suggest the fewest payments instead of pairwise paybacks. */
+    simplifyDebts: integer('simplify_debts', { mode: 'boolean' }).notNull().default(true),
+    /**
+     * Set only on the hidden group behind a 1:1 friendship ({you, this person}),
+     * so expenses outside any group use exactly the same balance code.
+     */
+    directPersonId: integer('direct_person_id').references(() => people.id),
+    createdAt: text('created_at').notNull().default(nowDefault),
+    updatedAt: text('updated_at').notNull().default(nowDefault),
+    deletedAt: text('deleted_at'),
+  },
+  (t) => [
+    uniqueIndex('split_group_uid_unique').on(t.uid),
+    // One live direct group per friend.
+    uniqueIndex('split_group_direct_unique').on(t.directPersonId).where(sql`deleted_at IS NULL AND direct_person_id IS NOT NULL`),
+  ],
+);
+
+export const groupMembers = sqliteTable(
+  'group_members',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    groupId: integer('group_id')
+      .notNull()
+      .references(() => splitGroups.id, { onDelete: 'cascade' }),
+    personId: integer('person_id')
+      .notNull()
+      .references(() => people.id),
+    createdAt: text('created_at').notNull().default(nowDefault),
+    /** Removed from the group — only allowed once their balance there is zero. */
+    deletedAt: text('deleted_at'),
+  },
+  (t) => [
+    uniqueIndex('group_member_unique').on(t.groupId, t.personId).where(sql`deleted_at IS NULL`),
+    index('group_member_person_idx').on(t.personId),
+  ],
+);
+
+export const splitExpenses = sqliteTable(
+  'split_expenses',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    uid: text('uid').notNull().default(uidDefault),
+    groupId: integer('group_id')
+      .notNull()
+      .references(() => splitGroups.id, { onDelete: 'cascade' }),
+    description: text('description').notNull(),
+    /** Integer paise, same rule as the ledger. Equals the payers' sum and the shares' sum. */
+    amountPaise: integer('amount_paise').notNull(),
+    /** 'YYYY-MM-DD'. */
+    date: text('date').notNull(),
+    /** Used only for the group's category breakdown — never touches the ledger. */
+    categoryId: integer('category_id').references(() => categories.id, { onDelete: 'set null' }),
+    splitMethod: text('split_method', { enum: ['equal', 'exact', 'percent', 'shares'] }).notNull(),
+    note: text('note'),
+    createdAt: text('created_at').notNull().default(nowDefault),
+    updatedAt: text('updated_at').notNull().default(nowDefault),
+    deletedAt: text('deleted_at'),
+  },
+  (t) => [
+    uniqueIndex('split_expense_uid_unique').on(t.uid),
+    index('split_expense_group_idx').on(t.groupId, t.date).where(sql`deleted_at IS NULL`),
+  ],
+);
+
+/** Who paid for an expense, and how much. Replaced wholesale when the expense is edited. */
+export const splitExpensePayers = sqliteTable(
+  'split_expense_payers',
+  {
+    expenseId: integer('expense_id')
+      .notNull()
+      .references(() => splitExpenses.id, { onDelete: 'cascade' }),
+    personId: integer('person_id')
+      .notNull()
+      .references(() => people.id),
+    paidPaise: integer('paid_paise').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.expenseId, t.personId] }), index('split_payer_person_idx').on(t.personId)],
+);
+
+/** What each participant owes for an expense. Replaced wholesale when the expense is edited. */
+export const splitExpenseShares = sqliteTable(
+  'split_expense_shares',
+  {
+    expenseId: integer('expense_id')
+      .notNull()
+      .references(() => splitExpenses.id, { onDelete: 'cascade' }),
+    personId: integer('person_id')
+      .notNull()
+      .references(() => people.id),
+    owedPaise: integer('owed_paise').notNull(),
+    /**
+     * What was typed, so the edit form rebuilds exactly: basis points for a
+     * percent split, units for shares, paise for exact. Null for equal.
+     */
+    input: integer('input'),
+  },
+  (t) => [primaryKey({ columns: [t.expenseId, t.personId] }), index('split_share_person_idx').on(t.personId)],
+);
+
+/** DERIVED from payers + shares (features/groups/debts.ts `expenseDebts`); never edited directly. */
+export const splitDebts = sqliteTable(
+  'split_debts',
+  {
+    expenseId: integer('expense_id')
+      .notNull()
+      .references(() => splitExpenses.id, { onDelete: 'cascade' }),
+    groupId: integer('group_id')
+      .notNull()
+      .references(() => splitGroups.id, { onDelete: 'cascade' }),
+    debtorId: integer('debtor_id')
+      .notNull()
+      .references(() => people.id),
+    creditorId: integer('creditor_id')
+      .notNull()
+      .references(() => people.id),
+    amountPaise: integer('amount_paise').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.expenseId, t.debtorId, t.creditorId] }),
+    index('split_debt_group_idx').on(t.groupId),
+  ],
+);
+
+/** A payment between two members that settles (part of) a balance. */
+export const settlements = sqliteTable(
+  'settlements',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    uid: text('uid').notNull().default(uidDefault),
+    groupId: integer('group_id')
+      .notNull()
+      .references(() => splitGroups.id, { onDelete: 'cascade' }),
+    fromPersonId: integer('from_person_id')
+      .notNull()
+      .references(() => people.id),
+    toPersonId: integer('to_person_id')
+      .notNull()
+      .references(() => people.id),
+    amountPaise: integer('amount_paise').notNull(),
+    date: text('date').notNull(),
+    note: text('note'),
+    createdAt: text('created_at').notNull().default(nowDefault),
+    updatedAt: text('updated_at').notNull().default(nowDefault),
+    deletedAt: text('deleted_at'),
+  },
+  (t) => [
+    uniqueIndex('settlement_uid_unique').on(t.uid),
+    index('settlement_group_idx').on(t.groupId, t.date).where(sql`deleted_at IS NULL`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // app_meta — one row per key, read at launch
 // ---------------------------------------------------------------------------
 
@@ -258,6 +451,12 @@ export type NewSubscription = typeof subscriptions.$inferInsert;
 
 export type ImportBatch = typeof importBatches.$inferSelect;
 export type NewImportBatch = typeof importBatches.$inferInsert;
+
+export type Person = typeof people.$inferSelect;
+export type SplitGroup = typeof splitGroups.$inferSelect;
+export type SplitExpense = typeof splitExpenses.$inferSelect;
+export type SplitMethod = SplitExpense['splitMethod'];
+export type Settlement = typeof settlements.$inferSelect;
 
 export type TransactionType = Transaction['type'];
 export type BillingCycle = Subscription['billingCycle'];

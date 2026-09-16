@@ -19,12 +19,13 @@
 | 2 | Transactions | 4–5 d | ✅ Code complete 2026-09-14 — awaiting the user's on-device check |
 | 3 | Home dashboard | 3 d | ✅ Code complete 2026-09-14 — awaiting the user's on-device check |
 | 4 | Budgets & Tracker | 4 d | ✅ Code complete 2026-09-14 — awaiting the user's on-device check |
-| 5 | Analytics | 3 d | ⬜ Not started |
+| 5 | Analytics | 3 d | ✅ Code complete 2026-09-15 — awaiting the user's on-device check |
 | 6A | Sheets: import and workspaces | 7–8 d | ⬜ Not started |
 | 6B | Linked sheets | 4–5 d | ⬜ Not started |
 | 7 | Backup & restore | 3–4 d | ⬜ Not started |
 | 8 | Native layer | 3–4 d | ⬜ Not started |
 | 9 | Hardening & Play Store | 4–5 d | ⬜ Not started |
+| G | Groups — split expenses (v1.1, pulled forward) | 6.5 d | ✅ Code complete 2026-09-15 — awaiting the user's on-device check |
 
 **Total: ~31–40 working days solo** (Phase 6 grew from a one-way import into sheets + linking on 2026-09-14). Phase 1 is the one to over-invest in — schema, migrations,
 encryption and the query boundary are what everything else sits on, and all four are expensive
@@ -229,27 +230,34 @@ to change later.
 
 ## Phase 5 — Analytics
 **Goal:** The chart-heavy screen, all aggregation in SQL.
-**Est:** 3 days · **Status:** ⬜ Not started
+**Est:** 3 days · **Status:** ✅ Code complete 2026-09-15 — the user verifies on the phone
 
-- [ ] **`features/analytics/queries.ts`: trend, by-category, summary, stat cards — all `GROUP BY`**
+- [x] **`features/analytics/queries.ts`: trend, by-category, summary, stat cards — all `GROUP BY`** *(builders in `features/analytics/sql.ts`, hooks in `queries.ts`. Five aggregates: trend, range totals, earliest date, biggest expense, category totals. Proven against the migrated schema, plans included, in `__tests__/sql.test.ts`)*
   *Why:* The rule that makes this screen viable: never `SELECT` rows you intend to sum. 50k rows aggregate to 24 in the engine; JS never sees more than two dozen objects.
-- [ ] **Spending-trend area chart with the 3/6/12/24-month selector**
+- [x] **Spending-trend area chart with the 3/6/12/24-month selector** *(`components/charts/AreaChart`; one range drives the summary, trend and stat cards together, so every figure describes the same period)*
   *Why:* Parity. The 24-month range is the stress case — it's the one to time.
-- [ ] **Touch scrubber with value tooltip, driven by Reanimated on the UI thread**
+- [x] **Touch scrubber with value tooltip, driven by Reanimated on the UI thread** *(guide and dots move in worklets; JS hears about it once per month crossed, never per frame. Horizontal drag scrubs, vertical drag still scrolls the page, tap selects, TalkBack can step months)*
   *Why:* The one interaction genuinely better than the web version. On the UI thread so it stays smooth while JS is busy.
-- [ ] **Category donut with month selector**
+- [x] **Category donut with month selector** *(`components/charts/Donut`; the picker is bounded by the ledger's first month and the current one; tap a segment or legend row to see its share; a long tail folds into "Other")*
   *Why:* Parity, and the most-looked-at chart in the web app.
-- [ ] **Stat cards: avg/day, biggest expense, top category, savings rate**
+- [x] **Stat cards: avg/day, biggest expense, top category, savings rate** *(arithmetic in `features/analytics/period.ts`, 19 tests; the biggest-expense card opens that transaction)*
   *Why:* Parity. Each is a one-line SQL query, so they're nearly free once the query file exists.
-- [ ] **Take every chart colour from `lib/theme.ts` tokens — no literals**
+- [x] **Take every chart colour from `lib/theme.ts` tokens — no literals** *(enforced by `components/charts/__tests__/tokens.test.ts`, which fails on any hex/rgb/hsl literal in the chart components or the Analytics screen)*
   *Why:* The app is dark-only in v1 (decided 2026-09-14), with a light theme arriving as a Settings toggle in Phase 9. Skia doesn't inherit CSS, so charts that read tokens switch for free; charts with hardcoded colours need rework then.
-- [ ] **Re-time every query on the 50k database, confirm no regression**
+- [x] **Re-time every query on the 50k database, confirm no regression** *(the seven Analytics queries are in the dev harness benchmark — More → Dev harness → Run analytics benchmark. Plans are asserted in Node at 50k rows; the on-device numbers are the user's check)*
   *Why:* Closes the loop opened in Phase 1. Query performance drifts as `WHERE` clauses accumulate.
 
 **Exit criterion:** Analytics matches the web screen, and switching to the 24-month range is visually instant on the real phone.
 
 **Discovered during this phase:**
-- _(none yet)_
+- **Decision: charts stay on react-native-svg + Reanimated, not victory-native/Skia.** Phase 3 deferred this to Phase 5 "where the scrubbable area chart genuinely needs it". It didn't: at most 24 points, the scrubber animates a guide line and two dots through `useAnimatedProps` on the UI thread, and nothing rebuilds a path per frame. Staying put means Phase 5 ships over the air with no native rebuild, and Skia's APK cost is avoided. Revisit only if a chart needs thousands of points.
+- **Query builders take the database as a parameter** (`sql.ts`), instead of closing over `readDb`. The phone passes `readDb`; the tests pass a better-sqlite3 Drizzle handle. So `sql.test.ts` runs the *shipped* SQL, where `budgets/spend.test.ts` had to keep a hand-written copy in step. Worth using for new query files.
+- **Biggest expense uses SQLite's bare-column `max()`**, not `ORDER BY amount DESC LIMIT 1`. With a single `max()`, SQLite fills the other columns from the row holding the maximum, in one pass on `tx_month_idx` with no temporary B-tree. A test asserts that plan.
+- **Category totals report a TEMP B-TREE in the benchmark, by design.** The sort runs over one row per category, not per transaction, after an index range scan, so it does not grow with the ledger.
+- **"Avg per day" counts days from the later of the range start and the first transaction.** Without the clamp, a ledger started last week, viewed over 24 months, divides a week of spending by 730 days.
+- **Donut taps are hit-tested by angle** (`geometry.hitArc`). Every segment is the same stroked circle, so SVG's own touch handling always gave the touch to whichever segment was drawn last.
+- **`smoothPath` moved to `components/charts/geometry.ts`**, alongside the new pure chart maths, so it is testable in Node. `TrendChart` re-exports it.
+- **The light theme landed before this phase** (`93a8441`), so "tokens only" was immediately testable in both themes rather than a Phase 9 promise.
 
 ---
 
@@ -354,7 +362,7 @@ to change later.
   *Why:* The export is the copy that leaves the phone — Drive, WhatsApp, an SD card — so since 2026-09-14 it is the only place the app adds its own encryption. Write it with SQLCipher (`ATTACH '<file>' AS enc KEY '<passphrase>'` then `SELECT sqlcipher_export('enc')`); restore attaches with the same passphrase. The warning matters — a forgotten passphrase means the backup is gone.
 - [ ] **Include sheets in backup: the sheet tables AND the template files under `files/sheets/`**
   *Why:* A sheet restored without its original workbook can still be edited but can no longer export with its formatting. The templates live outside the database, so a `.db`-only backup would silently miss them.
-- [ ] **Restore: validate `schema_version` and row counts before touching anything**
+- [ ] **Restore: validate `schema_version` and row counts before touching anything** *(include the Groups tables from migration 0007; `split_debts` is derived and can be rebuilt from payers + shares if a `.json` restore omits it)*
   *Why:* Restoring a corrupt or wrong-version file over good data is the worst possible outcome. Validate first, refuse clearly, change nothing.
 - [ ] **Snapshot the current database before overwriting on restore**
   *Why:* Restore is the single most destructive action in the app. A user who picks the wrong file must not lose the right data.
@@ -440,11 +448,45 @@ to change later.
 
 ---
 
+## Groups — split expenses with friends (v1.1, pulled forward 2026-09-15)
+**Goal:** Splitwise-simple group and 1:1 expense splitting, fully offline, with heap-based debt simplification.
+**Est:** 6.5 days (grew from 4: unequal splits, multiple payers, friends and stats added) · **Status:** ✅ Code complete 2026-09-15 — the user verifies on the phone
+
+> Kept entirely **separate from the ledger** (decided 2026-09-15): no group expense or settlement
+> creates a transaction or moves a budget, Home or Insights figure.
+
+- [x] **G1 · The money core, pure and property-tested** *(`lib/heap.ts`; `features/groups/split.ts` — exact largest-remainder splits: equal, exact, percent in basis points, shares; `debts.ts` — per-expense debts, pairwise netting, `simplifyDebts`. 34 tests, thousands of random splits and groups each)*
+  *Why:* A rounding error in a split is money that silently vanishes. This is the code that has to be right before any screen exists.
+- [x] **G2 · Schema, migrations, queries, writes** *(migration 0007: `people`, `split_groups`, `group_members`, `split_expenses`, `split_expense_payers`, `split_expense_shares`, `split_debts`, `settlements` — new tables only, no rebuild; custom 0008 seeds "You" (`sys:self`). `sql.ts` builders and `writes.ts` take the db, so `writes.test.ts` runs the shipped code end to end on the migrated schema)*
+  *Why:* Balances are derived on read (never stored), so they cannot drift from the expenses behind them.
+- [x] **G3 · Hub, groups and friends** *(More → Groups: overall owed/owe, Groups · Friends switch, create/edit group with members and the simplify toggle, add/rename/remove friend)*
+- [x] **G4 · The expense form** *(Splitwise's sentence: "With you and [group] · Paid by [you] and split [equally]"; paid-by sheet with multiple payers; split sheet with Equal / Exact / Percent / Shares and live "₹120 left" footers from `draft.ts`, 9 tests; edit rebuilds exactly what was typed; delete with undo)*
+- [x] **G5 · Balances, settle up, friend view** *(who-owes-whom sheet with a Settle button per payment and "1 payment instead of 3"; settle-up from a group or a suggestion; friend settle-up spread across shared groups oldest-first, all or nothing)*
+- [x] **G6 · Group totals** *(total spend, your share vs what you paid, category donut reusing `components/charts/Donut`, each person's share)*
+
+**Exit criterion:** For any sequence of expenses and settlements, every group's nets sum to exactly 0 paise and suggestions never change a net (proven by property tests). The Goa example — Aarav paid ₹6,000 hotel ÷3, Bhavna ₹3,000 cab ÷3, Chirag ₹1,500 dinner ÷2 with Aarav — shows "Chirag owes Aarav ₹2,250" and "1 payment instead of 3" on the phone, and "3 pairwise payments" with simplify off.
+
+**Discovered during this phase:**
+- **Simplification = pairing pre-pass + two max-heaps.** Exactly equal-and-opposite balances are paired first; the rest go greedy (largest debtor pays largest creditor). The pre-pass is not decoration: for +400, +600, −400, −300, −300 greedy alone needs 4 payments, the pre-pass finds the minimum 3 (a test pins it). The true minimum is NP-hard; ≤ n − 1 payments is guaranteed.
+- **Spreading a multi-payer debt must use creditors' REMAINING amounts.** Allocating each debtor independently gave two debtors' odd paise to the same creditor (two creditors +1, two debtors −1 → one creditor paid 2). `expenseDebts` allocates against what each creditor is still owed, which keeps every column exact.
+- **Drizzle renders `${table.column}` unqualified in a single-table select.** Inside a correlated subquery (`… WHERE m.group_id = ${splitGroups.id}`) SQLite then bound `id` to the INNER table — member counts came back wrong. Subqueries now reference `split_groups.id` literally; caught by `writes.test.ts`.
+- **A raw `db.all(sql\`…\`)` returns bare value arrays through the sqlite-proxy read handle** (no field names). Every union query goes through `select({...}).from(sql\`(…) x\`)`, which maps by position and keeps `toSQL()` for plan checks.
+- **A 1:1 friendship is a hidden group** (`split_groups.direct_person_id`), so friend expenses share every balance path with groups. A friend's balance sums the settle-up edges between you in each shared group as that group currently suggests them — the figure a settle-up would move, and what Splitwise shows.
+- **Removing a member is allowed once their balance there is zero** (the web locked members once any expense existed). The refusal names the amount: "Chirag still owes ₹1,250.00 here".
+- **`UserFacingError` (`lib/db/errors.ts`)** lets a write refuse with a message `safeWrite` shows verbatim, instead of "Couldn't … Please try again". Its own file so pure write cores can throw it under Jest.
+- **The paid-by and split editors are in-form sheets (`kit.tsx` `FormSheet`), not `@gorhom/bottom-sheet` routes.** The draft never leaves the screen, and Android back closes the sheet before the form.
+- **Group activity is limit-paged ("Show older"), not keyset-paged.** It is a union of expenses and settlements and a trip's worth of rows; revisit only if a group grows into the thousands.
+- **`features/tracker/identity.ts` moved to `lib/identity.ts`** — Groups needs the same deterministic icons and colours, and features may not import each other.
+
+---
+
 ## Backlog — v1.1 and beyond
 
 | Item | Est. | Why deferred | Note |
 |---|---|---|---|
-| **Groups (split expenses)** | 4 d | Not in v1 scope | **Dearer than it looks.** With a backend, the exact-paise split distribution and greedy min-cash-flow debt simplification already existed server-side and mobile needed only screens. Standalone, both must be written in TS and tested carefully — a rounding error in a split is money that silently vanishes |
+| **Groups: exact minimum-payments solver** | 1 d | Greedy + pairing is ≤ n − 1 and what Splitwise ships | For groups with ≤ ~12 unsettled members a zero-sum-subset search could find the true minimum |
+| **Groups: share a reminder via WhatsApp/SMS** | 0.5 d | Not chosen for v1 | Android share sheet — no `INTERNET` needed |
+| **Groups: recurring group expenses, copy your share into the ledger** | 1–2 d each | Not chosen for v1; groups stay separate from the ledger | Both are additive |
 | **Multi-device sync** | weeks | No server by design | The schema allows it: add a UUID column and `updated_at` per row (both additive migrations), and only `features/*/queries.ts` changes. A real project, not a switch |
 | **Precomputed rollup tables** | 2 d | Premature | Only if a real ledger measurably janks. Every write path gets more complex and rollups drift out of sync. Measure before believing it |
 | **Multi-currency** | 3 d | Web app is INR-only too | Follows the web app's lead |
@@ -461,6 +503,8 @@ Record decisions made mid-build that future sessions need to know. Newest first.
 
 | Date | Decision | Reason |
 |---|---|---|
+| 2026-09-15 | **Groups built (pulled forward from v1.1): separate from the ledger; groups + 1:1 friends; unequal splits, multiple payers, group stats; per-group "Simplify debts" toggle, on by default** | User decisions. Friends are typed names — no contacts permission, which would break the two-permission rule |
+| 2026-09-15 | Charts stay on react-native-svg + Reanimated, not Skia (Phase 5) | The scrubber needs a guide and two dots animated in worklets, not GPU paths; no native rebuild |
 | 2026-09-14 | **Main database unkeyed on device; SQLCipher kept only for passphrase-encrypted backup files** (TASKS2 F0) | A Keystore-held key never leaves the phone, so Android auto-backup restored a database nobody could open. FBE + the app sandbox already protect data at rest; exports are the copies that leave the device |
 | 2026-09-14 | Ledger pages by keyset `(date, id) < (?, ?)`, page 1 live (TASKS2 F0) | A growing `LIMIT` re-sends every loaded row on every write; a capped window can't scroll a 50k ledger end to end |
 | 2026-09-14 | `categories.kind` (`expense`/`income`/`both`) added; `transactions.is_recurring` dropped — both in migration 0001 (TASKS2 F0) | Salary was offered on expenses; the recurring flag did nothing and overlapped the Tracker. Phase 4 may add a nullable `subscription_id` |

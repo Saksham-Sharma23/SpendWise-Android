@@ -58,7 +58,7 @@ import {
 import { Text, View } from 'react-native';
 
 import { ICON_NAMES } from '../../lib/icons';
-import { withAlpha } from '../../lib/theme';
+import { colors, withAlpha } from '../../lib/theme';
 
 /**
  * Category glyphs. Categories store a lucide icon NAME (seeded to match the
@@ -166,8 +166,9 @@ export function CategoryIcon({ icon, color, size = 44, selected = false }: Props
         borderColor: withAlpha(tint, selected ? 1 : 0.22),
       }}
     >
+      {/* `tint` is the category's own bright colour, so the tick stays dark in both themes. */}
       {selected ? (
-        <Text style={{ color: '#0A0A0B', fontSize: size * 0.4, fontWeight: '700' }}>✓</Text>
+        <Text style={{ color: colors.onBrightFill, fontSize: size * 0.4, fontWeight: '700' }}>✓</Text>
       ) : (
         <Icon size={size * 0.45} color={tint} strokeWidth={2} />
       )}

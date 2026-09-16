@@ -76,8 +76,8 @@ export default function FiltersModal() {
             onChange={(t) => patch({ type: t })}
             options={[
               { value: 'all', label: 'All' },
-              { value: 'income', label: 'Income', tint: colors.income, onTint: colors.background },
-              { value: 'expense', label: 'Expense', tint: colors.expense, onTint: colors.background },
+              { value: 'income', label: 'Income', tint: colors.income, onTint: colors.onAccent },
+              { value: 'expense', label: 'Expense', tint: colors.expense, onTint: colors.onAccent },
             ]}
           />
         </Section>

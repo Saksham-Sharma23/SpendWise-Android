@@ -40,8 +40,8 @@ function RightAction({ onPress }: { onPress: () => void }) {
         className="h-14 w-16 items-center justify-center rounded-2xl"
         style={{ backgroundColor: colors.expense }}
       >
-        <Trash2 size={19} color={colors.background} strokeWidth={2.3} />
-        <Text style={{ color: colors.background, fontFamily: fonts.semibold, fontSize: 10, marginTop: 2 }}>
+        <Trash2 size={19} color={colors.onAccent} strokeWidth={2.3} />
+        <Text style={{ color: colors.onAccent, fontFamily: fonts.semibold, fontSize: 10, marginTop: 2 }}>
           Delete
         </Text>
       </PressableScale>

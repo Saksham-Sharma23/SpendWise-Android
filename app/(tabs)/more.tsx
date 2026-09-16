@@ -36,7 +36,7 @@ const GROUPS: { title: string; rows: Row[] }[] = [
       { icon: PiggyBank, tint: 'lime', label: 'Budgets', hint: 'Per-category limits and cycles', href: '/budgets' },
       { icon: Repeat, tint: 'violet', label: 'Tracker', hint: 'Subscriptions and renewals', href: '/tracker' },
       { icon: Tags, tint: 'orange', label: 'Categories', hint: 'Create, rename, recolour and merge', href: '/categories' },
-      { icon: Users, tint: 'blue', label: 'Groups', hint: 'Split expenses with friends', soon: true },
+      { icon: Users, tint: 'blue', label: 'Groups', hint: 'Split expenses with friends', href: '/groups' },
     ],
   },
   {

@@ -1,5 +1,5 @@
 import { ICON_NAMES } from '../../../lib/icons';
-import { deterministicColor, deterministicIcon, initials } from '../identity';
+import { deterministicColor, deterministicIcon, initials } from '../../../lib/identity';
 import { arrange, enrich, summarise, type SubscriptionRow } from '../renewal';
 
 /**

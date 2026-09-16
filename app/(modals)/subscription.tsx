@@ -19,7 +19,7 @@ import {
   softDeleteSubscription,
   updateSubscription,
 } from '../../features/tracker/queries';
-import { deterministicColor, deterministicIcon } from '../../features/tracker/identity';
+import { deterministicColor, deterministicIcon } from '../../lib/identity';
 import {
   emptySubscriptionForm,
   subscriptionFormSchema,

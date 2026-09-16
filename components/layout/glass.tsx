@@ -49,8 +49,17 @@ export function BlurTarget({ children, style }: { children: ReactNode; style?: S
 
   if (!blur) return <View style={style}>{children}</View>;
   const Target = blur.BlurTargetView;
+  // The page colour has to be painted INSIDE the target, as a child. A
+  // `backgroundColor` style lands on expo-blur's outer wrapper view, but what
+  // gets blurred is the transparent Dimezis target nested inside it. Wherever
+  // the page had no content, the blur sampled nothing and fell back to the
+  // window's dark background, so the glass turned grey/black over empty space.
+  const { backgroundColor } = StyleSheet.flatten(style) ?? {};
   return (
     <Target ref={ref} style={style}>
+      {backgroundColor != null ? (
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor }]} />
+      ) : null}
       {children}
     </Target>
   );
@@ -62,17 +71,33 @@ export function BlurTarget({ children, style }: { children: ReactNode; style?: S
  * The tint follows the theme: a dark tint over a light page darkens
  * everything behind the bar into a grey band, which is the opposite of what
  * frosted glass should do.
+ *
+ * Takes blur strength and tint opacity SEPARATELY, because expo-blur on
+ * Android derives both from its single `intensity` prop:
+ *   - blur radius     = intensity / blurReductionFactor
+ *   - overlay alpha   = intensity / 100 × 0.69 (dark) or × 0.78 (light)
+ * Raising intensity for "more blur" also paints a thicker grey/white sheet
+ * over the content. At 85 that sheet alone hid ~60% of what was behind the
+ * bar, which is why it read as smoked plastic rather than glass. So intensity
+ * is set from `overlay`, and the reduction factor is solved to hit `radius`.
+ *
+ * @param radius  effective blur radius
+ * @param overlay 0–1 opacity scale of the native tint sheet (1 = intensity 100)
  */
-export function GlassBlur({ intensity = 45 }: { intensity?: number }) {
+export function GlassBlur({ radius = 12, overlay = 0.45 }: { radius?: number; overlay?: number }) {
   const target = useBlurTargetStore((s) => s.target);
   const theme = useThemeName();
   if (!blur || !target) return null;
   const BlurView = blur.BlurView;
+  // Kept within 1–100: above 100 the native alpha byte overflows, and 0 hits
+  // expo-blur's "nativePtr is null" crash.
+  const intensity = Math.min(100, Math.max(1, Math.round(overlay * 100)));
   return (
     <BlurView
       blurTarget={target}
       blurMethod="dimezisBlurViewSdk31Plus"
       intensity={intensity}
+      blurReductionFactor={intensity / Math.max(1, radius)}
       tint={theme === 'light' ? 'light' : 'dark'}
       style={StyleSheet.absoluteFill}
     />

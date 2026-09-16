@@ -7,6 +7,7 @@ import { colors, useColors } from '../lib/theme';
 import { databaseSizeBytes, countTransactions, runBenchmark } from '../db/benchmark';
 import type { BenchResult } from '../db/benchmark';
 import { devClearTransactions, devEncryptedCopyRoundTrip, devSeedTransactions } from '../db/devSeed';
+import { analyticsBenchQueries } from '../features/analytics/benchmark';
 import { dashboardBenchQueries } from '../features/dashboard/benchmark';
 import { transactionBenchQueries } from '../features/transactions/benchmark';
 
@@ -103,7 +104,11 @@ function DevHarness() {
     setBusy('bench');
     try {
       // The shipped query builders, run through db/read.ts exactly as screens run them.
-      const r = await runBenchmark([...dashboardBenchQueries(), ...transactionBenchQueries()]);
+      const r = await runBenchmark([
+        ...dashboardBenchQueries(),
+        ...analyticsBenchQueries(),
+        ...transactionBenchQueries(),
+      ]);
       setResults(r);
       const worst = Math.max(...r.map((x) => x.ms));
       const scans = r.filter((x) => x.scan || x.tempSort).length;

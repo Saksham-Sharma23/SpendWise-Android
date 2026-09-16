@@ -1,0 +1,28 @@
+%% Groups: from expenses to "who owes whom" (features/groups).
+%% Balances are never stored. SQL sums one row per (group, person); the heap
+%% algorithm runs over those few rows in JS. Nobody's net ever changes.
+flowchart TD
+  subgraph Write["saveExpense — one writeTx"]
+    E[split_expenses row] --> P[split_expense_payers<br/>who paid, paise]
+    E --> S[split_expense_shares<br/>who owes, paise + typed input]
+    P & S --> D[split_debts<br/>derived: expenseDebts, exact paise]
+  end
+
+  subgraph Read["useGroup / useGroupsHub"]
+    N["netsQuery: GROUP BY group, person<br/>paid − owed + sent − received"]
+    W["pairwiseQuery: GROUP BY debtor, creditor<br/>split_debts + settlements reversed"]
+  end
+
+  P & S --> N
+  ST[settlements] --> N
+  D --> W
+  ST --> W
+
+  N --> T{simplify_debts?}
+  W --> T
+  T -- on --> PP["1. Pair exact opposites<br/>+₹500 ↔ −₹500"]
+  PP --> H["2. Two max-heaps<br/>largest debtor pays largest creditor min(d, c)<br/>remainder pushed back → ≤ n − 1 payments"]
+  T -- off --> PN["pairwiseNet<br/>everyone repays exactly who they owe"]
+
+  H --> OUT[Who owes whom · Settle buttons · friend balances]
+  PN --> OUT

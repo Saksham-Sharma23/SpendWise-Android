@@ -1,6 +1,6 @@
 import { useRouter, type Tabs } from 'expo-router';
 import { ChartColumn, House, LayoutGrid, Plus, Receipt, type LucideIcon } from 'lucide-react-native';
-import { useCallback, useEffect, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Pattern, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { fonts, springs, useColors, useThemeName, withAlpha } from '../../lib/theme';
@@ -37,16 +37,24 @@ const BAR_HEIGHT = 70;
 const PAD = 6;
 const PILL_HEIGHT = BAR_HEIGHT - PAD * 2;
 
+/**
+ * How far the droplet may stretch, as a fraction of one slot. Module scope so
+ * the worklets that read it capture a constant rather than a component value.
+ */
+const MAX_STRETCH = 0.5;
+
+
 /** The droplet's two springs: a quick leading edge and a lazy trailing one. */
 const LEAD = { damping: 22, stiffness: 420, mass: 0.8 };
 const TRAIL = { damping: 20, stiffness: 150, mass: 1 };
 
 /**
- * A glass tab bar: glassmorphism with a touch of liquid glass.
+ * A liquid glass tab bar.
  *
- * A light backdrop blur and thin tint keep it frosted; a refractive rim, a
- * top sheen and a small specular hotspot give it depth. Kept subtle on
- * purpose — heavy blur reads as muddy, strong gloss as plastic.
+ * Clear rather than frosted: a light blur keeps what is behind the bar
+ * recognisable, and the glass gets its body from its edges instead of a fill
+ * — a glow in the thick rim, specular crescents on the ends, a soft shadow
+ * underneath. See GlassSurface for the layers.
  *
  * The selection is one "droplet" rather than a pill per tab. Its two edges
  * run on different springs, so as it travels it stretches out and thins,
@@ -65,6 +73,9 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
   const inner = Math.max(0, width - PAD * 2);
   const slotWidth = inner / SLOTS;
   const pillWidth = slotWidth - 4;
+  // The widest the droplet can be: its resting width plus the capped stretch.
+  // The gloss gradient is drawn at this size (see below) so it never runs out.
+  const maxDropletWidth = pillWidth + slotWidth * MAX_STRETCH;
   const centerOf = useCallback((slot: number) => PAD + slotWidth * (slot + 0.5), [slotWidth]);
 
   const lead = useSharedValue(0);
@@ -97,44 +108,80 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
     [state.routes, activeName, navigation],
   );
 
-  const pan = Gesture.Pan()
-    .activeOffsetX([-12, 12])
-    .onBegin(() => {
-      dragging.value = withSpring(1, springs.press);
-    })
-    .onUpdate((e) => {
-      const min = PAD + slotWidth * 0.5;
-      const max = PAD + slotWidth * (SLOTS - 0.5);
-      const x = Math.min(max, Math.max(min, e.x));
-      lead.value = x;
-      trail.value = withSpring(x, TRAIL);
-    })
-    .onEnd((e) => {
-      const raw = Math.floor((e.x - PAD) / slotWidth);
-      // Nearest real tab — the centre slot is the add button, not a tab.
-      let best = TAB_SLOTS[0]!;
-      for (const s of TAB_SLOTS) if (Math.abs(s - raw) < Math.abs(best - raw)) best = s;
-      const x = PAD + slotWidth * (best + 0.5);
-      lead.value = withSpring(x, LEAD);
-      trail.value = withSpring(x, TRAIL);
-      scheduleOnRN(goToSlot, best);
-    })
-    .onFinalize(() => {
-      dragging.value = withSpring(0, springs.settle);
-    });
+  /**
+   * Memoised so the detector is not handed a NEW gesture on every render
+   * (TASKS2 4C). Rebuilding it re-attaches the handler, which during a fast
+   * swipe can drop the gesture mid-flight and leave the droplet stranded
+   * between slots. It only needs to change when the geometry does.
+   */
+  const pan = useMemo(() => {
+    const min = PAD + slotWidth * 0.5;
+    const max = PAD + slotWidth * (SLOTS - 0.5);
+    const clamp = (x: number) => {
+      'worklet';
+      return Math.min(max, Math.max(min, x));
+    };
 
-  const stretch = useDerivedValue(() => Math.abs(lead.value - trail.value));
+    return Gesture.Pan()
+      .activeOffsetX([-12, 12])
+      .onBegin(() => {
+        dragging.value = withSpring(1, springs.press);
+      })
+      .onUpdate((e) => {
+        const x = clamp(e.x);
+        lead.value = x;
+        trail.value = withSpring(x, TRAIL);
+      })
+      .onEnd((e) => {
+        // Clamped exactly as onUpdate clamps, so the tab chosen is the one the
+        // droplet was visibly over. A fast flick releases past the bar edge,
+        // and the unclamped value disagreed with what the user saw.
+        const raw = Math.floor((clamp(e.x) - PAD) / slotWidth);
+        // Nearest real tab — the centre slot is the add button, not a tab.
+        let best = TAB_SLOTS[0]!;
+        for (const s of TAB_SLOTS) if (Math.abs(s - raw) < Math.abs(best - raw)) best = s;
+        const x = PAD + slotWidth * (best + 0.5);
+        lead.value = withSpring(x, LEAD);
+        trail.value = withSpring(x, TRAIL);
+        scheduleOnRN(goToSlot, best);
+      })
+      .onFinalize(() => {
+        dragging.value = withSpring(0, springs.settle);
+      });
+  }, [slotWidth, goToSlot, lead, trail, dragging]);
+
+  /**
+   * How far the trailing edge lags the leading one.
+   *
+   * CAPPED at half a slot. A fast flick can put `lead` several slots ahead of
+   * the spring-damped `trail`, and the raw difference then stretched the
+   * droplet into a long bar: past 2 × radius its middle is a straight edge, so
+   * it stopped reading as a capsule and appeared as a box with square inner
+   * corners. Half a slot keeps ~50px of flat edge at the extreme — visibly
+   * stretched, still unmistakably a droplet.
+   */
+  const stretch = useDerivedValue(() =>
+    Math.min(Math.abs(lead.value - trail.value), slotWidth * MAX_STRETCH),
+  );
 
   const droplet = useAnimatedStyle(() => {
     const left = Math.min(lead.value, trail.value) - pillWidth / 2;
-    const s = slotWidth > 0 ? stretch.value / slotWidth : 0;
+    // Normalised against the CAP, not the slot, so a fully stretched droplet
+    // still reaches the full thinning — the cap must not also halve the squash.
+    const s = slotWidth > 0 ? stretch.value / (slotWidth * MAX_STRETCH) : 0;
+    const scaleY = 1 - Math.min(0.22, s * 0.28) + dragging.value * 0.1;
     return {
       opacity: ready.value,
       width: pillWidth + stretch.value,
+      // The radius must follow the SQUASHED height. Held at PILL_HEIGHT/2 it
+      // exceeded half the scaled height, so the caps overlapped the vertical
+      // edges and the clipped gloss <Svg> inside showed its own square
+      // corners — the "box inside" during a fast swipe.
+      borderRadius: (PILL_HEIGHT * scaleY) / 2,
       transform: [
         { translateX: left },
         // Thins as it stretches, swells while dragged — surface tension.
-        { scaleY: 1 - Math.min(0.22, s * 0.28) + dragging.value * 0.1 },
+        { scaleY },
         { scaleX: 1 + dragging.value * 0.06 },
       ],
     };
@@ -155,6 +202,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
           className="mx-4"
           style={[{ height: BAR_HEIGHT, borderRadius: BAR_HEIGHT / 2 }, barScale]}
         >
+          <GlassShadow radius={BAR_HEIGHT / 2} width={width} height={BAR_HEIGHT} />
           <GlassSurface radius={BAR_HEIGHT / 2} width={width} height={BAR_HEIGHT} />
 
           {width > 0 ? (
@@ -166,7 +214,8 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                   top: PAD,
                   left: 0,
                   height: PILL_HEIGHT,
-                  borderRadius: PILL_HEIGHT / 2,
+                  // borderRadius is animated in `droplet` — it has to track the
+                  // squashed height, so it is deliberately not set here.
                   overflow: 'hidden',
                   // Accent glass: a light tint, a gloss on top, a lit rim.
                   backgroundColor: withAlpha(colors.primary, 0.14),
@@ -176,8 +225,24 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                 droplet,
               ]}
             >
-              {/* Percent sizes, so the gloss follows the droplet as it stretches. */}
-              <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+              {/*
+                Sized in FIXED PIXELS to the widest the droplet can ever be,
+                not in percentages.
+
+                react-native-svg resolves a percentage size once at layout, so
+                `width="100%"` froze the gloss at the droplet's resting width;
+                as the droplet stretched, the gloss ended partway across and
+                left a hard vertical seam — the box that appeared inside it
+                during a fast swipe. Because the stretch is now capped, the
+                maximum width is a known constant, so the gradient can simply
+                be drawn at that size and the parent's overflow:hidden clips it
+                to whatever the current width is. Always full-bleed, no seam.
+              */}
+              <Svg
+                width={maxDropletWidth}
+                height={PILL_HEIGHT}
+                style={{ position: 'absolute', left: 0, top: 0 }}
+              >
                 <Defs>
                   <LinearGradient id="dropGloss" x1="0" y1="0" x2="0" y2="1">
                     <Stop offset="0" stopColor="#fff" stopOpacity={0.2} />
@@ -186,7 +251,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                     <Stop offset="1" stopColor={colors.primary} stopOpacity={0.18} />
                   </LinearGradient>
                 </Defs>
-                <Rect width="100%" height="100%" fill="url(#dropGloss)" />
+                <Rect width={maxDropletWidth} height={PILL_HEIGHT} fill="url(#dropGloss)" />
               </Svg>
             </Animated.View>
           ) : null}
@@ -214,131 +279,157 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
   );
 }
 
-/**
- * A static grain tile: deterministic pseudo-random light and dark specks.
- * Frosted glass is etched, not smooth — the grain is what stops the panel
- * reading as flat grey plastic, and it breaks up whatever shows through.
- */
-const GRAIN_TILE = 48;
-const GRAIN = (() => {
-  let seed = 0x5eed;
-  const rand = () => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
-  // Many faint specks, not a few strong ones: strong grain reads as sandpaper.
-  return Array.from({ length: 220 }, () => ({
-    x: Math.floor(rand() * GRAIN_TILE),
-    y: Math.floor(rand() * GRAIN_TILE),
-    light: rand() > 0.5,
-    o: 0.018 + rand() * 0.032,
-  }));
-})();
-
-/**
- * Glass that sits between frosted and liquid, built in layers from the back:
- *   1. a light backdrop blur, so content stays legible through the bar
- *   2. a thin smoked tint (denser when there is no blur to hide the content)
- *   3. a faint frost
- *   4. sheen: light entering at the top, fading out, pooling again at the base
- *      the way it does in a thick lens
- *   5. a small specular hotspot near the top-left
- *   6. very faint grain
- *   7. a refractive rim: bright at the top, dim at the sides, lit again at
- *      the bottom, with a softer inner ring that gives the glass thickness
- */
-function GlassSurface({ radius, width, height }: { radius: number; width: number; height: number }) {
-  const colors = useColors();
+/** The glass recipe per theme. Every value here is a tuning knob. */
+function useGlassRecipe() {
   const isLight = useThemeName() === 'light';
-
-  // Glass takes its character from the light BEHIND it. On a dark ground the
-  // lighting is white and the tint is smoke; on a light one the frost is
-  // white and the lighting has to DARKEN instead, or the bar reads as a grey
-  // smudge with no edges.
-  const g = isLight
+  return isLight
     ? {
-        tint: BLUR_AVAILABLE ? 'rgba(255, 255, 255, 0.40)' : 'rgba(252, 251, 249, 0.90)',
-        frost: 'rgba(255, 255, 255, 0.35)',
-        sheen: '#ffffff',
-        sheenTop: 0.55,
-        hotspot: 0.5,
-        rim: '#2A2823',
-        rimTop: 0.1,
-        rimMid: 0.05,
-        rimBottom: 0.12,
-        innerRim: 0.05,
-        grainOpacity: 0.35,
+        // Between liquid and frosted. Radius 6 left content too sharp — text
+        // behind the bar competed with the tab labels. 14 turns it into soft
+        // shapes and colour that still show through; 28 (the old value, under
+        // a thick white sheet) erased it into a white panel.
+        blurRadius: 14,
+        // Native white sheet at ~9% (0.12 × 0.78).
+        blurOverlay: 0.12,
+        // The whole centre veil is ~17% white. Without blur the bar has to
+        // stay dense, or labels are unreadable over the ledger.
+        tint: BLUR_AVAILABLE ? 'rgba(255, 255, 255, 0.08)' : 'rgba(250, 252, 249, 0.86)',
+        sheenTop: 0.1,
+        // Light gathering in the thick edge of the lens — the band that makes
+        // clear glass read as a solid object rather than a hole.
+        edgeGlow: 0.34,
+        // The bright crescents on the top-left and bottom-right of the capsule.
+        specular: 0.95,
+        // White speculars vanish against a white page, so a faint dark hairline
+        // and a soft shadow do the job of separating the bar from the page.
+        hairline: '#1B2A1F',
+        hairlineOpacity: 0.1,
+        shadow: 0.075,
       }
     : {
-        tint: BLUR_AVAILABLE ? 'rgba(18, 19, 24, 0.22)' : 'rgba(26, 27, 33, 0.84)',
-        frost: 'rgba(255, 255, 255, 0.035)',
-        sheen: '#ffffff',
-        sheenTop: 0.13,
-        hotspot: 0.16,
-        rim: '#ffffff',
-        rimTop: 0.5,
-        rimMid: 0.04,
-        rimBottom: 0.24,
-        innerRim: 0.12,
-        grainOpacity: 0.6,
+        blurRadius: 14,
+        // Native smoke sheet at ~10% (0.14 × 0.69).
+        blurOverlay: 0.14,
+        // A white lift, not smoke — smoke on a dark page reads as a darker band.
+        tint: BLUR_AVAILABLE ? 'rgba(255, 255, 255, 0.045)' : 'rgba(26, 27, 33, 0.82)',
+        sheenTop: 0.07,
+        edgeGlow: 0.14,
+        specular: 0.6,
+        hairline: '#000000',
+        hairlineOpacity: 0.35,
+        shadow: 0.3,
       };
+}
+
+/** How far the soft shadow reaches past the capsule, in px. */
+const SHADOW_SPREAD = 14;
+/** How far the shadow drifts downward per px of spread — light from above. */
+const SHADOW_DROP = 0.4;
+
+/**
+ * A soft shadow that lives entirely OUTSIDE the capsule.
+ *
+ * Android elevation cannot be used here: on a translucent view it casts from
+ * the outline and the shadow shows THROUGH the glass as a grey band. Instead
+ * this draws concentric 1px rings, each fainter than the last, starting just
+ * past the edge. Each ring grows faster than it drops, so none ever lands
+ * inside the capsule — the clear centre stays clear.
+ */
+function GlassShadow({ radius, width, height }: { radius: number; width: number; height: number }) {
+  const { shadow } = useGlassRecipe();
+  if (width === 0 || shadow === 0) return null;
+  const S = SHADOW_SPREAD;
+  const rings = [];
+  for (let i = 2; i <= S; i++) {
+    const fall = 1 - (i - 2) / (S - 1);
+    rings.push(
+      <Rect
+        key={i}
+        x={S - i}
+        y={S - i + i * SHADOW_DROP}
+        width={width + i * 2}
+        height={height + i * 2}
+        rx={radius + i}
+        fill="none"
+        stroke="#000"
+        strokeOpacity={shadow * fall * fall}
+        strokeWidth={1}
+      />,
+    );
+  }
+  const svgWidth = width + S * 2 + 1;
+  const svgHeight = height + S * (2 + SHADOW_DROP) + 1;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: -S, top: -S, width: svgWidth, height: svgHeight }}>
+      <Svg width={svgWidth} height={svgHeight}>
+        {rings}
+      </Svg>
+    </View>
+  );
+}
+
+/** Inset ring distances for the edge glow, outermost first. */
+const EDGE_BANDS = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5];
+
+/**
+ * Liquid glass, built in layers from the back:
+ *   1. a medium backdrop blur under a thin native tint — the content behind
+ *      the bar shows through as soft shapes and colour
+ *   2. a light tint (dense only when there is no blur at all)
+ *   3. a faint top sheen
+ *   4. an edge glow: light pooling in the thick rim of a lens, strongest at
+ *      the edge and gone ~9px in. Real refraction needs a shader over the
+ *      native content; this band is what the eye reads as "thick glass"
+ *   5. a hairline for definition on light pages
+ *   6. specular crescents on the top-left and bottom-right ends
+ */
+function GlassSurface({ radius, width, height }: { radius: number; width: number; height: number }) {
+  const g = useGlassRecipe();
 
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]}>
-      <GlassBlur intensity={38} />
+      <GlassBlur radius={g.blurRadius} overlay={g.blurOverlay} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: g.tint }]} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: g.frost }]} />
       {width > 0 ? (
         <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
           <Defs>
             <LinearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={g.sheen} stopOpacity={g.sheenTop} />
-              <Stop offset="0.42" stopColor={g.sheen} stopOpacity={g.sheenTop * 0.15} />
-              <Stop offset="0.8" stopColor={g.sheen} stopOpacity={0} />
-              <Stop offset="1" stopColor={g.sheen} stopOpacity={g.sheenTop * 0.45} />
+              <Stop offset="0" stopColor="#fff" stopOpacity={g.sheenTop} />
+              <Stop offset="0.5" stopColor="#fff" stopOpacity={0} />
             </LinearGradient>
-            <RadialGradient id="hotspot" cx="24%" cy="0%" rx="22%" ry="60%">
-              <Stop offset="0" stopColor={g.sheen} stopOpacity={g.hotspot} />
-              <Stop offset="1" stopColor={g.sheen} stopOpacity={0} />
-            </RadialGradient>
-            <Pattern id="grain" width={GRAIN_TILE} height={GRAIN_TILE} patternUnits="userSpaceOnUse">
-              {GRAIN.map((g, i) => (
-                <Rect
-                  key={i}
-                  x={g.x}
-                  y={g.y}
-                  width={1}
-                  height={1}
-                  fill={g.light ? '#fff' : '#000'}
-                  fillOpacity={g.o}
-                />
-              ))}
-            </Pattern>
-            <LinearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={g.rim} stopOpacity={g.rimTop} />
-              <Stop offset="0.3" stopColor={g.rim} stopOpacity={g.rimMid * 2.5} />
-              <Stop offset="0.7" stopColor={g.rim} stopOpacity={g.rimMid} />
-              <Stop offset="1" stopColor={g.rim} stopOpacity={g.rimBottom} />
-            </LinearGradient>
-            <LinearGradient id="innerRim" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={g.rim} stopOpacity={g.innerRim} />
-              <Stop offset="0.5" stopColor={g.rim} stopOpacity={0} />
-              <Stop offset="1" stopColor={g.rim} stopOpacity={g.innerRim * 0.6} />
+            {/*
+              Diagonal in bounding-box units, so on a wide capsule the bright
+              stops cover the left cap plus the first stretch of the top edge,
+              and mirror on the bottom-right: two crescents, like light
+              catching the ends of a glass rod.
+            */}
+            <LinearGradient id="specular" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0" stopColor="#fff" stopOpacity={g.specular} />
+              <Stop offset="0.14" stopColor="#fff" stopOpacity={g.specular * 0.45} />
+              <Stop offset="0.32" stopColor="#fff" stopOpacity={g.specular * 0.08} />
+              <Stop offset="0.68" stopColor="#fff" stopOpacity={g.specular * 0.08} />
+              <Stop offset="0.86" stopColor="#fff" stopOpacity={g.specular * 0.35} />
+              <Stop offset="1" stopColor="#fff" stopOpacity={g.specular * 0.8} />
             </LinearGradient>
           </Defs>
           <Rect width={width} height={height} fill="url(#sheen)" />
-          <Rect width={width} height={height} fill="url(#hotspot)" />
-          <Rect width={width} height={height} fill="url(#grain)" opacity={g.grainOpacity} />
-          <Rect
-            x={2}
-            y={2}
-            width={width - 4}
-            height={height - 4}
-            rx={radius - 2}
-            fill="none"
-            stroke="url(#innerRim)"
-            strokeWidth={2}
-          />
+          {EDGE_BANDS.map((k, i) => {
+            const fall = 1 - i / EDGE_BANDS.length;
+            return (
+              <Rect
+                key={k}
+                x={k}
+                y={k}
+                width={width - k * 2}
+                height={height - k * 2}
+                rx={radius - k}
+                fill="none"
+                stroke="#fff"
+                strokeOpacity={g.edgeGlow * fall * fall}
+                strokeWidth={1}
+              />
+            );
+          })}
           <Rect
             x={0.5}
             y={0.5}
@@ -346,8 +437,19 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
             height={height - 1}
             rx={radius - 0.5}
             fill="none"
-            stroke="url(#rim)"
+            stroke={g.hairline}
+            strokeOpacity={g.hairlineOpacity}
             strokeWidth={1}
+          />
+          <Rect
+            x={1.25}
+            y={1.25}
+            width={width - 2.5}
+            height={height - 2.5}
+            rx={radius - 1.25}
+            fill="none"
+            stroke="url(#specular)"
+            strokeWidth={1.5}
           />
         </Svg>
       ) : null}
@@ -367,8 +469,13 @@ function Tab({
   onPress: () => void;
 }) {
   const colors = useColors();
+  const isLight = useThemeName() === 'light';
   const bounce = useSharedValue(1);
   const on = useSharedValue(focused ? 1 : 0);
+  // Over light frosted glass a 55%-opacity medium label washes into the blur
+  // behind it, so in light mode inactive labels stay near full strength and
+  // everything is a weight heavier. Dark glass keeps the dimmer contrast.
+  const restOpacity = isLight ? 0.85 : 0.55;
 
   useEffect(() => {
     on.value = withTiming(focused ? 1 : 0, { duration: 240 });
@@ -380,7 +487,10 @@ function Tab({
   const iconStyle = useAnimatedStyle(() => ({
     transform: [{ scale: bounce.value }, { translateY: interpolate(on.value, [0, 1], [0, -1]) }],
   }));
-  const labelStyle = useAnimatedStyle(() => ({ opacity: interpolate(on.value, [0, 1], [0.55, 1]) }));
+  const labelStyle = useAnimatedStyle(
+    () => ({ opacity: interpolate(on.value, [0, 1], [restOpacity, 1]) }),
+    [restOpacity],
+  );
 
   return (
     <PressableScale
@@ -400,7 +510,13 @@ function Tab({
           numberOfLines={1}
           style={{
             color: focused ? colors.primary : colors.foreground,
-            fontFamily: focused ? fonts.semibold : fonts.medium,
+            fontFamily: isLight
+              ? focused
+                ? fonts.bold
+                : fonts.semibold
+              : focused
+                ? fonts.semibold
+                : fonts.medium,
             fontSize: 10,
             marginTop: 3,
           }}

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
-import { shadow, useColors, useThemeName, withAlpha } from '../../lib/theme';
+import { mix, shadow, useColors, useThemeName } from '../../lib/theme';
 
 interface CardProps {
   children: ReactNode;
@@ -26,7 +26,12 @@ export function Card({ children, className = '', style, variant = 'default', glo
   // The accent card is a tinted ground, so it has to be built FROM the theme:
   // dark mode deepens towards the accent's own hue, light mode lifts towards
   // it. A fixed near-black would simply vanish on a light page.
-  const accentBackground = theme === 'light' ? withAlpha(colors.primary, 0.07) : '#12150B';
+  //
+  // OPAQUE on purpose. A translucent card lets anything painted behind it
+  // (an Android elevation shadow, a parent's background) show through the
+  // body, which is half of what made the Home net-balance card read as two
+  // stacked grey boxes. `mix` pre-composites the tint onto the page instead.
+  const accentBackground = theme === 'light' ? mix(colors.primary, colors.background, 0.07) : '#12150B';
 
   return (
     <View
@@ -36,9 +41,9 @@ export function Card({ children, className = '', style, variant = 'default', glo
           backgroundColor: accent ? accentBackground : colors.card,
           borderColor: accent ? colors.primaryBorder : colors.border,
         },
-        // A white card on an off-white page has almost no edge contrast, so
-        // light mode needs a shadow to separate them. Dark mode's is nearly
-        // nothing — see lib/theme `shadow`.
+        // iOS only — on Android this contributes nothing (elevation is pinned
+        // to 0 there, see lib/theme `shadow`), and the border above is what
+        // separates a near-white card from the off-white page.
         shadow('sm'),
         style,
       ]}
