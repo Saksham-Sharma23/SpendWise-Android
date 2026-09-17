@@ -1,0 +1,9 @@
+node_modules
+android
+.expo
+dist
+db/migrations
+global.css
+pcref
+package-lock.json
+*.log
