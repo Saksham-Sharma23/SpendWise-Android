@@ -24,6 +24,7 @@ import {
   createGroup,
   createPerson,
   deleteExpense,
+  deleteGroup,
   deletePerson,
   getOrCreateDirectGroup,
   recordSettlement,
@@ -376,4 +377,86 @@ describe('random groups: SQL balances always match the expenses behind them', ()
     for (const row of rows) expect(fromPairs.get(row.personId)).toBe(row.netPaise);
     ctx.sqlite.close();
   }, 120_000);
+});
+
+/**
+ * B14 — no action other than an expense or a settlement may move a balance.
+ *
+ * `deleteGroup` soft-deleted a group whatever its balances, so unsettled debts
+ * vanished from the hub and every member's friend total changed with nothing
+ * to explain it. `restoreExpense` and `restoreSettlements` could likewise put
+ * a balance back onto somebody who had since left the group — a member may be
+ * removed once their balance is zero, and a DELETED expense does not count
+ * towards that zero.
+ */
+describe('balances cannot vanish (B14)', () => {
+  let ctx: Awaited<ReturnType<typeof setup>>;
+  let group: number;
+  let rahul: number;
+
+  beforeEach(async () => {
+    ctx = await setup();
+    rahul = createPerson(ctx.w, 'Rahul');
+    group = createGroup(ctx.w, { name: 'Flat', icon: 'house', simplifyDebts: true, memberIds: [rahul] });
+  });
+  afterEach(() => ctx.sqlite.close());
+
+  it('refuses to delete a group with an unsettled balance, and changes nothing', async () => {
+    saveExpense(ctx.w, equalExpense(group, ctx.me, 1_000_00, [ctx.me, rahul], 'Wifi'));
+
+    expect(() => deleteGroup(ctx.w, group)).toThrow(UserFacingError);
+    expect(() => deleteGroup(ctx.w, group)).toThrow(/Settle up before deleting this group/);
+
+    const groups = await groupsQuery(ctx.r);
+    expect(groups.find((g) => g.id === group)).toBeDefined();
+  });
+
+  it('allows deleting a group once everyone is square', async () => {
+    saveExpense(ctx.w, equalExpense(group, ctx.me, 1_000_00, [ctx.me, rahul], 'Wifi'));
+    recordSettlement(ctx.w, {
+      groupId: group,
+      from: rahul,
+      to: ctx.me,
+      amountPaise: 500_00,
+      date: '2026-09-11',
+      note: null,
+    });
+
+    deleteGroup(ctx.w, group);
+
+    const groups = await groupsQuery(ctx.r);
+    expect(groups.find((g) => g.id === group)).toBeUndefined();
+  });
+
+  it('deletes an empty group without complaint', async () => {
+    deleteGroup(ctx.w, group);
+    expect((await groupsQuery(ctx.r)).find((g) => g.id === group)).toBeUndefined();
+  });
+
+  it('refuses to restore an expense naming someone who has left', async () => {
+    saveExpense(ctx.w, equalExpense(group, ctx.me, 1_000_00, [ctx.me, rahul], 'Wifi'));
+    const [wifi] = (await activityQuery(ctx.r, group, ctx.me, 50)).filter((x) => x.title === 'Wifi');
+
+    // Deleting the expense returns everyone to zero, which is what lets Rahul
+    // be removed at all.
+    deleteExpense(ctx.w, wifi!.id);
+    updateGroup(ctx.w, group, { name: 'Flat', icon: 'house', simplifyDebts: true, memberIds: [] });
+
+    expect(() => restoreExpense(ctx.w, wifi!.id)).toThrow(/Rahul is no longer in this group/);
+
+    // The group still sums to zero, because the restore changed nothing.
+    const nets = await netsQuery(ctx.r, group);
+    expect(nets.reduce((a, n) => a + n.netPaise, 0)).toBe(0);
+  });
+
+  it('still restores an expense while everyone is present', async () => {
+    saveExpense(ctx.w, equalExpense(group, ctx.me, 1_000_00, [ctx.me, rahul], 'Wifi'));
+    const [wifi] = (await activityQuery(ctx.r, group, ctx.me, 50)).filter((x) => x.title === 'Wifi');
+    const before = await netsQuery(ctx.r, group);
+
+    deleteExpense(ctx.w, wifi!.id);
+    restoreExpense(ctx.w, wifi!.id);
+
+    expect(await netsQuery(ctx.r, group)).toEqual(before);
+  });
 });

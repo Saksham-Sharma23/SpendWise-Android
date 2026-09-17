@@ -190,3 +190,118 @@ describe('mergeCategory', () => {
     expect(sqlite.prepare('SELECT count(*) AS n FROM transactions WHERE category_id = ?').get(source)).toEqual({ n: 1 });
   });
 });
+
+// ---------------------------------------------------------------------------
+// B4 — every table with a category_id must be handled (CLAUDE.md #11)
+// ---------------------------------------------------------------------------
+
+function addGroupExpense(sqlite: Database.Database, categoryId: number | null): number {
+  // The self person is seeded by custom migration 0008, so it already exists.
+  sqlite
+    .prepare("INSERT INTO split_groups (uid, name, icon, simplify_debts, created_at) VALUES ('g1', 'Goa', 'plane', 1, 'now')")
+    .run();
+  return Number(
+    sqlite
+      .prepare(
+        `INSERT INTO split_expenses (uid, group_id, description, amount_paise, date, split_method, category_id, created_at)
+         VALUES ('e1', 1, 'Hotel', 600000, '2026-09-01', 'equal', ?, 'now')`,
+      )
+      .run(categoryId).lastInsertRowid,
+  );
+}
+
+const categoryOf = (sqlite: Database.Database, id: number) =>
+  (sqlite.prepare('SELECT category_id AS c FROM split_expenses WHERE id = ?').get(id) as { c: number | null }).c;
+
+describe('group expenses follow merge and delete (B4)', () => {
+  it('delete makes a group expense uncategorised instead of pointing at a tombstone', () => {
+    const { sqlite, db } = freshDb();
+    const food = createCategory(db, input('Food'));
+    const expense = addGroupExpense(sqlite, food);
+
+    deleteCategory(db, food);
+
+    // Before the fix this stayed = food, and groupCategoryQuery — which joins
+    // categories without filtering deleted_at — rendered "Food ⟨deleted #N⟩"
+    // in the group's totals.
+    expect(categoryOf(sqlite, expense)).toBeNull();
+  });
+
+  it('merge moves a group expense to the target category', () => {
+    const { sqlite, db } = freshDb();
+    const target = createCategory(db, input('Food'));
+    const source = createCategory(db, input('Food & Dining'));
+    const expense = addGroupExpense(sqlite, source);
+
+    mergeCategory(db, source, target);
+
+    expect(categoryOf(sqlite, expense)).toBe(target);
+  });
+
+  /**
+   * The guard that makes convention #11 enforceable instead of remembered.
+   *
+   * B4 happened because Groups was built after this file and nobody revisited
+   * merge/delete. Adding another table with a category_id would repeat it — so
+   * this test reads the schema itself and fails until the new table is listed
+   * here AND handled in both functions above.
+   */
+  it('knows every table that references a category', () => {
+    const { sqlite } = freshDb();
+    const tables = (
+      sqlite
+        .prepare(
+          `SELECT m.name AS t FROM sqlite_master m, pragma_table_info(m.name) p
+           WHERE m.type = 'table' AND p.name = 'category_id' ORDER BY m.name`,
+        )
+        .all() as { t: string }[]
+    ).map((r) => r.t);
+
+    expect(tables).toEqual(['budgets', 'split_expenses', 'subscriptions', 'transactions']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// B15 — merge must not hard-delete budget history
+// ---------------------------------------------------------------------------
+
+describe('merge keeps soft-deleted budgets (B15)', () => {
+  it('does not delete the target‘s soft-deleted budgets when moving one in', () => {
+    const { sqlite, db } = freshDb();
+    const target = createCategory(db, input('Food'));
+    const source = createCategory(db, input('Food 2'));
+    const oldTargetBudget = addBudget(sqlite, target, true); // soft-deleted
+    const sourceBudget = addBudget(sqlite, source); // live
+
+    mergeCategory(db, source, target);
+
+    // The history survives: budget_cat_unique is partial (live rows only), so
+    // it never held the slot the old hard delete was clearing.
+    const rows = sqlite
+      .prepare('SELECT id, category_id AS c, deleted_at AS d FROM budgets ORDER BY id')
+      .all() as { id: number; c: number; d: string | null }[];
+    expect(rows).toHaveLength(2);
+
+    const kept = rows.find((r) => r.id === oldTargetBudget)!;
+    expect(kept.d).not.toBeNull();
+
+    const moved = rows.find((r) => r.id === sourceBudget)!;
+    expect(moved.c).toBe(target);
+    expect(moved.d).toBeNull();
+  });
+
+  it('still leaves exactly one live budget on the target', () => {
+    const { sqlite, db } = freshDb();
+    const target = createCategory(db, input('Food'));
+    const source = createCategory(db, input('Food 2'));
+    addBudget(sqlite, target, true);
+    addBudget(sqlite, source);
+
+    mergeCategory(db, source, target);
+
+    const live = sqlite
+      .prepare('SELECT count(*) AS n FROM budgets WHERE category_id = ? AND deleted_at IS NULL')
+      .get(target) as { n: number };
+    expect(live.n).toBe(1);
+  });
+});

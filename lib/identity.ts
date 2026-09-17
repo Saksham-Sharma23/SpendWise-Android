@@ -119,12 +119,33 @@ function hash(s: string): number {
   return h;
 }
 
+/**
+ * A needle this long may match the START of a word, so "Netflixfamily" and
+ * "Spotifypremium" still resolve. Below it, only whole words count: the short
+ * keys are the dangerous ones.
+ */
+const PREFIX_MATCH_MIN = 5;
+
+/**
+ * Match on WORDS, not substrings (B19).
+ *
+ * Plain `includes` made every short key a trap, because it matched inside
+ * unrelated words: "Petrol" → pet → paw-print, "LinkedIn Premium" → emi →
+ * landmark, "Maid" and "Daily" → ai → sparkles, "Card" → car, "Parent" → rent
+ * → house. A deterministic icon is supposed to be a small delight; getting it
+ * confidently wrong is worse than the neutral fallback.
+ */
 export function deterministicIcon(name: string): string {
-  const needle = name.toLowerCase();
+  const lower = name.toLowerCase();
+  const words = lower.split(/[^a-z0-9]+/).filter(Boolean);
+
   for (const [key, icon] of KNOWN) {
-    if (needle.includes(key)) return icon;
+    // Multi-word keys (e.g. 'vi ') are compared against the whole string.
+    const k = key.trim();
+    const hit = words.some((w) => w === k || (k.length >= PREFIX_MATCH_MIN && w.startsWith(k)));
+    if (hit) return icon;
   }
-  return FALLBACK_ICONS[hash(needle) % FALLBACK_ICONS.length]!;
+  return FALLBACK_ICONS[hash(lower) % FALLBACK_ICONS.length]!;
 }
 
 export function deterministicColor(name: string): string {

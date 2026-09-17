@@ -76,3 +76,54 @@ export function snapshotsToDelete(names: readonly string[], keep = 2): string[] 
   const snaps = names.filter((n) => n.startsWith(SNAPSHOT_PREFIX) && n.endsWith('.db')).sort();
   return snaps.slice(0, Math.max(0, snaps.length - keep));
 }
+
+// ---------------------------------------------------------------------------
+// "Is there anything worth protecting?" — decides the pre-migration snapshot
+// ---------------------------------------------------------------------------
+
+/**
+ * Every table that can hold something the user typed, with the predicate that
+ * separates their rows from seeded ones.
+ *
+ * `transactions` alone used to stand for "has user data" (B13), so anyone who
+ * used only Groups, Budgets or the Tracker got NO safety copy before a
+ * migration — the one moment the data is most at risk. A Groups-only user is
+ * an ordinary user, not an edge case.
+ *
+ * System rows are excluded: the seeded categories and the `sys:self` person
+ * exist in a brand-new install and are restored by seeding, so they are not
+ * worth a snapshot on their own.
+ */
+const USER_DATA_PROBES: readonly (readonly [table: string, predicate: string])[] = [
+  ['transactions', '1'],
+  ['budgets', '1'],
+  ['subscriptions', '1'],
+  ['split_groups', '1'],
+  ['split_expenses', '1'],
+  ['settlements', '1'],
+  ['people', 'is_self = 0'],
+  ['categories', 'is_system = 0'],
+];
+
+/**
+ * A single query answering "does any user data exist?", built only from the
+ * tables that are actually present — older schemas predate several of them, so
+ * probing a missing table would throw instead of answering.
+ *
+ * Returns null when none of the tables exist yet (a fresh database).
+ */
+export function userDataProbeSql(existingTables: readonly string[]): string | null {
+  const present = new Set(existingTables);
+  const probes = USER_DATA_PROBES.filter(([table]) => present.has(table));
+  if (probes.length === 0) return null;
+
+  // EXISTS short-circuits on the first row, so this stays O(1) per table
+  // however large the ledger is — it must not slow down every launch.
+  const clauses = probes.map(([table, predicate]) => `EXISTS (SELECT 1 FROM ${table} WHERE ${predicate} LIMIT 1)`);
+  return `SELECT (${clauses.join(' OR ')}) AS has_data`;
+}
+
+/** The tables this database actually has, for `userDataProbeSql`. */
+export function existingTables(conn: MigrationConnection): string[] {
+  return conn.all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'").map((r) => r.name);
+}

@@ -17,11 +17,13 @@ import {
 } from './files';
 import { cleanUpLegacyEncryption, convertLegacyEncryptionIfNeeded, LegacyConversionError } from './legacyEncryption';
 import {
+  existingTables,
   lastAppliedMillis,
   migrateWithForeignKeysOff,
   pendingMigrations,
   snapshotName,
   snapshotsToDelete,
+  userDataProbeSql,
   type JournalEntry,
   type MigrationConnection,
 } from './migrate';
@@ -59,13 +61,18 @@ const conn: MigrationConnection = {
 
 const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
+/**
+ * Whether this database holds anything the user entered — in ANY feature, not
+ * just the ledger (B13). Decides whether to snapshot before migrating.
+ *
+ * The table list and the SQL live in db/migrate.ts so they can be tested in
+ * Node against real migrated schemas.
+ */
 function hasUserData(): boolean {
-  const table = sqliteDb.getFirstSync<{ n: number }>(
-    "SELECT count(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'transactions'",
-  );
-  if (!table?.n) return false;
-  const rows = sqliteDb.getFirstSync<{ n: number }>('SELECT count(*) AS n FROM (SELECT 1 FROM transactions LIMIT 1)');
-  return (rows?.n ?? 0) > 0;
+  const sql = userDataProbeSql(existingTables(conn));
+  if (sql == null) return false;
+  const row = sqliteDb.getFirstSync<{ has_data: number }>(sql);
+  return (row?.has_data ?? 0) > 0;
 }
 
 /** VACUUM INTO a consistent single-file copy (no WAL needed), then prune to the newest two. */

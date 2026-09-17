@@ -1,10 +1,10 @@
-import { and, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm';
+import { and, eq, isNull, ne, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
 import * as schema from '../../db/schema';
 import { nowISO } from '../../lib/dates';
 import { runWriteTx } from '../../db/tx';
-import { budgets, categories, subscriptions, transactions } from '../../db/schema';
+import { budgets, categories, splitExpenses, subscriptions, transactions } from '../../db/schema';
 
 /**
  * Category writes — create, rename/recolour, merge, delete.
@@ -147,6 +147,10 @@ export function mergeCategory(database: SyncDb, sourceId: number, targetId: numb
     const moved = countTransactions(tx as SyncDb, sourceId);
     tx.update(transactions).set({ categoryId: targetId }).where(eq(transactions.categoryId, sourceId)).run();
     tx.update(subscriptions).set({ categoryId: targetId }).where(eq(subscriptions.categoryId, sourceId)).run();
+    // Group expenses too (B4). Groups was built after this file, so it was
+    // missed: a merged-away category left group totals pointing at a retired
+    // row, which groupCategoryQuery then displayed by its tombstone name.
+    tx.update(splitExpenses).set({ categoryId: targetId }).where(eq(splitExpenses.categoryId, sourceId)).run();
 
     const targetLive = tx
       .select({ id: budgets.id })
@@ -160,11 +164,11 @@ export function mergeCategory(database: SyncDb, sourceId: number, targetId: numb
         .where(and(eq(budgets.categoryId, sourceId), isNull(budgets.deletedAt)))
         .run();
     } else {
-      // WRONG, kept until plan.md R1-15 replaces it: a soft-deleted budget
-      // does NOT hold the target's slot — the unique index has been partial
-      // (WHERE deleted_at IS NULL) since migration 0001. This hard delete
-      // destroys budget history for no reason and contradicts soft-delete.
-      tx.delete(budgets).where(and(eq(budgets.categoryId, targetId), isNotNull(budgets.deletedAt))).run();
+      // The source's budget takes the target's empty slot. Nothing is deleted
+      // (B15): `budget_cat_unique` has been PARTIAL (WHERE deleted_at IS NULL)
+      // since migration 0001, so the target's soft-deleted budgets never held
+      // the slot. The old hard delete destroyed budget history to satisfy a
+      // constraint that had not applied for six migrations.
       tx.update(budgets).set({ categoryId: targetId }).where(eq(budgets.categoryId, sourceId)).run();
     }
 
@@ -185,6 +189,9 @@ export function deleteCategory(database: SyncDb, id: number): { uncategorised: n
     const uncategorised = countTransactions(tx as SyncDb, id);
     tx.update(transactions).set({ categoryId: null }).where(eq(transactions.categoryId, id)).run();
     tx.update(subscriptions).set({ categoryId: null }).where(eq(subscriptions.categoryId, id)).run();
+    // Group expenses become uncategorised too (B4), rather than keeping a
+    // reference to the row this function is about to retire and rename.
+    tx.update(splitExpenses).set({ categoryId: null }).where(eq(splitExpenses.categoryId, id)).run();
     tx.update(budgets).set({ deletedAt: now() }).where(and(eq(budgets.categoryId, id), isNull(budgets.deletedAt))).run();
     retire(tx as SyncDb, id, cat.name);
     return { uncategorised };

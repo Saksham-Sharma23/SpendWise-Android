@@ -202,8 +202,45 @@ export function updateGroup(db: GroupsWriteDb, groupId: number, input: GroupInpu
   });
 }
 
+/**
+ * Soft-delete a group — only while everyone in it is square (B14).
+ *
+ * Deleting a group with live balances hid them from the hub and silently
+ * changed every member's friend total, with no settlement to explain it. The
+ * app's promise is that balances are derived from expenses and settlements
+ * alone, so no other action may move them. Same rule, and the same wording,
+ * as removing a single member in `updateGroup`.
+ */
 export function deleteGroup(db: GroupsWriteDb, groupId: number): void {
-  db.update(splitGroups).set({ deletedAt: now() }).where(eq(splitGroups.id, groupId)).run();
+  runWriteTx(db, (tx) => {
+    const nets = groupNetsSync(tx as unknown as GroupsWriteDb, groupId);
+    const outstanding = [...nets.entries()].filter(([, net]) => net !== 0);
+
+    if (outstanding.length > 0) {
+      const names = new Map(
+        tx
+          .select({ id: people.id, name: people.name })
+          .from(people)
+          .where(
+            inArray(
+              people.id,
+              outstanding.map(([personId]) => personId),
+            ),
+          )
+          .all()
+          .map((p) => [p.id, p.name] as const),
+      );
+      const [personId, net] = outstanding[0]!;
+      const who = names.get(personId) ?? 'Someone';
+      throw new UserFacingError(
+        net > 0
+          ? `${who} is still owed ${formatINR(net)} here. Settle up before deleting this group`
+          : `${who} still owes ${formatINR(-net)} here. Settle up before deleting this group`,
+      );
+    }
+
+    tx.update(splitGroups).set({ deletedAt: now() }).where(eq(splitGroups.id, groupId)).run();
+  });
 }
 
 export function restoreGroup(db: GroupsWriteDb, groupId: number): void {
@@ -373,8 +410,71 @@ export function deleteExpense(db: GroupsWriteDb, id: number): void {
   db.update(splitExpenses).set({ deletedAt: now() }).where(eq(splitExpenses.id, id)).run();
 }
 
+/**
+ * Undo a delete — only while everyone the expense names is still a member (B14).
+ *
+ * A member can be removed once their balance is zero, which the deleted
+ * expense is not counted in. Restoring it afterwards would put a balance back
+ * on somebody who has left, so the group would no longer sum to zero.
+ */
 export function restoreExpense(db: GroupsWriteDb, id: number): void {
-  db.update(splitExpenses).set({ deletedAt: null }).where(eq(splitExpenses.id, id)).run();
+  runWriteTx(db, (tx) => {
+    const expense = tx
+      .select({ groupId: splitExpenses.groupId })
+      .from(splitExpenses)
+      .where(eq(splitExpenses.id, id))
+      .all()[0];
+    if (!expense) throw new UserFacingError('That expense no longer exists');
+
+    assertPeopleStillMembers(tx as unknown as GroupsWriteDb, expense.groupId, peopleOnExpense(tx as unknown as GroupsWriteDb, id), 'expense');
+
+    tx.update(splitExpenses).set({ deletedAt: null }).where(eq(splitExpenses.id, id)).run();
+  });
+}
+
+/** Everyone named by an expense: its payers and everyone it charges a share to. */
+function peopleOnExpense(db: GroupsWriteDb, expenseId: number): number[] {
+  const payers = db
+    .select({ personId: splitExpensePayers.personId })
+    .from(splitExpensePayers)
+    .where(eq(splitExpensePayers.expenseId, expenseId))
+    .all();
+  const shares = db
+    .select({ personId: splitExpenseShares.personId })
+    .from(splitExpenseShares)
+    .where(eq(splitExpenseShares.expenseId, expenseId))
+    .all();
+  return [...new Set([...payers, ...shares].map((r) => r.personId))];
+}
+
+/** Refuse when anyone named is no longer a live member of the group. */
+function assertPeopleStillMembers(
+  db: GroupsWriteDb,
+  groupId: number,
+  personIds: readonly number[],
+  what: 'expense' | 'settlement',
+): void {
+  if (personIds.length === 0) return;
+
+  const live = new Set(
+    db
+      .select({ personId: groupMembers.personId })
+      .from(groupMembers)
+      .where(and(eq(groupMembers.groupId, groupId), isNull(groupMembers.deletedAt)))
+      .all()
+      .map((m) => m.personId),
+  );
+
+  const missing = personIds.filter((id) => !live.has(id));
+  if (missing.length === 0) return;
+
+  const name =
+    db
+      .select({ name: people.name })
+      .from(people)
+      .where(eq(people.id, missing[0]!))
+      .all()[0]?.name ?? 'Someone';
+  throw new UserFacingError(`${name} is no longer in this group, so that ${what} can’t be restored`);
 }
 
 // ---------------------------------------------------------------------------
@@ -437,9 +537,22 @@ export function deleteSettlements(db: GroupsWriteDb, ids: readonly number[]): vo
   db.update(settlements).set({ deletedAt: now() }).where(inArray(settlements.id, [...ids])).run();
 }
 
+/** Undo a settle-up — only while both people are still members (B14, as restoreExpense). */
 export function restoreSettlements(db: GroupsWriteDb, ids: readonly number[]): void {
   if (ids.length === 0) return;
-  db.update(settlements).set({ deletedAt: null }).where(inArray(settlements.id, [...ids])).run();
+  runWriteTx(db, (tx) => {
+    const rows = tx
+      .select({ groupId: settlements.groupId, from: settlements.fromPersonId, to: settlements.toPersonId })
+      .from(settlements)
+      .where(inArray(settlements.id, [...ids]))
+      .all();
+
+    for (const r of rows) {
+      assertPeopleStillMembers(tx as unknown as GroupsWriteDb, r.groupId, [r.from, r.to], 'settlement');
+    }
+
+    tx.update(settlements).set({ deletedAt: null }).where(inArray(settlements.id, [...ids])).run();
+  });
 }
 
 // ---------------------------------------------------------------------------
