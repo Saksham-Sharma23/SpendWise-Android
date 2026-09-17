@@ -20,7 +20,7 @@ import {
   useBudgetableCategories,
 } from '../../features/budgets/queries';
 import { budgetFormSchema, emptyBudgetForm, toBudgetInput, type BudgetFormValues } from '../../features/budgets/schema';
-import { colorForCategory } from '../../lib/categoryColor';
+import { colorForName } from '../../lib/categoryColor';
 import { getCycleWindow } from '../../lib/dates';
 import { formatDayMonth } from '../../lib/dates';
 import { paiseToDecimalString } from '../../lib/money';
@@ -160,7 +160,7 @@ export default function BudgetModal() {
               <View className="flex-row flex-wrap gap-2">
                 {categories.map((c) => {
                   const on = field.value === c.id;
-                  const color = c.color ?? colorForCategory(c.name);
+                  const color = c.color ?? colorForName(c.name);
                   return (
                     <PressableScale
                       key={c.id}

@@ -9,7 +9,7 @@ import { CategoryIcon } from '../../components/ui/CategoryIcon';
 import { DatePickerSheet } from '../../components/ui/DatePickerSheet';
 import { PressableScale } from '../../components/ui/PressableScale';
 import { Segmented } from '../../components/ui/Segmented';
-import { colorForCategory } from '../../lib/categoryColor';
+import { colorForName } from '../../lib/categoryColor';
 import { useFilterStore } from '../../features/transactions/filterStore';
 import { DATE_PRESETS, NO_DATES, resolveDateRange } from '../../features/transactions/filters';
 import { hasActiveFilters, useCategories } from '../../features/transactions/queries';
@@ -163,7 +163,7 @@ export default function FiltersModal() {
           <View className="flex-row flex-wrap gap-2">
             {categories.map((c) => {
               const on = selectedCats.includes(c.id);
-              const color = c.color ?? colorForCategory(c.name);
+              const color = c.color ?? colorForName(c.name);
               return (
                 <PressableScale
                   key={c.id}

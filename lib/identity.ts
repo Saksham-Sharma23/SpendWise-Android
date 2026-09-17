@@ -1,4 +1,4 @@
-import { colorForCategory } from './categoryColor';
+import { colorForName } from './categoryColor';
 
 /**
  * Deterministic look for anything named — a subscription, a group, a friend —
@@ -151,7 +151,7 @@ export function deterministicIcon(name: string): string {
 export function deterministicColor(name: string): string {
   // Same palette as categories, so a Tracker card and a ledger row for the
   // same word are the same colour.
-  return colorForCategory(name);
+  return colorForName(name);
 }
 
 /** "Netflix" -> "N", "Amazon Prime" -> "AP". For a text avatar when no icon fits. */

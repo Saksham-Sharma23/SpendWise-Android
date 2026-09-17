@@ -66,6 +66,17 @@ export interface ChangeSet {
   categoryIds: ReadonlySet<number>;
   /** Current keys for changed transaction ids that no loaded page holds. */
   unknownKeys: RowKey[];
+  /**
+   * Too many ids changed at once to look their keys up (see KEY_LOOKUP_LIMIT
+   * in queries.ts), so `unknownKeys` is incomplete and every loaded page has
+   * to be treated as stale.
+   *
+   * Before this existed the lookup silently sliced the ids to 500 (B12), so
+   * undoing a 2,000-row bulk delete left deep pages showing rows that were no
+   * longer there. A full refresh is the correct answer and bulk changes are
+   * rare, which is why this is a flag rather than paged lookups.
+   */
+  overflowed?: boolean;
 }
 
 export interface Staleness {
@@ -79,6 +90,12 @@ export interface Staleness {
 export function stalePages<R extends PagedRow>(pages: OlderPage<R>[], changes: ChangeSet): Staleness {
   const stale = new Set<number>();
   let belowLoaded = false;
+
+  if (changes.overflowed) {
+    pages.forEach((_p, i) => stale.add(i));
+    // A change this large may also have added rows below what is loaded.
+    return { pages: stale, belowLoaded: true };
+  }
 
   pages.forEach((p, i) => {
     for (const row of p.rows) {

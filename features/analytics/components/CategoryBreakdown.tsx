@@ -54,7 +54,13 @@ export function CategoryBreakdown({ today, earliest }: { today: ISODate; earlies
   const slices = useMemo(() => toSlices(rows), [rows]);
   const total = slices.reduce((a, s) => a + s.totalPaise, 0);
   const colorOf = (s: Slice) =>
-    s.key === 'other' ? colors.subtle : s.key === 'none' ? colors.muted : categoryColor(s.color, s.name);
+    s.key === 'other'
+      ? colors.subtle
+      : s.key === 'none'
+        ? colors.muted
+        : // Resolved HERE, against the live theme, not baked in when the row was
+          // fetched — that is what lets a theme switch repaint it (B10).
+          (categoryColor(s.color, s.name) ?? colors.muted);
 
   const selected = slices.find((s) => s.key === selectedKey) ?? null;
   const canBack = earliestMonth == null || shown > earliestMonth;

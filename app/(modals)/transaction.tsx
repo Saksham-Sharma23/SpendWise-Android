@@ -12,7 +12,7 @@ import { CategoryIcon } from '../../components/ui/CategoryIcon';
 import { DatePickerSheet } from '../../components/ui/DatePickerSheet';
 import { PressableScale } from '../../components/ui/PressableScale';
 import { Segmented } from '../../components/ui/Segmented';
-import { colorForCategory } from '../../lib/categoryColor';
+import { colorForName } from '../../lib/categoryColor';
 import {
   createTransaction,
   getTransaction,
@@ -258,7 +258,7 @@ export default function TransactionModal() {
               <View className="flex-row flex-wrap gap-2">
                 {choices.map((c) => {
                   const on = field.value === c.id;
-                  const color = c.color ?? colorForCategory(c.name);
+                  const color = c.color ?? colorForName(c.name);
                   return (
                     <PressableScale
                       key={c.id}

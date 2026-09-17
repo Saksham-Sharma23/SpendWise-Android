@@ -1,6 +1,12 @@
 import Database from 'better-sqlite3';
 
-import { existingTables, userDataProbeSql } from '../migrate';
+import {
+  existingTables,
+  integrityFailureRecorded,
+  recheckIntegrity,
+  recordIntegrityFailure,
+  userDataProbeSql,
+} from '../migrate';
 import { connectionOf, freshDb } from './support';
 
 /**
@@ -93,5 +99,76 @@ describe('userDataProbeSql', () => {
     old.exec('CREATE TABLE categories (id INTEGER, is_system INTEGER);');
     expect(() => old.prepare(sql!).get()).not.toThrow();
     old.close();
+  });
+});
+
+/**
+ * B8: `foreign_key_check` necessarily runs AFTER drizzle has committed — it
+ * migrates everything in one transaction — so a violation could not be rolled
+ * back. Boot reported it once, and the next launch found nothing pending and
+ * opened straight onto the broken data. The failure now outlives the launch
+ * that found it.
+ */
+describe('integrity failures persist across launches', () => {
+  let fresh: Fresh;
+  beforeEach(async () => {
+    fresh = await freshDb();
+  });
+  afterEach(() => fresh.sqlite.close());
+
+  /** A transaction pointing at a category that does not exist. */
+  function breakAReference() {
+    fresh.sqlite.pragma('foreign_keys = OFF');
+    fresh.sqlite
+      .prepare(
+        `INSERT INTO transactions (uid, type, amount_paise, date, category_id, created_at, updated_at)
+         VALUES ('orphan', 'expense', 1000, '2026-09-01', 4242, 'now', 'now')`,
+      )
+      .run();
+  }
+
+  it('records nothing when the database is sound', () => {
+    const conn = connectionOf(fresh.sqlite);
+    expect(fresh.sqlite.prepare('PRAGMA foreign_key_check').all()).toHaveLength(0);
+    expect(integrityFailureRecorded(conn)).toBe(false);
+  });
+
+  it('records the failure, and still reports it on the NEXT launch', () => {
+    const conn = connectionOf(fresh.sqlite);
+    breakAReference();
+
+    // Launch 1: the check finds the violation after the commit.
+    const violations = fresh.sqlite.prepare('PRAGMA foreign_key_check').all();
+    expect(violations.length).toBeGreaterThan(0);
+    recordIntegrityFailure(conn, violations.length);
+
+    // Launch 2: nothing is pending, so only the flag can save us.
+    expect(integrityFailureRecorded(conn)).toBe(true);
+    expect(recheckIntegrity(conn)).toBeGreaterThan(0);
+
+    // …and launch 3, and every launch after it.
+    expect(integrityFailureRecorded(conn)).toBe(true);
+  });
+
+  it('clears itself once the damage is actually repaired', () => {
+    const conn = connectionOf(fresh.sqlite);
+    breakAReference();
+    recordIntegrityFailure(conn, 1);
+    expect(integrityFailureRecorded(conn)).toBe(true);
+
+    // A later fix migration, or a restore, removes the orphan.
+    fresh.sqlite.prepare("DELETE FROM transactions WHERE uid = 'orphan'").run();
+
+    expect(recheckIntegrity(conn)).toBe(0);
+    expect(integrityFailureRecorded(conn)).toBe(false);
+  });
+
+  it('never throws, even with no app_meta table at all', () => {
+    const bare = new Database(':memory:');
+    const conn = connectionOf(bare);
+    expect(integrityFailureRecorded(conn)).toBe(false);
+    expect(() => recordIntegrityFailure(conn, 3)).not.toThrow();
+    expect(integrityFailureRecorded(conn)).toBe(true);
+    bare.close();
   });
 });

@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 
 import { moveDatabaseAside, shareDatabaseCopy, type BootOutcome } from '../../../db/boot';
 import { colors, fonts, useColors } from '../../../lib/theme';
+import { useThemeStore } from '../../../lib/themeStore';
 
 /**
  * What the user sees when the database cannot be opened, migrated or seeded.
@@ -27,6 +28,7 @@ const TITLES: Record<Failure['kind'], string> = {
 
 export function BootFailure({ outcome, onRetry }: { outcome: Failure; onRetry: () => void }) {
   const colors = useColors();
+  const resolved = useThemeStore((st) => st.resolved);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -48,7 +50,13 @@ export function BootFailure({ outcome, onRetry }: { outcome: Failure; onRetry: (
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }} onLayout={() => void SplashScreen.hideAsync()}>
-      <StatusBar style="light" />
+      {/*
+        Follows the theme (B11). Hard-coding "light" put white status-bar
+        icons on the off-white light background — unreadable, on the one
+        screen that has to be readable. The preference is a synchronous MMKV
+        read, so it is available even here, before the database has opened.
+      */}
+      <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, gap: 12 }}>
         <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 22 }}>{TITLES[outcome.kind]}</Text>
         <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 }}>{outcome.message}</Text>

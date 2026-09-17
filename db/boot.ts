@@ -18,9 +18,12 @@ import {
 import { cleanUpLegacyEncryption, convertLegacyEncryptionIfNeeded, LegacyConversionError } from './legacyEncryption';
 import {
   existingTables,
+  ForeignKeyViolationError,
+  integrityFailureRecorded,
   lastAppliedMillis,
   migrateWithForeignKeysOff,
   pendingMigrations,
+  recheckIntegrity,
   snapshotName,
   snapshotsToDelete,
   userDataProbeSql,
@@ -137,6 +140,23 @@ export async function bootDatabase(): Promise<BootOutcome> {
     }
   } catch (e) {
     return { kind: 'migration-failed', message: messageOf(e), snapshot };
+  }
+
+  // 4b. A previous launch recorded broken references (B8).
+  //
+  // The check that finds them can only run AFTER drizzle has committed, so
+  // this state outlives the launch that produced it. Before the flag existed
+  // the failure screen appeared once and every later launch — finding nothing
+  // pending — opened straight onto the damaged data.
+  if (integrityFailureRecorded(conn)) {
+    const remaining = recheckIntegrity(conn);
+    if (remaining > 0) {
+      return {
+        kind: 'migration-failed',
+        message: new ForeignKeyViolationError(remaining).message,
+        snapshot,
+      };
+    }
   }
 
   // 5. Seed.

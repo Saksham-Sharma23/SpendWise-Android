@@ -1,6 +1,6 @@
 import { useIsFocused } from 'expo-router';
 import { addDatabaseChangeListener } from 'expo-sqlite';
-import { useCallback, useEffect, useRef, useState, type DependencyList } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DependencyList } from 'react';
 
 import { createChangeHub } from './changeHub';
 import { createLatestOnly } from './latestOnly';
@@ -50,10 +50,26 @@ export type TableName =
 
 export type QueryStatus = 'pending' | 'ok' | 'error';
 
+/** What the hook stores; `refetch` is added to it on the way out. */
+type QueryState<T> = Omit<DbQueryResult<T>, 'refetch'>;
+
 export interface DbQueryResult<T> {
   data: T;
   status: QueryStatus;
   error: Error | null;
+  /**
+   * Run the query again now.
+   *
+   * For a retry after `status === 'error'`: a change event or a deps change
+   * re-runs the query by itself, so this is only for the case where nothing
+   * about the query has changed but the user wants another attempt. Before it
+   * existed the ledger's "Try again" called a reset that did not alter the
+   * deps, so nothing re-ran and the button did nothing (B7).
+   *
+   * An in-flight run is superseded, so hammering it cannot deliver a stale
+   * answer after a newer one.
+   */
+  refetch: () => void;
 }
 
 // One native listener for the whole app, fanned out through the hub.
@@ -80,7 +96,7 @@ export function useDbQuery<T>(
   const runRef = useRef(run);
   runRef.current = run;
 
-  const [result, setResult] = useState<DbQueryResult<T>>(() => ({ data: fallback, status: 'pending', error: null }));
+  const [result, setResult] = useState<QueryState<T>>(() => ({ data: fallback, status: 'pending', error: null }));
   const isFocused = useIsFocused();
   const focusedRef = useRef(isFocused);
   focusedRef.current = isFocused;
@@ -129,5 +145,7 @@ export function useDbQuery<T>(
     }
   }, [isFocused, refresh]);
 
-  return result;
+  // A new object each render would defeat memoisation in consumers, so the
+  // identity only changes when the result or the callback does.
+  return useMemo(() => ({ ...result, refetch: refresh }), [result, refresh]);
 }

@@ -49,6 +49,12 @@ type ListItem = { kind: 'month'; key: string; label: string } | { kind: 'row'; r
  * Insert a header before the first row of each month, note where each header
  * sits, and resolve each row's display colour ONCE per fetch — so rows never
  * build a fresh object during render.
+ *
+ * `categoryColor` may return null, for a row with no category at all. That
+ * null is passed through rather than replaced here (B10): CategoryIcon draws
+ * it with a neutral that reads in both themes, whereas resolving it at fetch
+ * time baked in whichever theme happened to be active, and the row kept that
+ * grey after a theme switch until the next query ran.
  */
 function withMonthHeaders(rows: TransactionRow[]): { items: ListItem[]; headerIndices: number[] } {
   const items: ListItem[] = [];
@@ -95,7 +101,7 @@ export function Ledger() {
   const filters: TransactionFilters = useMemo(() => ({ ...sheetFilters, search }), [sheetFilters, search]);
 
   // Keyset pages: page 1 live, older pages fetched as you scroll (queries.ts).
-  const { rows, status: rowsStatus, loadMore, reset: resetPages } = useTransactionPages(filters);
+  const { rows, status: rowsStatus, loadMore, retry: retryPages } = useTransactionPages(filters);
   const { data: summaryRows = [] } = useTransactionSummary(filters);
   const { data: categoryList = [] } = useCategories();
   const summary = summaryRows[0];
@@ -116,16 +122,20 @@ export function Ledger() {
   const onEndReached = loadMore;
 
   /**
-   * Pull-to-refresh. The data is already live, so there is nothing to fetch;
-   * what the gesture does here is collapse the scroll window back to the
-   * first page, which is what "take me back to fresh" means on a long ledger.
+   * Pull-to-refresh, and the error state's "Try again".
+   *
+   * Page 1 is live, so on a healthy ledger the gesture's real job is to
+   * collapse the scroll window back to the first page. It also RE-RUNS that
+   * page, which is what makes it a genuine retry after a failed query —
+   * collapsing alone changed nothing when no older pages were loaded, so the
+   * button did nothing at all (B7).
    */
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    resetPages();
+    retryPages();
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
     refreshTimer.current = setTimeout(() => setRefreshing(false), 450);
-  }, [resetPages]);
+  }, [retryPages]);
 
   const deleteOne = useCallback((row: TransactionRow) => {
     // On failure safeWrite has already toasted why — no undo to offer.
@@ -192,7 +202,9 @@ export function Ledger() {
           selectionMode={selectionMode}
         />
       ),
-    [openRow, deleteOne, toggleSelect, selected, selectionMode],
+    // `colors` belongs here: the month header draws with it, so a theme
+    // switch with the ledger mounted left the headers in the old palette (B9).
+    [openRow, deleteOne, toggleSelect, selected, selectionMode, colors],
   );
 
   const clearFilters = () => {

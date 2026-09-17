@@ -68,6 +68,16 @@ export type TransactionRow = {
 
 export const LEDGER_PAGE = 40;
 
+/**
+ * How many changed ids are worth looking keys up for in one go.
+ *
+ * SQLite's bound-parameter limit is 999 on older builds, so this stays well
+ * below it. Past this many, `stalePages` refreshes every loaded page instead
+ * (B12) — a bulk change is rare, and a ledger showing rows that no longer
+ * exist is not an acceptable alternative.
+ */
+export const KEY_LOOKUP_LIMIT = 400;
+
 const EMPTY_ROWS: TransactionRow[] = [];
 
 export interface TransactionPages {
@@ -77,6 +87,12 @@ export interface TransactionPages {
   loadMore: () => void;
   /** Collapse back to the live first page (pull-to-refresh). */
   reset: () => void;
+  /**
+   * Collapse to page 1 AND re-run it. What "Try again" and pull-to-refresh
+   * need: `reset` alone only drops the older pages, and when none are loaded
+   * it changes nothing the live query depends on, so nothing re-runs (B7).
+   */
+  retry: () => void;
   hasMore: boolean;
 }
 
@@ -191,10 +207,13 @@ export function useTransactionPages(filters: TransactionFilters): TransactionPag
 
     const gen = generation.current;
     const unknown = idsNotInPages(pages, txIds);
-    const unknownKeys = unknown.length > 0 ? await transactionQueries.keysFor(unknown) : [];
+    // Past the limit the keys are not worth fetching: every loaded page is
+    // refreshed instead (B12). Bulk changes are rare; a wrong ledger is not.
+    const overflowed = unknown.length > KEY_LOOKUP_LIMIT;
+    const unknownKeys = !overflowed && unknown.length > 0 ? await transactionQueries.keysFor(unknown) : [];
     if (gen !== generation.current) return;
 
-    const { pages: stale, belowLoaded } = stalePages(pages, { txIds, categoryIds, unknownKeys });
+    const { pages: stale, belowLoaded } = stalePages(pages, { txIds, categoryIds, unknownKeys, overflowed });
     if (belowLoaded) setHasMore(true);
     if (stale.size === 0) return;
 
@@ -239,7 +258,18 @@ export function useTransactionPages(filters: TransactionFilters): TransactionPag
     [live.data, older],
   );
 
-  return { rows, status: live.status, loadMore, reset, hasMore };
+  // Held in a ref so `retry` keeps a stable identity: it is passed to the
+  // ledger's error state and to pull-to-refresh, which should not re-render
+  // on every result.
+  const refetchRef = useRef(live.refetch);
+  refetchRef.current = live.refetch;
+
+  const retry = useCallback(() => {
+    reset();
+    refetchRef.current();
+  }, [reset]);
+
+  return { rows, status: live.status, loadMore, reset, retry, hasMore };
 }
 
 /**
@@ -320,12 +350,19 @@ export const transactionQueries = {
       .leftJoin(categories, eq(transactions.categoryId, categories.id))
       .where(and(buildWhere(filters), olderThan(upper), atOrNewerThan(lower)))
       .orderBy(desc(transactions.date), desc(transactions.id)),
-  /** Current (date, id) keys for changed rows, soft-deleted ones included. */
+  /**
+   * Current (date, id) keys for changed rows, soft-deleted ones included.
+   *
+   * The caller must not pass more than KEY_LOOKUP_LIMIT ids: SQLite has a
+   * bound-parameter limit, and a list this long means a bulk change, which
+   * `stalePages` handles by refreshing everything instead. This used to slice
+   * silently at 500 and drop the rest (B12).
+   */
   keysFor: (ids: number[]) =>
     readDb
       .select({ date: transactions.date, id: transactions.id })
       .from(transactions)
-      .where(inArray(transactions.id, ids.slice(0, 500))),
+      .where(inArray(transactions.id, ids)),
   summary: (filters: TransactionFilters) =>
     readDb
       .select({

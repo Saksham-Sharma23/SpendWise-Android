@@ -278,7 +278,7 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {categories.map((c) => {
                 const on = c.id === categoryId;
-                const t = categoryColor(c.color, c.name);
+                const t = categoryColor(c.color, c.name) ?? colors.muted;
                 return (
                   <PressableScale
                     key={c.id}

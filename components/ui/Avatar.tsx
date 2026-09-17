@@ -2,7 +2,7 @@ import { Text, View } from 'react-native';
 
 import { initials } from '../../lib/identity';
 import { fonts, useColors, withAlpha } from '../../lib/theme';
-import { colorForCategory } from '../../lib/categoryColor';
+import { colorForName } from '../../lib/categoryColor';
 
 interface Props {
   name: string;
@@ -19,7 +19,7 @@ interface Props {
  */
 export function Avatar({ name, size = 40, isSelf = false, ringed = false }: Props) {
   const colors = useColors();
-  const tint = isSelf ? colors.primary : colorForCategory(name);
+  const tint = isSelf ? colors.primary : colorForName(name);
   return (
     <View
       accessibilityElementsHidden

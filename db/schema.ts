@@ -430,6 +430,16 @@ export const META_KEYS = {
   LAST_BACKUP_AT: 'last_backup_at',
   /** '1' once the user dismisses first-run onboarding on Home. */
   ONBOARDING_DISMISSED: 'onboarding_dismissed',
+  /**
+   * Set when `foreign_key_check` failed after a migration committed, cleared
+   * when a later launch finds the database clean again (B8).
+   *
+   * Drizzle commits all pending migrations in one transaction, so the check
+   * necessarily runs AFTER the commit. Without this key the failure screen
+   * appeared once and the next launch — finding nothing pending — opened
+   * normally onto the broken data, for ever.
+   */
+  INTEGRITY_FAILED: 'integrity_failed',
 } as const;
 
 // ---------------------------------------------------------------------------

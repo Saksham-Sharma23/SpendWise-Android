@@ -77,6 +77,40 @@ describe('stalePages', () => {
   });
 });
 
+/**
+ * B12: the key lookup silently sliced the changed ids to 500, so undoing a
+ * 2,000-row bulk delete left deep pages showing rows that no longer existed.
+ * When there are too many to look up, every loaded page is stale instead.
+ */
+describe('stalePages — a change too large to look up', () => {
+  const none = { txIds: new Set<number>(), categoryIds: new Set<number>(), unknownKeys: [] };
+
+  it('marks every loaded page stale', () => {
+    const s = stalePages(pages, { ...none, txIds: new Set([9999]), overflowed: true });
+    expect([...s.pages].sort()).toEqual([0, 1]);
+  });
+
+  it('also reopens paging, because rows may have appeared below what is loaded', () => {
+    expect(stalePages(pages, { ...none, overflowed: true }).belowLoaded).toBe(true);
+  });
+
+  it('ignores the incomplete key list rather than trusting it', () => {
+    // A partial unknownKeys that points at page 0 only must not narrow the
+    // refresh to page 0 when the set is known to be incomplete.
+    const s = stalePages(pages, {
+      ...none,
+      txIds: new Set([200]),
+      unknownKeys: [{ date: '2026-09-03', id: 200 }],
+      overflowed: true,
+    });
+    expect([...s.pages].sort()).toEqual([0, 1]);
+  });
+
+  it('is not triggered when the flag is absent', () => {
+    expect([...stalePages(pages, { ...none, txIds: new Set([25]) }).pages]).toEqual([1]);
+  });
+});
+
 describe('idsNotInPages', () => {
   it('returns only ids that no older page holds', () => {
     expect(idsNotInPages(pages, new Set([45, 10, 777]))).toEqual([777]);

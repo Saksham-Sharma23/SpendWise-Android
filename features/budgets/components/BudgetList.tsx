@@ -10,7 +10,7 @@ import { Card } from '../../../components/ui/Card';
 import { CategoryIcon } from '../../../components/ui/CategoryIcon';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { PressableScale } from '../../../components/ui/PressableScale';
-import { colorForCategory } from '../../../lib/categoryColor';
+import { colorForName } from '../../../lib/categoryColor';
 import { formatDayMonth } from '../../../lib/dates';
 import { formatINR } from '../../../lib/money';
 import { useToday } from '../../../lib/today';
@@ -156,7 +156,7 @@ function BudgetCard({
 }) {
   const colors = useColors();
   const tone = toneFor(budget.state);
-  const color = budget.categoryColor ?? colorForCategory(budget.categoryName);
+  const color = budget.categoryColor ?? colorForName(budget.categoryName);
   const percent = Math.round(budget.ratio * 100);
 
   return (

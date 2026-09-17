@@ -57,7 +57,13 @@ export async function migrateWithForeignKeysOff(
   try {
     await migrate();
     const violations = conn.all('PRAGMA foreign_key_check');
-    if (violations.length > 0) throw new ForeignKeyViolationError(violations.length);
+    if (violations.length > 0) {
+      // Drizzle has already COMMITTED by now — it runs every pending migration
+      // in one transaction — so the damage cannot be rolled back here. Record
+      // it instead, and refuse to boot until it is gone (B8).
+      recordIntegrityFailure(conn, violations.length);
+      throw new ForeignKeyViolationError(violations.length);
+    }
   } finally {
     conn.exec('PRAGMA foreign_keys = ON');
   }
@@ -126,4 +132,67 @@ export function userDataProbeSql(existingTables: readonly string[]): string | nu
 /** The tables this database actually has, for `userDataProbeSql`. */
 export function existingTables(conn: MigrationConnection): string[] {
   return conn.all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'").map((r) => r.name);
+}
+
+// ---------------------------------------------------------------------------
+// Integrity failures outlive the launch that found them (B8)
+// ---------------------------------------------------------------------------
+
+const INTEGRITY_FAILED_KEY = 'integrity_failed';
+
+function quote(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+/**
+ * Remember that `foreign_key_check` failed, so the next launch cannot quietly
+ * accept the damage.
+ *
+ * Written with raw SQL rather than through Drizzle because this runs mid-boot,
+ * when the ORM handle may not be usable, and it must not itself throw: losing
+ * the flag would be worse than a clumsy write.
+ */
+export function recordIntegrityFailure(conn: MigrationConnection, violations: number): void {
+  try {
+    conn.exec(`CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)`);
+    const value = quote(`${violations}@${new Date().toISOString()}`);
+    conn.exec(
+      `INSERT INTO app_meta (key, value) VALUES (${quote(INTEGRITY_FAILED_KEY)}, ${value})
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    );
+  } catch {
+    // Best effort. A failed flag write must not mask the violation itself.
+  }
+}
+
+/** Whether a previous launch recorded an unresolved integrity failure. */
+export function integrityFailureRecorded(conn: MigrationConnection): boolean {
+  try {
+    const rows = conn.all<{ value: string }>(
+      `SELECT value FROM app_meta WHERE key = ${quote(INTEGRITY_FAILED_KEY)} LIMIT 1`,
+    );
+    return rows.length > 0;
+  } catch {
+    // No app_meta yet (a database that never migrated) means nothing to clear.
+    return false;
+  }
+}
+
+/**
+ * Re-check a database that failed before, and clear the flag only if it is
+ * genuinely clean now — a later fix migration, or a restore, can resolve it.
+ *
+ * Returns the number of violations still present, so boot can refuse while it
+ * is non-zero.
+ */
+export function recheckIntegrity(conn: MigrationConnection): number {
+  const violations = conn.all('PRAGMA foreign_key_check');
+  if (violations.length === 0) {
+    try {
+      conn.exec(`DELETE FROM app_meta WHERE key = ${quote(INTEGRITY_FAILED_KEY)}`);
+    } catch {
+      // If the row cannot be removed the next launch simply re-checks.
+    }
+  }
+  return violations.length;
 }

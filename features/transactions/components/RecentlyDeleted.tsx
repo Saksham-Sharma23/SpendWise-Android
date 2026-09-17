@@ -9,7 +9,7 @@ import { Card } from '../../../components/ui/Card';
 import { CategoryIcon } from '../../../components/ui/CategoryIcon';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { PressableScale } from '../../../components/ui/PressableScale';
-import { colorForCategory } from '../../../lib/categoryColor';
+import { colorForName } from '../../../lib/categoryColor';
 import { formatDayMonth } from '../../../lib/dates';
 import { formatINR } from '../../../lib/money';
 import { fonts, useColors, withAlpha } from '../../../lib/theme';
@@ -138,7 +138,7 @@ function DeletedRow({
   onDelete: () => void;
 }) {
   const colors = useColors();
-  const color = row.categoryColor ?? colorForCategory(row.categoryName ?? 'Uncategorised');
+  const color = row.categoryColor ?? colorForName(row.categoryName ?? 'Uncategorised');
   const income = row.type === 'income';
   const urgent = left <= 3;
 

@@ -26,7 +26,7 @@ import {
   toSubscriptionInput,
   type SubscriptionFormValues,
 } from '../../features/tracker/schema';
-import { colorForCategory } from '../../lib/categoryColor';
+import { colorForName } from '../../lib/categoryColor';
 import { addDays, addMonthsClamped, formatDayMonth, getNextRenewal } from '../../lib/dates';
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '../../lib/money';
 import { toMonthlyPaise } from '../../lib/dates';
@@ -88,7 +88,7 @@ export default function SubscriptionModal() {
 
   const category = categories.find((c) => c.id === categoryId);
   const icon = category?.icon ?? deterministicIcon(name || 'Subscription');
-  const color = category?.color ?? (category ? colorForCategory(category.name) : deterministicColor(name || 'x'));
+  const color = category?.color ?? (category ? colorForName(category.name) : deterministicColor(name || 'x'));
 
   const paise = parseAmountToPaise(amount) ?? 0;
   const nextRenewal = getNextRenewal(anchorDate, cycle, today);
@@ -300,7 +300,7 @@ export default function SubscriptionModal() {
               <View className="flex-row flex-wrap gap-2">
                 {categories.map((c) => {
                   const on = field.value === c.id;
-                  const tint = c.color ?? colorForCategory(c.name);
+                  const tint = c.color ?? colorForName(c.name);
                   return (
                     <PressableScale
                       key={c.id}

@@ -43,7 +43,7 @@ export function GroupTotals({ groupId }: { groupId: number }) {
   const slices = s.categories.map((c) => ({
     key: c.id == null ? 'none' : String(c.id),
     value: c.totalPaise,
-    color: c.id == null ? colors.muted : categoryColor(c.color, c.name),
+    color: c.id == null ? colors.muted : (categoryColor(c.color, c.name) ?? colors.muted),
   }));
   const picked = s.categories.find((c) => (c.id == null ? 'none' : String(c.id)) === selected);
   const people = group.data.people;
@@ -86,7 +86,7 @@ export function GroupTotals({ groupId }: { groupId: number }) {
             <View className="mt-4 w-full gap-2">
               {s.categories.map((c) => {
                 const key = c.id == null ? 'none' : String(c.id);
-                const tint = c.id == null ? colors.muted : categoryColor(c.color, c.name);
+                const tint = c.id == null ? colors.muted : (categoryColor(c.color, c.name) ?? colors.muted);
                 return (
                   <View key={key} className="flex-row items-center gap-3" style={{ opacity: selected && selected !== key ? 0.5 : 1 }}>
                     <CategoryIcon icon={c.icon} color={tint} size={30} />
