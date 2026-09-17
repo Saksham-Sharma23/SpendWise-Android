@@ -201,23 +201,23 @@ Status: ⬜ not started · 🟡 in progress · ✅ done
 | R0-5 | Fix misleading comments | T4 | P1 | 30 m | ✅ |
 | R0-6 | Delete empty placeholder folders | T3 | P2 | 5 m | ✅ |
 | R0-7 | Consolidate trackers, move designs out of CLAUDE.md | T3, T5 | — | — | ✅ |
-| **R1** | **Correctness bugs** | | | **1½ d** | |
-| R1-1 | Bound "top categories" (and Home trend) to the month | B1 | P0 | 1 h | ⬜ |
-| R1-2 | Bound analytics ranges at the current month | B2 | P0 | 1½ h | ⬜ |
-| R1-3 | Exact yearly subscription cost | B3 | P0 | 1 h | ⬜ |
-| R1-4 | Category merge/delete handles `split_expenses` | B4 | P0 | 2 h | ⬜ |
-| R1-5 | One amount limit (₹10 crore) | B5 | P1 | 1 h | ⬜ |
-| R1-6 | `formatINRCompact` rounds before choosing a unit | B6 | P1 | 45 m | ⬜ |
-| R1-7 | Ledger "Try again" actually re-runs | B7 | P1 | 1½ h | ⬜ |
-| R1-8 | FK violation after migrating stays a hard failure | B8 | P0 | 3 h | ⬜ |
-| R1-9 | Ledger month headers repaint on theme change | B9 | P2 | 15 m | ⬜ |
-| R1-10 | Uncategorised colour resolved at render | B10 | P2 | 1 h | ⬜ |
-| R1-11 | Boot-failure status bar follows the theme | B11 | P2 | 15 m | ⬜ |
-| R1-12 | `keysFor` chunks instead of truncating | B12 | P2 | 45 m | ⬜ |
-| R1-13 | Pre-migration snapshot for any user data | B13 | P0 | 1 h | ⬜ |
-| R1-14 | Group delete/restore respects balances and membership | B14 | P1 | 2 h | ⬜ |
-| R1-15 | Merge stops hard-deleting budget history | B15 | P2 | 45 m | ⬜ |
-| R1-16 | `deterministicIcon` matches whole words | B19 | P3 | 1 h | ⬜ |
+| **R1** | **Correctness bugs** | | | **1½ d** | ✅ done 2026-09-17 |
+| R1-1 | Bound "top categories" (and Home trend) to the month | B1 | P0 | 1 h | ✅ |
+| R1-2 | Bound analytics ranges at the current month | B2 | P0 | 1½ h | ✅ |
+| R1-3 | Exact yearly subscription cost | B3 | P0 | 1 h | ✅ |
+| R1-4 | Category merge/delete handles `split_expenses` | B4 | P0 | 2 h | ✅ |
+| R1-5 | One amount limit (₹10 crore) | B5 | P1 | 1 h | ✅ |
+| R1-6 | `formatINRCompact` rounds before choosing a unit | B6 | P1 | 45 m | ✅ |
+| R1-7 | Ledger "Try again" actually re-runs | B7 | P1 | 1½ h | ✅ |
+| R1-8 | FK violation after migrating stays a hard failure | B8 | P0 | 3 h | ✅ |
+| R1-9 | Ledger month headers repaint on theme change | B9 | P2 | 15 m | ✅ |
+| R1-10 | Uncategorised colour resolved at render | B10 | P2 | 1 h | ✅ |
+| R1-11 | Boot-failure status bar follows the theme | B11 | P2 | 15 m | ✅ |
+| R1-12 | `keysFor` chunks instead of truncating | B12 | P2 | 45 m | ✅ |
+| R1-13 | Pre-migration snapshot for any user data | B13 | P0 | 1 h | ✅ |
+| R1-14 | Group delete/restore respects balances and membership | B14 | P1 | 2 h | ✅ |
+| R1-15 | Merge stops hard-deleting budget history | B15 | P2 | 45 m | ✅ |
+| R1-16 | `deterministicIcon` matches whole words | B19 | P3 | 1 h | ✅ |
 | **R2** | **Guard rails** | | | **1½ d** | |
 | R2-1 | ESLint with boundaries and project rules | T1 | P1 | 4 h | ⬜ |
 | R2-2 | Prettier + one formatting commit | T1 | P2 | 1 h | ⬜ |
@@ -441,7 +441,7 @@ Batches (one PR each): **R1-A wrong numbers** (R1-1 … R1-6) · **R1-B interact
 
 ### Batch R1-A — Wrong numbers
 
-### ⬜ R1-1 — Bound "top categories" (and the Home trend) to the month
+### ✅ R1-1 — Bound "top categories" (and the Home trend) to the month
 **Ref:** B1 · **Priority:** P0 · **Est:** 1 h · **Depends on:** nothing
 
 **Problem.** `features/dashboard/queries.ts` (~line 182), `topCategoriesQuery` filters only a lower bound:
@@ -471,7 +471,7 @@ sum of shares ≤ 100%.
 
 **Done when:** a future-dated expense changes neither Home number until its month arrives.
 
-### ⬜ R1-2 — Bound analytics ranges at the current month
+### ✅ R1-2 — Bound analytics ranges at the current month
 **Ref:** B2 · **Priority:** P0 · **Est:** 1½ h · **Depends on:** nothing
 
 **Problem.** `features/analytics/sql.ts`:
@@ -497,7 +497,7 @@ equals `totalsQuery`. That second assertion is the one that prevents drift in fu
 
 **Done when:** for any data, the sum of trend points equals the totals card.
 
-### ⬜ R1-3 — Exact yearly subscription cost
+### ✅ R1-3 — Exact yearly subscription cost
 **Ref:** B3 · **Priority:** P0 · **Est:** 1 h · **Depends on:** nothing
 
 **Problem.** `features/tracker/renewal.ts:52-61`:
@@ -528,7 +528,7 @@ that stores integer paise precisely to avoid it.
 
 **Done when:** a yearly plan's yearly cost equals its charge, to the paisa.
 
-### ⬜ R1-4 — Category merge and delete also update `split_expenses.category_id`
+### ✅ R1-4 — Category merge and delete also update `split_expenses.category_id`
 **Ref:** B4 · **Priority:** P0 · **Est:** 2 h · **Depends on:** nothing
 
 **Problem.** `features/categories/mutations.ts`:
@@ -562,7 +562,7 @@ category gets a tombstone name (`tombstoneName` → `"Food ⟨deleted #7⟩"`), 
 
 **Done when:** no screen can show a tombstone name, and the guard test exists.
 
-### ⬜ R1-5 — One amount limit: ₹10 crore
+### ✅ R1-5 — One amount limit: ₹10 crore
 **Ref:** B5 · **Priority:** P1 · **Est:** 1 h · **Depends on:** nothing
 
 **Problem.** Four constants, two values:
@@ -589,7 +589,7 @@ Comments say the guard catches "a missed decimal point" at ₹10 crore. `100_00_
 
 **Done when:** grep for `MAX_PAISE` and `MAX_EXPENSE_PAISE` finds only `lib/money.ts` (or nothing but `MAX_AMOUNT_PAISE`).
 
-### ⬜ R1-6 — `formatINRCompact` rounds before choosing the unit
+### ✅ R1-6 — `formatINRCompact` rounds before choosing the unit
 **Ref:** B6 · **Priority:** P1 · **Est:** 45 m · **Depends on:** nothing
 
 **Problem.** `lib/money.ts:153-161`:
@@ -629,7 +629,7 @@ Also decide about the ₹999.5–₹999.99 range: round-to-whole gives "₹1,000
 
 ### Batch R1-B — Interactions
 
-### ⬜ R1-7 — Ledger "Try again" actually re-runs the query
+### ✅ R1-7 — Ledger "Try again" actually re-runs the query
 **Ref:** B7 · **Priority:** P1 · **Est:** 1½ h · **Depends on:** nothing (R3-6 generalises it)
 
 **Problem.** `features/transactions/components/Ledger.tsx:353`:
@@ -655,7 +655,7 @@ logic you can in Node: extract the "refresh → latest wins" behaviour if it isn
 
 **Done when:** "Try again" re-executes page 1 in every state.
 
-### ⬜ R1-8 — A foreign-key violation after migrating stays a hard failure
+### ✅ R1-8 — A foreign-key violation after migrating stays a hard failure
 **Ref:** B8 · **Priority:** P0 · **Est:** 3 h · **Depends on:** nothing
 
 **Problem.** `db/migrate.ts:53-65`:
@@ -695,7 +695,7 @@ a transaction with a `category_id` that doesn't exist while FKs are off) → fir
 
 **Done when:** the second-launch test passes.
 
-### ⬜ R1-9 — Ledger month headers repaint on theme change
+### ✅ R1-9 — Ledger month headers repaint on theme change
 **Ref:** B9 · **Priority:** P2 · **Est:** 15 m
 
 **Problem.** `features/transactions/components/Ledger.tsx:169-195`: `renderItem` uses
@@ -710,7 +710,7 @@ replaces the inline styles with `<Text variant="label" tone="muted">`, which rea
 
 **Done when:** a theme switch repaints headers immediately (add to DV).
 
-### ⬜ R1-10 — Uncategorised colour resolved at render, not at fetch
+### ✅ R1-10 — Uncategorised colour resolved at render, not at fetch
 **Ref:** B10 · **Priority:** P2 · **Est:** 1 h
 
 **Problem.** `lib/categoryColor.ts:14`: `if (!name) return colors.muted;` imports the **static** `colors`
@@ -732,7 +732,7 @@ re-fetched.
 
 **Done when:** no function in `lib/` returns a theme-dependent colour.
 
-### ⬜ R1-11 — Boot-failure status bar follows the theme
+### ✅ R1-11 — Boot-failure status bar follows the theme
 **Ref:** B11 · **Priority:** P2 · **Est:** 15 m
 
 **Problem.** `features/boot/components/BootFailure.tsx:51`: `<StatusBar style="light" />`. The screen
@@ -746,7 +746,7 @@ already is: theme preference is a synchronous MMKV read), never from the DB.
 
 **Done when:** the status bar is readable in both themes on the failure screen (DV).
 
-### ⬜ R1-12 — `keysFor` chunks instead of truncating at 500 ids
+### ✅ R1-12 — `keysFor` chunks instead of truncating at 500 ids
 **Ref:** B12 · **Priority:** P2 · **Est:** 45 m
 
 **Problem.** `features/transactions/queries.ts:324-327`:
@@ -774,7 +774,7 @@ omitted and an `overflow: true` flag → every page is stale.
 
 ### Batch R1-C — Data safety
 
-### ⬜ R1-13 — Pre-migration snapshot whenever any user data exists
+### ✅ R1-13 — Pre-migration snapshot whenever any user data exists
 **Ref:** B13 · **Priority:** P0 · **Est:** 1 h
 
 **Problem.** `db/boot.ts:62-69`:
@@ -804,7 +804,7 @@ only seeded system categories and the self person → false.
 
 **Done when:** a Groups-only database gets a snapshot.
 
-### ⬜ R1-14 — Group delete and expense restore respect balances and membership
+### ✅ R1-14 — Group delete and expense restore respect balances and membership
 **Ref:** B14 · **Priority:** P1 · **Est:** 2 h
 
 **Problem.** `features/groups/writes.ts`:
@@ -833,7 +833,7 @@ succeeds; restore expense after its payer was removed → throws; restore with a
 
 **Done when:** no group operation changes a balance without a settlement.
 
-### ⬜ R1-15 — Category merge stops hard-deleting budget history
+### ✅ R1-15 — Category merge stops hard-deleting budget history
 **Ref:** B15 · **Priority:** P2 · **Est:** 45 m
 
 **Problem.** `features/categories/mutations.ts:162-166`:
@@ -854,7 +854,7 @@ Also run it against the migrated schema to prove the partial index allows it.
 
 **Done when:** merge never issues a `DELETE`.
 
-### ⬜ R1-16 — `deterministicIcon` matches whole words
+### ✅ R1-16 — `deterministicIcon` matches whole words
 **Ref:** B19 · **Priority:** P3 · **Est:** 1 h
 
 **Problem.** `lib/identity.ts` `KNOWN` list is matched as a lowercased **substring** ("so 'Netflix (family
@@ -879,7 +879,21 @@ landmark, "ChatGPT Plus" → sparkles, "Vi postpaid" → smartphone, "Car insura
 
 **Done when:** every row in the table above gets a sensible or neutral icon.
 
-**R1 Discovered:** *(add here)*
+**R1 Discovered:**
+- **The dashboard builders had to move to `features/dashboard/sql.ts` to be testable at all.** `queries.ts`
+  imports `db/seed` → `db/client` → native `expo-sqlite`, which Jest cannot require, so B1 could not have a
+  test while the builders lived there. That is a small piece of R3 pulled forward, and it is the concrete
+  cost of A1: the feature had no seam between its SQL and its runtime.
+- **`features/dashboard` had no tests before this.** Neither did `lib/identity.ts`. Both held bugs (B1, B19).
+- **`colorForName('')` returned null**, because an empty string is falsy — found by a property-style test,
+  not by the bug list. `Avatar` and the Tracker both reach it with a possibly-empty name.
+- **No test asserted the amount limit anywhere**, which is why ₹100 crore survived in three schemas (B5).
+- **The old summary test used ₹1,200/year**, which divides evenly by 12 and therefore could never have
+  caught B3. A fixture chosen for convenience hid the bug it was closest to.
+- **`earliestDateQuery` was unbounded too** (not in the review): it is the denominator of "average per day",
+  so a future-dated row stretched the window. Fixed with B2.
+- **`restoreSettlements`, `restorePerson` and `restoreGroup`** have the same shape as the B14
+  `restoreExpense` bug. `restoreSettlements` is fixed here; the other two are worth a look in R3-12.
 
 ---
 

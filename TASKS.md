@@ -23,7 +23,7 @@
 | G | Groups — split expenses | — | ✅ Code complete · 🟡 device checks open |
 | F0–F3, F5 | Fix phases (TASKS2) | — | ✅ Code complete · 🟡 device checks open |
 | **R0** | Stabilise the repo | ½ d | 🟡 R0-1/2/5/6/7 done; README + unused deps left |
-| **R1** | Correctness bugs | 1½ d | ⬜ |
+| **R1** | Correctness bugs | 1½ d | ✅ done 2026-09-17 (550 tests) |
 | **R2** | Guard rails: lint, format, CI | 1½ d | ⬜ |
 | **R3** | One data layer | 3 d | ⬜ |
 | **R4** | UI kit and thin routes | 3 d | ⬜ |
@@ -79,36 +79,45 @@ and the README gets a new person to a running dev build.
 **Goal:** every figure on screen is right. **Est:** 1½ days. **No schema change.** Every fix adds a test that fails without it.
 
 ### Batch R1-A — Wrong numbers
-- [ ] **[B1] Bound "top categories" to the month:** add `lt(date, nextMonthStart)` in `dashboard/queries.ts` `topCategoriesQuery`
+- [x] **[B1] Bound "top categories" to the month:** add `lt(date, nextMonthStart)` in `dashboard/queries.ts` `topCategoriesQuery`
   *Why:* a future-dated expense counts in "Where it went" but not in the month total, so a share can exceed 100%.
-- [ ] **[B2] Bound analytics ranges at the current month:** `trendQuery`, `totalsQuery`, `biggestExpenseQuery` get `lte(month, currentMonth)`
+- [x] **[B2] Bound analytics ranges at the current month:** `trendQuery`, `totalsQuery`, `biggestExpenseQuery` get `lte(month, currentMonth)`
   *Why:* period cards count next month's rows while the chart drops them, so the screen disagrees with itself.
   (R3 then removes the duplication that caused B1/B2.)
-- [ ] **[B3] Yearly cost is exact:** compute `yearlyCostPaise` from the charge per cycle (`weekly ×52`, `monthly ×12`, `quarterly ×4`, `yearly ×1`), never `round(monthly) × 12`. Test that ₹1,499/yr → 149900
+- [x] **[B3] Yearly cost is exact:** compute `yearlyCostPaise` from the charge per cycle (`weekly ×52`, `monthly ×12`, `quarterly ×4`, `yearly ×1`), never `round(monthly) × 12`. Test that ₹1,499/yr → 149900
   *Why:* a 4-paise drift on a plan's own price is exactly the class of bug integer paise exists to prevent.
-- [ ] **[B4] Category merge/delete also moves `split_expenses.category_id`**, and add a test in `categories/__tests__/mutations.test.ts` that creates a group expense first
+- [x] **[B4] Category merge/delete also moves `split_expenses.category_id`**, and add a test in `categories/__tests__/mutations.test.ts` that creates a group expense first
   *Why:* deleting "Food" makes group totals show "Food ⟨deleted #7⟩". Every table with a `category_id` FK must be in both functions. Add a test that lists them from `sqlite_master` so the next table can't be forgotten.
-- [ ] **[B5] One amount limit:** `MAX_AMOUNT_PAISE` in `lib/money.ts` (₹10 crore, as the comments say), used by all three form schemas and Groups
+- [x] **[B5] One amount limit:** `MAX_AMOUNT_PAISE` in `lib/money.ts` (₹10 crore, as the comments say), used by all three form schemas and Groups
   *Why:* the current value is ₹100 crore, 10× the documented guard, and features disagree.
-- [ ] **[B6] `formatINRCompact` rounds before choosing the unit** (₹99,960 → ₹1.0L). Test both boundaries
+- [x] **[B6] `formatINRCompact` rounds before choosing the unit** (₹99,960 → ₹1.0L). Test both boundaries
 
 ### Batch R1-B — Interactions
-- [ ] **[B7] Ledger "Try again" actually re-runs:** expose `refetch()` from `useDbQuery` (bump an internal counter) and call it from `useTransactionPages().retry`
+- [x] **[B7] Ledger "Try again" actually re-runs:** expose `refetch()` from `useDbQuery` (bump an internal counter) and call it from `useTransactionPages().retry`
   *Why:* today the button is a no-op, because `reset()` doesn't change the query's deps.
-- [ ] **[B8] An FK violation after migrating stays a hard failure:** record `integrity_failed` in `app_meta` inside the check and refuse `ready` while it is set, or run `foreign_key_check` *before* COMMIT by migrating through our own transaction wrapper. Test with a deliberately violating fixture
+- [x] **[B8] An FK violation after migrating stays a hard failure:** record `integrity_failed` in `app_meta` inside the check and refuse `ready` while it is set, or run `foreign_key_check` *before* COMMIT by migrating through our own transaction wrapper. Test with a deliberately violating fixture
   *Why:* today the failure screen appears once and the next launch silently accepts the broken state.
-- [ ] **[B9][B10] Theme switches repaint everything:** add `colors` to `Ledger` `renderItem` deps; resolve the *uncategorised* colour at render (a stable token such as `subtle`), not at fetch
-- [ ] **[B11] `BootFailure` status bar follows the theme**
-- [ ] **[B12] `keysFor` chunks instead of truncating at 500 ids**
+- [x] **[B9][B10] Theme switches repaint everything:** add `colors` to `Ledger` `renderItem` deps; resolve the *uncategorised* colour at render (a stable token such as `subtle`), not at fetch
+- [x] **[B11] `BootFailure` status bar follows the theme**
+- [x] **[B12] `keysFor` chunks instead of truncating at 500 ids**
 
 ### Batch R1-C — Data safety
-- [ ] **[B13] Snapshot before migrating whenever *any* user table has rows** (transactions, budgets, subscriptions, people other than self, split_groups, categories that aren't system)
+- [x] **[B13] Snapshot before migrating whenever *any* user table has rows** (transactions, budgets, subscriptions, people other than self, split_groups, categories that aren't system)
   *Why:* a Groups-only user gets no safety copy today.
-- [ ] **[B14] `deleteGroup` refuses when any member's net ≠ 0** (same message style as member removal). `restoreExpense` refuses if a payer or sharer is no longer a live member
-- [ ] **[B15] The merge no longer hard-deletes the target's soft-deleted budgets** (the index is partial since 0001)
-- [ ] **[B19] `deterministicIcon` matches whole words**, not substrings. Test "Petrol", "LinkedIn Premium", "Daily", "Card", "Parent"
+- [x] **[B14] `deleteGroup` refuses when any member's net ≠ 0** (same message style as member removal). `restoreExpense` refuses if a payer or sharer is no longer a live member
+- [x] **[B15] The merge no longer hard-deletes the target's soft-deleted budgets** (the index is partial since 0001)
+- [x] **[B19] `deterministicIcon` matches whole words**, not substrings. Test "Petrol", "LinkedIn Premium", "Daily", "Card", "Parent"
 
 **Done when:** each item has a failing-then-passing test, and `npx jest` is green.
+✅ **Met 2026-09-17** (`ca9c46f` R1-A, `a7e18d2` R1-C, `3adb462` R1-B). 550 tests, tsc clean. Every fix was
+verified in both directions: the test was run against the unfixed code and seen to fail. Five checks that
+only the phone can settle are in § Device verification (DV-9, DV-10, DV-17, DV-18, DV-27).
+
+**Discovered:** full notes in [`plan.md`](plan.md) → *R1 Discovered*. The two that change later work:
+- `features/dashboard` had no seam between its SQL and the runtime, so B1 was untestable until the builders
+  moved to `features/dashboard/sql.ts` — a piece of R3 pulled forward, and a concrete measure of A1's cost.
+- `restorePerson` and `restoreGroup` may share the B14 shape that `restoreExpense` and `restoreSettlements`
+  had. Look at them in R3-12.
 
 ---
 
