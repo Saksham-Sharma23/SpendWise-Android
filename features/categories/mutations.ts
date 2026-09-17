@@ -160,8 +160,10 @@ export function mergeCategory(database: SyncDb, sourceId: number, targetId: numb
         .where(and(eq(budgets.categoryId, sourceId), isNull(budgets.deletedAt)))
         .run();
     } else {
-      // A soft-deleted budget still holds the target's slot in the unique
-      // index, so it has to go before the source's budget can take it.
+      // WRONG, kept until plan.md R1-15 replaces it: a soft-deleted budget
+      // does NOT hold the target's slot — the unique index has been partial
+      // (WHERE deleted_at IS NULL) since migration 0001. This hard delete
+      // destroys budget history for no reason and contradicts soft-delete.
       tx.delete(budgets).where(and(eq(budgets.categoryId, targetId), isNotNull(budgets.deletedAt))).run();
       tx.update(budgets).set({ categoryId: targetId }).where(eq(budgets.categoryId, sourceId)).run();
     }

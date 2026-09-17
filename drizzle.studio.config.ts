@@ -5,10 +5,12 @@ import type { Config } from 'drizzle-kit';
  *
  * The main drizzle.config.ts uses `driver: 'expo'`, which only generates
  * migrations — Studio cannot open a database through it. This config points
- * Studio at ./local.db, which must be the DECRYPTED copy: the on-device file
- * is SQLCipher-encrypted and unreadable without the per-install key.
+ * Studio at ./local.db, a copy pulled off the phone.
  *
- *   1. Dev harness → "Export decrypted copy"
+ * The main database is UNKEYED (decision 2026-09-14: SQLCipher is only used
+ * for passphrase-protected backup FILES), so the pulled file opens directly.
+ *
+ *   1. Background the app, so the WAL is checkpointed into the .db
  *   2. npm run db:pull
  *   3. npm run db:studio
  */

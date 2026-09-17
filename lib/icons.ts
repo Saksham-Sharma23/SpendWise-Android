@@ -6,8 +6,9 @@
  * Tracker's deterministic icons, the category seed, tests running in Node —
  * can import it without pulling React Native in.
  *
- * A name here with no component in CategoryIcon renders as a tag. The test in
- * components/ui/__tests__ keeps the two in step.
+ * A name here with no component in CategoryIcon renders as a tag. NOTHING
+ * CHECKS THAT TODAY: the two sets are kept in step by hand until the icon
+ * mapping test lands (plan.md R2-4), which is why a typo here fails silently.
  */
 export const ICON_NAMES = [
   // The seeded set — matches the web app's category icons.

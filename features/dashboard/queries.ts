@@ -165,7 +165,7 @@ export function useRecentTransactions(limit = 5): DbQueryResult<RecentTransactio
 
 // ---------------------------------------------------------------------------
 // Query builders — shared by the hooks above and the dev benchmark
-// (features/devtools/benchmark.ts), so the timed SQL is exactly the shipped SQL.
+// (db/benchmark.ts), so the timed SQL is exactly the shipped SQL.
 // ---------------------------------------------------------------------------
 
 function trendQuery(months: number, today: ISODate) {

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { useIsFocused } from 'expo-router';
 import { addDatabaseChangeListener } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -11,6 +11,7 @@ import { categories, transactions } from '../../db/schema';
 import type { TransactionType } from '../../db/schema';
 import { makeDedupeHash } from '../../lib/dedupe';
 import { nowISO, type ISODate } from '../../lib/dates';
+import { useToday } from '../../lib/today';
 import { atOrNewerThan, buildWhere, olderThan, type LedgerKey, type TransactionFilters } from './filters';
 import { idsNotInPages, keyOf, stalePages, type OlderPage } from './pages';
 
@@ -91,7 +92,12 @@ export interface TransactionPages {
  * re-sends page 1, not the whole window.
  */
 export function useTransactionPages(filters: TransactionFilters): TransactionPages {
-  const filterKey = JSON.stringify(filters);
+  // A date preset ("Last 7 days") is stored as a NAME and resolved against
+  // today inside buildWhere, so the window has to be re-read when the date
+  // rolls over — otherwise a ledger left open overnight keeps yesterday's
+  // window and a transaction added after midnight is missing from it.
+  const today = useToday();
+  const filterKey = `${JSON.stringify(filters)}|${today}`;
   const [older, setOlder] = useState<OlderPage<TransactionRow>[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const loading = useRef(false);
@@ -244,11 +250,13 @@ export function useTransactionPages(filters: TransactionFilters): TransactionPag
  * crossing the bridge with all of them.
  */
 export function useTransactionSummary(filters: TransactionFilters) {
+  const today = useToday();
   return useDbQuery(
     () => transactionQueries.summary(filters),
     // Search matches category names, so a rename can change the counts.
     ['transactions', 'categories'],
-    [JSON.stringify(filters)],
+    // `today` re-resolves a rolling date preset at midnight, as above.
+    [JSON.stringify(filters), today],
     [],
   );
 }
@@ -276,7 +284,7 @@ export function getTransactionsPage(
     .all() as TransactionRow[];
 }
 
-/** Query builders shared by the hooks above and the dev benchmark (features/devtools). */
+/** Query builders shared by the hooks above and the dev benchmark (db/benchmark.ts). */
 export const transactionQueries = {
   /** The newest `limit` rows: page 1 before any older page is loaded. */
   ledger: (filters: TransactionFilters, limit: number) =>
@@ -425,6 +433,44 @@ export function softDeleteTransactions(ids: number[]): WriteResult<void> {
   return safeWrite('delete those transactions', () => {
     if (ids.length === 0) return;
     db.update(transactions).set({ deletedAt: nowISO() }).where(inArray(transactions.id, ids)).run();
+  });
+}
+
+/** A deleted transaction, as Settings → Recently deleted lists it. */
+export type DeletedTransactionRow = TransactionRow & { deletedAt: string };
+
+/**
+ * Soft-deleted transactions still inside the retention window, newest
+ * deletion first. Import-batch rows are left out: they are undone as a batch,
+ * never one at a time, and the purge never removes them (db/retention.ts).
+ */
+export function useDeletedTransactions() {
+  return useDbQuery(
+    async () =>
+      (await readDb
+        .select({ ...listColumns, deletedAt: transactions.deletedAt })
+        .from(transactions)
+        .leftJoin(categories, eq(transactions.categoryId, categories.id))
+        .where(and(isNotNull(transactions.deletedAt), isNull(transactions.importBatchId)))
+        .orderBy(desc(transactions.deletedAt), desc(transactions.id))
+        .limit(500)) as DeletedTransactionRow[],
+    ['transactions', 'categories'],
+    [],
+    [] as DeletedTransactionRow[],
+  );
+}
+
+/**
+ * Remove deleted transactions for good, ahead of the purge. The predicate
+ * repeats `deleted_at IS NOT NULL`, so this can never remove a live row even
+ * if a stale id reaches it.
+ */
+export function deleteTransactionsForever(ids: number[]): WriteResult<void> {
+  return safeWrite('delete permanently', () => {
+    if (ids.length === 0) return;
+    db.delete(transactions)
+      .where(and(inArray(transactions.id, ids), isNotNull(transactions.deletedAt), isNull(transactions.importBatchId)))
+      .run();
   });
 }
 

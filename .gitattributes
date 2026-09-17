@@ -1,0 +1,25 @@
+# One line ending in the repository (LF), whatever the checkout platform does.
+# Without this, a Windows checkout stages CRLF and every git command warns on
+# ~30 files, which buries real changes in review diffs.
+* text=auto eol=lf
+
+# Generated, but checked in: keep it LF and out of language stats.
+global.css linguist-generated=true
+
+# Never touched by line-ending conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.db binary
+*.sqlite binary
+*.jar binary
+*.keystore binary
+*.apk binary
+*.aab binary

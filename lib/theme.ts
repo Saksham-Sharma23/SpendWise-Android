@@ -4,8 +4,9 @@ import { useSyncExternalStore } from 'react';
  * JS-side design tokens, in two palettes.
  *
  * Tailwind classes cover layout and some colour, but icons, SVG charts,
- * shadows and animated styles need raw values. These mirror global.css — if
- * you change a token there, change it here.
+ * shadows and animated styles need raw values. THIS FILE IS THE SOURCE:
+ * global.css is generated from it by `npm run theme:css`, and a test fails if
+ * the checked-in CSS is stale. Change a palette here, then run that script.
  *
  * ## Reading colours
  *
@@ -407,4 +408,27 @@ export const ACCENTS = ACCENT_HUES;
 export const springs = {
   press: { damping: 18, stiffness: 320, mass: 0.6 },
   settle: { damping: 16, stiffness: 180 },
+  /**
+   * A small element travelling a short, known distance — the segmented
+   * control's pill. Stiffer and better damped than `settle`: it arrives
+   * quickly and stops, because a pill that wobbles under a label reads as
+   * sloppy rather than playful.
+   */
+  pill: { damping: 21, stiffness: 300, mass: 0.7 },
+} as const;
+
+/**
+ * Durations in milliseconds, so they stop being literals scattered through
+ * components. Read them through `useMotion()` (lib/motion.ts), which zeroes
+ * every one when the phone asks for less motion.
+ */
+export const motion = {
+  /** A state change in place: a row dimming, a bar growing. */
+  quick: 140,
+  /** The default for anything appearing or disappearing. */
+  base: 240,
+  /** One panel replacing another. */
+  swap: 300,
+  /** The chart flowing from one range into another. */
+  morph: 420,
 } as const;
