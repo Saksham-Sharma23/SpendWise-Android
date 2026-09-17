@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Screen } from '../components/layout/Screen';
-import { colors, useColors } from '../lib/theme';
+import { formatCount } from '../lib/money';
+import { useColors } from '../lib/theme';
 import { databaseSizeBytes, countTransactions, runBenchmark } from '../db/benchmark';
 import type { BenchResult } from '../db/benchmark';
 import { devClearTransactions, devEncryptedCopyRoundTrip, devSeedTransactions } from '../db/devSeed';
@@ -90,7 +91,7 @@ function DevHarness() {
     setBusy('seed');
     try {
       const r = devSeedTransactions(50_000, 4);
-      say(`Seeded ${r.inserted.toLocaleString()} rows in ${(r.ms / 1000).toFixed(1)}s`);
+      say(`Seeded ${formatCount(r.inserted)} rows in ${(r.ms / 1000).toFixed(1)}s`);
       say(`Range ${r.fromDate} → ${r.toDate}`);
       setCount(safeCount());
     } catch (e) {
@@ -138,7 +139,7 @@ function DevHarness() {
     setBusy('clear');
     try {
       const n = devClearTransactions();
-      say(`Cleared ${n.toLocaleString()} rows`);
+      say(`Cleared ${formatCount(n)} rows`);
       setResults(null);
       setCount(safeCount());
     } catch (e) {
@@ -171,7 +172,7 @@ function DevHarness() {
               className="mt-1 text-2xl text-card-foreground"
               style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}
             >
-              {count.toLocaleString()} rows
+              {formatCount(count)} rows
             </Text>
             <Text className="text-xs text-muted-foreground">{sizeMb} MB on disk</Text>
           </View>

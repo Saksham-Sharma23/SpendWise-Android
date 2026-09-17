@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { moveDatabaseAside, shareDatabaseCopy, type BootOutcome } from '../../../db/boot';
-import { colors, fonts, useColors } from '../../../lib/theme';
+import { fonts, useColors } from '../../../lib/theme';
 import { useThemeStore } from '../../../lib/themeStore';
 
 /**

@@ -12,7 +12,7 @@ import { appMeta, categories, META_KEYS, type CategoryKind } from './schema';
  * "Rent" to "House rent", and that must not make the seeder add "Rent" again.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export type SeedDatabase = BaseSQLiteDatabase<'sync', any, any>;
 
 export interface SystemCategory {

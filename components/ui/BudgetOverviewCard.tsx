@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 
 import { MiniDonut, softToneFor, toneFor } from '../charts/MiniDonut';
 import { formatINRCompact } from '../../lib/money';
-import { colors, fonts, useColors } from '../../lib/theme';
+import { fonts, useColors } from '../../lib/theme';
 import { Card } from './Card';
 import { PressableScale } from './PressableScale';
 

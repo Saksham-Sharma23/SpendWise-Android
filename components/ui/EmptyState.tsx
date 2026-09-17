@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { colors, fonts, useColors } from '../../lib/theme';
+import { fonts, useColors } from '../../lib/theme';
 import { PressableScale } from './PressableScale';
 
 interface Action {

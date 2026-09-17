@@ -13,7 +13,7 @@ import {
 } from '../../../components/ui/CategoryIcon';
 import { PressableScale } from '../../../components/ui/PressableScale';
 import { formatCount } from '../../../lib/money';
-import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
+import { fonts, useColors, withAlpha } from '../../../lib/theme';
 import {
   CategoryError,
   MAX_CATEGORY_NAME,

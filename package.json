@@ -15,7 +15,7 @@
     "prebuild:dev": "node scripts/with-dev-network.js expo prebuild --platform android",
     "typecheck": "tsc --noEmit",
     "theme:css": "node scripts/gen-theme-css.ts",
-    "lint": "eslint .",
+    "lint": "eslint . --ignore-pattern \"lint-fixtures/**\" --max-warnings 0",
     "test": "jest",
     "test:watch": "jest --watch",
     "db:generate": "drizzle-kit generate",
@@ -27,7 +27,8 @@
     "android:local": "node scripts/with-dev-network.js expo run:android --device -- -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2",
     "build:local-apk": "cd android && gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2",
     "verify:apk": "bash scripts/verify-apk.sh",
-    "build:release-apk": "cd android && gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2 && cd .. && bash scripts/verify-apk.sh"
+    "build:release-apk": "cd android && gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2 && cd .. && bash scripts/verify-apk.sh",
+    "lint:selftest": "node scripts/lint-selftest.js"
   },
   "dependencies": {
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
@@ -79,6 +80,9 @@
     "babel-preset-expo": "^57.0.11",
     "better-sqlite3": "^13.0.3",
     "drizzle-kit": "^0.31.10",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~57.0.2",
+    "eslint-plugin-boundaries": "^7.2.0",
     "jest": "^30.5.1",
     "ts-jest": "^29.4.12",
     "typescript": "~6.0.3"

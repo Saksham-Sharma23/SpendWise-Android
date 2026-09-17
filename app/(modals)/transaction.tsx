@@ -30,7 +30,7 @@ import {
 import { addDays, formatDayMonth } from '../../lib/dates';
 import { useToday } from '../../lib/today';
 import { paiseToDecimalString } from '../../lib/money';
-import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
+import { fonts, useColors, withAlpha } from '../../lib/theme';
 
 /**
  * Add / edit a transaction.

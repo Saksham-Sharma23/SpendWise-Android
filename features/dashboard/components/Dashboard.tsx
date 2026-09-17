@@ -33,7 +33,7 @@ import { MONTHS_LONG, fromISODate, type ISODate } from '../../../lib/dates';
 import { buildInsight } from '../../../lib/insight';
 import { formatINR } from '../../../lib/money';
 import { upcomingRenewals } from '../../../lib/renewals';
-import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
+import { fonts, useColors, withAlpha } from '../../../lib/theme';
 import { useToday } from '../../../lib/today';
 import {
   dismissOnboarding,

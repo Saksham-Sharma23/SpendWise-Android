@@ -24,6 +24,9 @@ import { useThemeName } from '../../lib/theme';
 export const BLUR_AVAILABLE = requireOptionalNativeModule('ExpoBlur') != null;
 
 type BlurModule = typeof import('expo-blur');
+// expo-blur must only be loaded when the native module is actually present,
+// which a static import cannot express. The non-blur path is the fallback.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const blur: BlurModule | null = BLUR_AVAILABLE ? (require('expo-blur') as BlurModule) : null;
 
 interface BlurTargetState {

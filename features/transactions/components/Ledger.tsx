@@ -16,7 +16,7 @@ import { Segmented } from '../../../components/ui/Segmented';
 import { categoryColor } from '../../../lib/categoryColor';
 import { formatMonthYear } from '../../../lib/dates';
 import { formatCount } from '../../../lib/money';
-import { colors, fonts, useColors } from '../../../lib/theme';
+import { fonts, useColors } from '../../../lib/theme';
 import { exportTransactionsCsv } from '../export';
 import { useFilterStore } from '../filterStore';
 import {

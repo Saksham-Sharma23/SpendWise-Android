@@ -27,11 +27,10 @@ import {
   type SubscriptionFormValues,
 } from '../../features/tracker/schema';
 import { colorForName } from '../../lib/categoryColor';
-import { addDays, addMonthsClamped, formatDayMonth, getNextRenewal } from '../../lib/dates';
+import { addDays, addMonthsClamped, formatDayMonth, getNextRenewal , toMonthlyPaise } from '../../lib/dates';
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '../../lib/money';
-import { toMonthlyPaise } from '../../lib/dates';
 import { useToday } from '../../lib/today';
-import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
+import { fonts, useColors, withAlpha } from '../../lib/theme';
 
 /**
  * Add / edit a subscription.

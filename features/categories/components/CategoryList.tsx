@@ -10,7 +10,7 @@ import { CategoryIcon } from '../../../components/ui/CategoryIcon';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { PressableScale } from '../../../components/ui/PressableScale';
 import { formatCount } from '../../../lib/money';
-import { colors, fonts, useColors } from '../../../lib/theme';
+import { fonts, useColors } from '../../../lib/theme';
 import { useCategoriesWithUsageResult, type CategoryWithUsage } from '../queries';
 
 /**

@@ -6,7 +6,7 @@ import { Card } from '../../../components/ui/Card';
 import { Segmented } from '../../../components/ui/Segmented';
 import { formatMonthYear } from '../../../lib/dates';
 import { formatINR, formatINRCompact } from '../../../lib/money';
-import { colors, fonts, useColors } from '../../../lib/theme';
+import { fonts, useColors } from '../../../lib/theme';
 import { useToday } from '../../../lib/today';
 import { useMonthlyTrend } from '../queries';
 

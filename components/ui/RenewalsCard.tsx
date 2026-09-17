@@ -4,7 +4,7 @@ import { Text, View } from 'react-native';
 import { formatDayMonth } from '../../lib/dates';
 import { formatINR } from '../../lib/money';
 import { renewalCountdown, type UpcomingRenewal } from '../../lib/renewals';
-import { accent, colors, fonts, useColors, withAlpha } from '../../lib/theme';
+import { accent, fonts, useColors, withAlpha } from '../../lib/theme';
 import { Card } from './Card';
 import { CategoryIcon } from './CategoryIcon';
 import { PressableScale } from './PressableScale';

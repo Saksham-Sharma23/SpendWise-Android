@@ -35,7 +35,7 @@ import { MAX_EXPENSE_PAISE } from './split';
  * transaction — so balances can never disagree with the expenses behind them.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export type GroupsWriteDb = BaseSQLiteDatabase<'sync', any, typeof schema>;
 
 const now = () => new Date().toISOString();

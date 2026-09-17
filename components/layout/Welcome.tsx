@@ -2,7 +2,7 @@ import { DatabaseBackup, FileSpreadsheet, Plus, ShieldCheck, type LucideIcon } f
 import { Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
+import { fonts, useColors, withAlpha } from '../../lib/theme';
 import { Card } from '../ui/Card';
 import { PressableScale } from '../ui/PressableScale';
 

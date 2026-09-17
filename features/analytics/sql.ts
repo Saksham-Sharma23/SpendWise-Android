@@ -19,7 +19,7 @@ import type * as schema from '../../db/schema';
  * partial, and a query that omits the predicate cannot use it.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export type AnalyticsDb = BaseSQLiteDatabase<'sync' | 'async', any, typeof schema>;
 
 const live = isNull(transactions.deletedAt);

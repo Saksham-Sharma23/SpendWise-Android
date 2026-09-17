@@ -18,7 +18,7 @@ import type * as schema from '../../db/schema';
  * value arrays with no field names, while a select maps its fields by position.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export type GroupsDb = BaseSQLiteDatabase<'sync' | 'async', any, typeof schema>;
 
 const inGroup = (column: SQL, groupId: number | null) => (groupId == null ? sql`` : sql` AND ${column} = ${groupId}`);

@@ -14,7 +14,7 @@ import { formatDayMonth } from '../../../lib/dates';
 import { formatINR } from '../../../lib/money';
 import { renewalCountdown } from '../../../lib/renewals';
 import { useToday } from '../../../lib/today';
-import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
+import { fonts, useColors, withAlpha } from '../../../lib/theme';
 import {
   restoreSubscription,
   setSubscriptionStatus,

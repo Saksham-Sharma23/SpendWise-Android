@@ -23,7 +23,7 @@ import { budgets, categories, splitExpenses, subscriptions, transactions } from 
  *     migration 0001, so a soft-deleted budget no longer blocks moving one in.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export type SyncDb = BaseSQLiteDatabase<'sync', any, typeof schema>;
 
 export class CategoryError extends Error {}

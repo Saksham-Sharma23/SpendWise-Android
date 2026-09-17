@@ -12,7 +12,7 @@ import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-nativ
 
 import { MONTHS_SHORT, formatMonthYear } from '../../lib/dates';
 import { formatINR } from '../../lib/money';
-import { colors, fonts, useColors } from '../../lib/theme';
+import { fonts, useColors } from '../../lib/theme';
 import { smoothPath } from './geometry';
 
 export { smoothPath } from './geometry';

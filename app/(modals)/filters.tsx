@@ -15,7 +15,7 @@ import { DATE_PRESETS, NO_DATES, resolveDateRange } from '../../features/transac
 import { hasActiveFilters, useCategories } from '../../features/transactions/queries';
 import { formatDayMonth } from '../../lib/dates';
 import { useToday } from '../../lib/today';
-import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
+import { fonts, useColors, withAlpha } from '../../lib/theme';
 
 /**
  * The filter sheet.

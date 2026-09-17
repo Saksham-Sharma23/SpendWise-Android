@@ -5,7 +5,7 @@ import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeabl
 
 import { LedgerRow } from '../../../components/ui/LedgerRow';
 import { PressableScale } from '../../../components/ui/PressableScale';
-import { colors, fonts, useColors } from '../../../lib/theme';
+import { fonts, useColors } from '../../../lib/theme';
 import type { TransactionRow as Row } from '../queries';
 
 /**

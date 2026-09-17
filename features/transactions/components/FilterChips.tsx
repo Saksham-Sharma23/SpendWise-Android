@@ -4,7 +4,7 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 
 import { PressableScale } from '../../../components/ui/PressableScale';
 import { formatDayMonth } from '../../../lib/dates';
-import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
+import { fonts, useColors, withAlpha } from '../../../lib/theme';
 import { DATE_PRESETS, NO_DATES, type TransactionFilters } from '../filters';
 
 interface Props {

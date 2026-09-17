@@ -2,7 +2,7 @@ import { Text, View } from 'react-native';
 
 import { formatDayMonth } from '../../lib/dates';
 import { formatINR } from '../../lib/money';
-import { colors, fonts, useColors } from '../../lib/theme';
+import { fonts, useColors } from '../../lib/theme';
 import { CategoryIcon } from './CategoryIcon';
 
 export interface LedgerRowData {

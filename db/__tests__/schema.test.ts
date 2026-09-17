@@ -111,7 +111,7 @@ describe('analytics queries', () => {
   });
 
   it('splits income and expense correctly', () => {
-    const rows = sqlite.prepare(TREND).all('0000-00') as Array<{ income_paise: number; expense_paise: number }>;
+    const rows = sqlite.prepare(TREND).all('0000-00') as { income_paise: number; expense_paise: number }[];
     const income = rows.reduce((a, r) => a + r.income_paise, 0);
     const expense = rows.reduce((a, r) => a + r.expense_paise, 0);
     const direct = sqlite

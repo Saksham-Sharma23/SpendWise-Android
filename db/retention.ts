@@ -18,7 +18,7 @@ import type * as schema from './schema';
  * Node rather than a copy of it.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export type RetentionDb = BaseSQLiteDatabase<'sync', any, typeof schema>;
 
 export const RETENTION_DAYS = 30;
