@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-09-17 — read-only history.** The live tracker is [`TASKS.md`](../../TASKS.md). Open items from this file were carried there; ticks and *Discovered* notes are kept here as the record of why the code looks the way it does.
+
 # SpendWise Android — Fix Tracker (TASKS2)
 
 > Companion to [`TASKS.md`](TASKS.md) and [`CLAUDE.md`](CLAUDE.md). This file holds the **fixes** from the
@@ -29,7 +31,7 @@ every screen reads data, so do it before more screens are written against `useLi
 | F2 | Schema migrations 0001–0006 | 2A · 2B | 1½ d | F3 | ✅ Done — 0001–0006 verified on the phone's 50k database 2026-09-15 |
 | F3 | Data-access runtime | 3A · 3B · 3C · 3D | 3 d | F4, Phase 3–6 | 🟡 Query plans verified on the phone's database 2026-09-15 — in-app timings still open |
 | F4 | Ledger & dashboard smoothness | 4A · 4B · 4C | 2½ d | — | ⬜ Not started |
-| F5 | Everyday UX correctness | 5A · 5B · 5C | 2 d | — | ⬜ Not started |
+| F5 | Everyday UX correctness | 5A · 5B · 5C | 2 d | — | ✅ Code complete 2026-09-17 — keyboard check and exit script on the phone pending |
 | F6 | Tooling & guard rails | 6A · 6B · 6C | 1½ d | — | ⬜ Not started |
 | F7 | Sheets readiness gate | — | ½ d | Phase 6A | ⬜ Not started |
 
@@ -419,68 +421,68 @@ every screen reads data, so do it before more screens are written against `useLi
 
 ## Phase F5 — Everyday UX correctness
 **Goal:** The things a user notices in the first week.
-**Est:** 2 days · **Status:** ⬜ Not started · **Depends on:** F2 (category kind), F3 (`useToday`)
+**Est:** 2 days · **Status:** ✅ Code complete 2026-09-17 — the keyboard check and the exit script are the user's, on the phone · **Depends on:** F2 (category kind), F3 (`useToday`)
 
 ### Batch 5A — The transaction form
 
-- [ ] **[U1] Add a real date picker**
+- [x] **[U1] Add a real date picker** *(code 2026-09-17 — **deviation:** a JS calendar, not `@react-native-community/datetimepicker`. A native module would need a new APK before anything else could be tested, and the OS picker paints in the SYSTEM theme, not the one chosen in Settings. Grid maths in `lib/calendar.ts` (11 Node tests); sheet in `components/ui/DatePickerSheet.tsx`. A month strip reaching five years back makes it open · month · day — three taps to any date)*
   *Why:* The form has ±1 day arrows plus Today/Yesterday chips (`transaction.tsx:255-297`). Backdating a bill by three months still takes ~90 taps.
   - Tap the date label to open `@react-native-community/datetimepicker` (install with `npx expo install`). Keep the arrows and chips.
   **Done when:** any date in the past two years is at most three taps away.
 
-- [ ] **[U3] Filter category chips by the chosen type**
+- [x] **[U3] Filter category chips by the chosen type** *(code 2026-09-17: `choices` in `app/(modals)/transaction.tsx`; switching type clears a selection whose `kind` no longer fits)*
   *Why:* Depends on 2A's `kind`. "Salary" shouldn't appear on an expense.
   - Show `kind === type || kind === 'both'` and clear an incompatible `categoryId` when the type switches.
   **Done when:** switching Expense → Income swaps the chips and drops an invalid selection.
 
-- [ ] **[U6] Load the edited row before the first paint**
+- [x] **[U6] Load the edited row before the first paint** *(already done by an earlier refactor, found 2026-09-17: `useState(() => getTransaction(id))` feeds `defaultValues`; the "no longer exists" path is kept)*
   *Why:* `getTransaction` is synchronous, but it runs in an effect (`transaction.tsx:79-95`), so the form paints empty defaults for one frame, and `FadeInDown` animates those defaults.
   - Read the row in a `useState` initializer and pass it as `defaultValues`. Keep the "no longer exists" path.
   **Done when:** opening an edit shows the real amount on the first frame.
 
-- [ ] **[U6] Check keyboard behaviour on the phone**
+- [ ] **[U6] Check keyboard behaviour on the phone** 🟡 *code reviewed 2026-09-17; the device check is the user's. The manifest is `adjustResize`, and RN 0.86 runs edge-to-edge, where the window does NOT resize for the keyboard — so `KeyboardAvoidingView behavior="padding"` is the one source of padding, and Save sits outside the ScrollView so it rides above the keyboard. If the phone disagrees, the fix below still applies (a native module, so a new APK)*
   *Why:* `KeyboardAvoidingView behavior="padding"` (`transaction.tsx:127-131`) inside an edge-to-edge modal can either leave the note field under the keyboard or double the padding. Unverified.
   - Test with the note field focused and a gesture-nav phone. If broken, adopt `react-native-keyboard-controller`'s `KeyboardAwareScrollView`.
   **Done when:** the note field and Save button are both visible while typing.
 
-- [ ] **Reject impossible dates in the form schema**
+- [x] **Reject impossible dates in the form schema** *(already done, found 2026-09-17: round-trip refine in `features/transactions/schema.ts`; `schema.test.ts` rejects `2026-02-31` and `2026-02-29`, accepts `2028-02-29`)*
   *Why:* `features/transactions/schema.ts:35` uses `Date.parse`, which accepts `2026-02-31` in most engines.
   - Refine with `toISODate(fromISODate(v)) === v`.
   **Done when:** a unit test rejects `2026-02-31` and accepts `2028-02-29`.
 
 ### Batch 5B — Filters
 
-- [ ] **[U2] Store date presets as keys, not frozen dates**
+- [x] **[U2] Store date presets as keys, not frozen dates** *(code 2026-09-17: `datePreset`, `DATE_PRESETS` and `resolveDateRange` in `features/transactions/filters.ts`; `buildWhere(filters, today)` resolves on every run, and `useTransactionPages`/`useTransactionSummary` key on `useToday()` so an open ledger re-reads at midnight. The filter test inserts a row dated just after "midnight" and proves the same stored filter excludes it on the 20th and includes it on the 21st)*
   *Why:* "Last 7 days" is stored as fixed dates (`app/(modals)/filters.tsx:25-30, 85-93`). After midnight, today's entries fall outside `dateTo` and vanish from a filtered ledger.
   - Store `{ preset: 'last7' | 'last30' | 'thisMonth' | 'last12m' }` or `{ from, to }` in `TransactionFilters`, and resolve presets inside `buildWhere` (or just before it) using `useToday()`.
   - Update `hasActiveFilters` and the filter tests.
   **Done when:** a filter set before midnight includes a transaction added after it.
 
-- [ ] **Add a custom date range**
+- [x] **Add a custom date range** *(code 2026-09-17: From / To bounds in the filter sheet open the same calendar; choosing a bound replaces any preset, and reversed bounds are swapped)*
   *Why:* Presets only. "March 2025" can't be expressed.
   - Two date pickers under the presets, reusing 5A's picker.
   **Done when:** any closed range can be filtered.
 
 ### Batch 5C — App shell and data hygiene
 
-- [ ] **Make the native shell dark-only for v1 (decided in F0)**
+- [x] **~~Make the native shell dark-only for v1~~ → match the splash to the app** *(superseded 2026-09-17: the light theme and the System/Light/Dark toggle shipped in `93a8441`, so `userInterfaceStyle` stays `'automatic'`. The underlying defect — splash colours that did not match the app — is fixed: `#F4F7F2` light, `#0A0A0B` dark, exactly `background` in `lib/theme.ts`. Native config, so it appears after the next APK build. A FORCED Light on a dark phone still gets the dark splash: Android draws it before any JS can read the preference — documented at `userInterfaceStyle`)*
   *Why (new since the review):* `app.config.ts:91` is `userInterfaceStyle: 'automatic'`, and the splash is `#FFFFFF` in light mode (`:115`) but `#0D1210` in dark, while the app background is `#0A0A0B`. In light system mode, a white splash flashes before a black app, and system dialogs and the date picker render light.
   - `userInterfaceStyle: 'dark'`. Splash `backgroundColor: '#0A0A0B'` for both. Rebuild from a clean `android/`.
   - Leave a comment at `userInterfaceStyle` saying the Phase 9 light-theme toggle must switch this back to `'automatic'` and drive `Appearance.setColorScheme`.
   **Done when:** cold start in light system mode shows no white frame.
 
-- [ ] **Keep design tokens in one source**
+- [x] **Keep design tokens in one source** *(code 2026-09-17: `global.css` is GENERATED from the palettes by `npm run theme:css` (`scripts/gen-theme-css.ts`, which Node runs directly — no new dependency). The Tailwind-name → token map lives in `lib/themeCss.ts`, and `lib/__tests__/themeCss.test.ts` fails if the checked-in CSS is stale. Regenerating reproduced every light value exactly and corrected rounding slips in the hand-written dark HSL; `--accent`/`--accent-foreground` had no palette colour and now map to `elevated`/`primary` — no component uses either class)*
   *Why:* `lib/theme.ts:1-7` says "these mirror global.css — if you change a token there, change it here". Two hand-synced copies will drift.
   - Generate `global.css` variables from `lib/theme.ts` (a small script in `scripts/`), or have `tailwind.config.js` import the JS tokens directly.
   **Done when:** changing `colors.primary` in one file changes both Tailwind classes and JS styles.
 
-- [ ] **[U6] Add "Recently deleted" and purge after 30 days**
+- [x] **[U6] Add "Recently deleted" and purge after 30 days** *(code 2026-09-17: Settings → Recently deleted (`features/transactions/components/RecentlyDeleted.tsx`) lists, restores (itself undoable) and deletes permanently behind a confirm, plus "Empty". `db/retention.ts` purges at boot step 6 — after migrations, never fatal. `db/__tests__/retention.test.ts` runs the shipped predicate: a row deleted 31 days ago goes, one deleted on the cutoff day survives its last day, import-batch rows and live rows are never touched. The on-device check with a hand-set timestamp is the user's)*
   *Why:* Soft-deleted rows are kept forever and count towards every non-partial index and the backup size.
   - More → Settings → Recently deleted: list, restore, delete now.
   - At launch, hard-delete transactions with `deleted_at` older than 30 days **that are not part of an import batch** (batch undo must stay available).
   **Done when:** a row deleted 31 days ago (set the timestamp manually in dev) is purged on launch.
 
-- [ ] **Point import entry points at the Sheets routes**
+- [x] **Point import entry points at the Sheets routes** *(code 2026-09-17: `app/import/pick.tsx` → `app/sheets/index.tsx` via `git mv`; all FIVE links updated — FAB long-press, More, and the empty Home, Transactions and Insights screens. More's row is now "Sheets". No `/import/` reference remains)*
   *Why:* CLAUDE.md now places import under `app/sheets/`, but the FAB long-press (`TabBar.tsx:363`), the More row (`more.tsx:43`) and the ledger empty state (`transactions.tsx:279`) all go to `/import/pick`.
   - Move `app/import/pick.tsx` → `app/sheets/index.tsx` (list) and update all three links. Rename the labels to "Sheets" / "Import a sheet".
   **Done when:** there are no references to `/import/` in the code.
@@ -488,7 +490,9 @@ every screen reads data, so do it before more screens are written against `useLi
 **Exit criterion (F5):** a first-week script works on the phone without surprises: backdate an expense to last quarter, filter "Last 7 days" across midnight, switch Expense/Income, delete and restore from Recently deleted, cold start in light mode.
 
 **Discovered during this phase:**
-- _(none yet)_
+- Two 5A tasks had already been done by earlier refactors but were never ticked — the tracker had drifted from the code (see F6 [T3]).
+- Only transactions are purged. Other soft-deleted tables (categories, people, groups, split expenses, settlements) are small and were out of this task's scope; revisit if backup size says otherwise.
+- The subscription anchor date and the group expense date could reuse `DatePickerSheet`; not in F5's scope.
 
 ---
 
