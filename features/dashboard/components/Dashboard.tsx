@@ -115,7 +115,7 @@ export function Dashboard() {
       {showWelcome ? (
         <Welcome
           onAdd={() => router.push('/(modals)/transaction')}
-          onImport={() => router.push('/import/pick')}
+          onImport={() => router.push('/sheets')}
           onRestore={() => router.push('/backup')}
           onSkip={dismissOnboarding}
         />

@@ -42,7 +42,7 @@ const GROUPS: { title: string; rows: Row[] }[] = [
   {
     title: 'Your data',
     rows: [
-      { icon: FileSpreadsheet, tint: 'mint', label: 'Import a sheet', hint: 'Bring in an Excel or CSV export', href: '/import/pick' },
+      { icon: FileSpreadsheet, tint: 'mint', label: 'Sheets', hint: 'Import a sheet and keep it as its own workspace', href: '/sheets' },
       { icon: DatabaseBackup, tint: 'amber', label: 'Backup & restore', hint: 'Export your data, or restore it', href: '/backup' },
     ],
   },

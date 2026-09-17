@@ -5,7 +5,7 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { PressableScale } from '../../../components/ui/PressableScale';
 import { formatDayMonth } from '../../../lib/dates';
 import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
-import type { TransactionFilters } from '../filters';
+import { DATE_PRESETS, NO_DATES, type TransactionFilters } from '../filters';
 
 interface Props {
   filters: TransactionFilters;
@@ -45,13 +45,21 @@ export function FilterChips({ filters, categories, onChange, onClearSearch, onCl
       remove: () => onChange({ type: 'all' }),
     });
   }
-  if (filters.dateFrom || filters.dateTo) {
+  if (filters.datePreset) {
+    // The preset's own name, not the dates it resolves to today — that is what
+    // the user chose, and it is shorter to read at a glance.
+    chips.push({
+      key: 'date',
+      label: DATE_PRESETS.find((p) => p.value === filters.datePreset)?.label ?? 'Date range',
+      remove: () => onChange(NO_DATES),
+    });
+  } else if (filters.dateFrom || filters.dateTo) {
     const from = filters.dateFrom ? formatDayMonth(filters.dateFrom) : 'Start';
     const to = filters.dateTo ? formatDayMonth(filters.dateTo) : 'today';
     chips.push({
       key: 'date',
       label: `${from} – ${to}`,
-      remove: () => onChange({ dateFrom: undefined, dateTo: undefined }),
+      remove: () => onChange(NO_DATES),
     });
   }
   for (const id of filters.categoryIds ?? []) {

@@ -1,15 +1,22 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { Donut } from '../../../components/charts/Donut';
 import { Card } from '../../../components/ui/Card';
 import { CategoryIcon } from '../../../components/ui/CategoryIcon';
 import { PressableScale } from '../../../components/ui/PressableScale';
+import { Swap } from '../../../components/ui/Swap';
 import { categoryColor } from '../../../lib/categoryColor';
 import { formatMonthYear, type ISODate } from '../../../lib/dates';
 import { formatINR } from '../../../lib/money';
+import { useMotion } from '../../../lib/motion';
 import { fonts, useColors, withAlpha } from '../../../lib/theme';
 import { clampMonth, shiftMonth, toSlices, type Slice } from '../period';
 import { useCategoryBreakdown } from '../queries';
@@ -28,11 +35,19 @@ export function CategoryBreakdown({ today, earliest }: { today: ISODate; earlies
   const earliestMonth = earliest?.slice(0, 7) ?? null;
   const [month, setMonth] = useState(currentMonth);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // Which way the last step went, so the new month enters from the side the
+  // arrow points at rather than simply appearing.
+  const [direction, setDirection] = useState<-1 | 0 | 1>(0);
 
   // Midnight rolling into a new month, or the first transaction being deleted,
   // can leave the browsed month out of bounds.
   const shown = clampMonth(month, earliestMonth, currentMonth);
   useEffect(() => setSelectedKey(null), [shown]);
+
+  const step = (by: -1 | 1) => {
+    setDirection(by);
+    setMonth(shiftMonth(shown, by));
+  };
 
   const { data: rows, status } = useCategoryBreakdown(shown);
 
@@ -60,11 +75,13 @@ export function CategoryBreakdown({ today, earliest }: { today: ISODate; earlies
         className="mt-4 flex-row items-center justify-between rounded-full px-1 py-1"
         style={{ backgroundColor: colors.elevated }}
       >
-        <MonthStep direction="back" disabled={!canBack} onPress={() => setMonth(shiftMonth(shown, -1))} />
-        <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}>
-          {formatMonthYear(shown)}
-        </Text>
-        <MonthStep direction="forward" disabled={!canForward} onPress={() => setMonth(shiftMonth(shown, 1))} />
+        <MonthStep direction="back" disabled={!canBack} onPress={() => step(-1)} />
+        <Swap swapKey={shown} direction={direction} distance={10}>
+          <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}>
+            {formatMonthYear(shown)}
+          </Text>
+        </Swap>
+        <MonthStep direction="forward" disabled={!canForward} onPress={() => step(1)} />
       </View>
 
       {status === 'pending' ? (
@@ -76,7 +93,7 @@ export function CategoryBreakdown({ today, earliest }: { today: ISODate; earlies
           </Text>
         </View>
       ) : (
-        <Animated.View key={shown} entering={FadeIn.duration(240)}>
+        <Swap swapKey={shown} direction={direction}>
           <View className="mt-5 items-center">
             <Donut
               slices={slices.map((s) => ({ key: s.key, value: s.totalPaise, color: colorOf(s) }))}
@@ -118,7 +135,7 @@ export function CategoryBreakdown({ today, earliest }: { today: ISODate; earlies
               />
             ))}
           </View>
-        </Animated.View>
+        </Swap>
       )}
     </Card>
   );
@@ -157,7 +174,37 @@ function LegendRow({
   onPress: () => void;
 }) {
   const colors = useColors();
+  const m = useMotion();
+
+  // Selecting a slice used to switch three properties at once across every
+  // row; animating them makes one row rise out of the list instead of the
+  // list flickering. The "off" background is the same hue at zero alpha, so
+  // the colour interpolates instead of jumping through transparent.
+  const off = withAlpha(color, 0);
+  const on = withAlpha(color, 0.12);
+  const lift = useSharedValue(selected ? 1 : 0);
+  const fade = useSharedValue(dimmed ? 1 : 0);
+
+  useEffect(() => {
+    lift.value = withTiming(selected ? 1 : 0, { duration: m.quick });
+    fade.value = withTiming(dimmed ? 1 : 0, { duration: m.quick });
+  }, [selected, dimmed, m.quick, lift, fade]);
+
+  const row = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(lift.value, [0, 1], [off, on]),
+    opacity: 1 - fade.value * 0.45,
+  }));
+
+  // The share bar grows to its new length when the figures change under it
+  // (a transaction added while this month is open), rather than teleporting.
+  const span = useSharedValue(Math.max(2, slice.share * 100));
+  useEffect(() => {
+    span.value = withTiming(Math.max(2, slice.share * 100), { duration: m.base });
+  }, [slice.share, m.base, span]);
+  const bar = useAnimatedStyle(() => ({ width: `${span.value}%` as `${number}%` }));
+
   return (
+    <Animated.View style={[{ borderRadius: 16 }, row]}>
     <PressableScale
       accessibilityRole="button"
       accessibilityState={{ selected }}
@@ -165,7 +212,6 @@ function LegendRow({
       onPress={onPress}
       scaleTo={0.98}
       className="flex-row items-center gap-3 rounded-2xl px-2 py-2"
-      style={{ backgroundColor: selected ? withAlpha(color, 0.12) : 'transparent', opacity: dimmed ? 0.55 : 1 }}
     >
       {slice.key === 'other' ? (
         <View className="items-center justify-center rounded-full" style={{ width: 34, height: 34, backgroundColor: colors.elevated }}>
@@ -185,7 +231,7 @@ function LegendRow({
         </View>
         <View className="mt-1.5 flex-row items-center gap-2">
           <View className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: colors.elevated }}>
-            <View className="h-full rounded-full" style={{ width: `${Math.max(2, slice.share * 100)}%`, backgroundColor: color }} />
+            <Animated.View className="h-full rounded-full" style={[{ backgroundColor: color }, bar]} />
           </View>
           <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11, width: 34, textAlign: 'right' }}>
             {percent(slice.share)}
@@ -193,6 +239,7 @@ function LegendRow({
         </View>
       </View>
     </PressableScale>
+    </Animated.View>
   );
 }
 

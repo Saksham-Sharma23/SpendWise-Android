@@ -54,7 +54,7 @@ export function Insights() {
             title="Nothing to analyse yet"
             description="Your trend, category breakdown and stats appear here as soon as you record a transaction."
             action={{ label: 'Add a transaction', onPress: () => router.push('/(modals)/transaction') }}
-            secondary={{ label: 'Import a sheet', onPress: () => router.push('/import/pick') }}
+            secondary={{ label: 'Import a sheet', onPress: () => router.push('/sheets') }}
           />
         </View>
       ) : (

@@ -548,7 +548,7 @@ function AddButton() {
           turn.value = withSpring(0, springs.settle);
         }}
         onPress={() => router.push('/(modals)/transaction')}
-        onLongPress={() => router.push('/import/pick')}
+        onLongPress={() => router.push('/sheets')}
         style={{
           width: 52,
           height: 52,

@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View, type AccessibilityActionEvent, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
   FadeIn,
+  FadeOut,
   useAnimatedProps,
   useAnimatedStyle,
   useDerivedValue,
@@ -15,12 +17,14 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { MONTHS_SHORT, formatMonthYear } from '../../lib/dates';
 import { formatINR, formatINRCompact } from '../../lib/money';
+import { useMotion } from '../../lib/motion';
 import { fonts, useColors } from '../../lib/theme';
-import { labelStep, niceCeiling, pointX, scrubIndex, smoothPath } from './geometry';
+import { labelStep, niceCeiling, pointX, resample, scrubIndex, smoothPath } from './geometry';
 import type { TrendPoint } from './TrendChart';
 
 const AnimatedLine = Animated.createAnimatedComponent(Line);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 /** Room either side so the end dots are not clipped. */
 const PAD_X = 10;
@@ -37,71 +41,154 @@ interface Props {
   height?: number;
 }
 
+/** Element-wise blend of two equal-length series. Pure, so JS uses it too. */
+function lerpArray(a: number[], b: number[], p: number): number[] {
+  'worklet';
+  const len = Math.min(a.length, b.length);
+  const out: number[] = [];
+  for (let i = 0; i < len; i++) out.push(a[i]! + (b[i]! - a[i]!) * p);
+  return out;
+}
+
+/** Drop a line down to the baseline and close it, making it a fill. */
+function closeArea(line: string, leftX: number, rightX: number, baseline: number): string {
+  'worklet';
+  if (line === '') return '';
+  return `${line} L${rightX},${baseline} L${leftX},${baseline} Z`;
+}
+
+/** The y of the blended series at a fractional month index. */
+function sampleY(from: number[], to: number[], p: number, at: number, top: number, plotH: number): number {
+  'worklet';
+  const len = Math.min(from.length, to.length);
+  if (len === 0 || top <= 0) return PAD_TOP + plotH;
+  const i = Math.max(0, Math.min(len - 1, Math.floor(at)));
+  const j = Math.min(len - 1, i + 1);
+  const f = Math.max(0, Math.min(1, at - i));
+  const a = from[i]! + (to[i]! - from[i]!) * p;
+  const b = from[j]! + (to[j]! - from[j]!) * p;
+  return PAD_TOP + (1 - (a + (b - a) * f) / top) * plotH;
+}
+
 /**
  * Income and expense as stacked-free areas over months, with a touch scrubber.
  *
  * Purely presentational: it takes points already aggregated in SQL and never
  * queries anything (CLAUDE.md #5).
  *
+ * **Changing range morphs the curve.** The chart used to be keyed on the point
+ * count, so 3M → 24M unmounted one chart and faded in another: the shape blinked
+ * out. Instead it keeps one set of paths and animates the VALUES behind them.
+ * On a range change the outgoing shape is resampled onto the incoming month grid
+ * (geometry.resample) and the two are blended by one `progress` value, along
+ * with the axis ceiling — so the curve flows into its new shape and rescales at
+ * the same time. Switching again mid-flight re-bases from wherever the blend had
+ * got to, so it redirects instead of snapping.
+ *
  * The scrubber runs on the UI thread. Dragging moves the guide and the two
  * dots in worklets, so it stays smooth while JS is busy re-rendering the
  * figures. JS hears about it only when the finger crosses into a different
  * month — at most `points.length` times per sweep, never once per frame.
- * The dots ride the straight segment between neighbouring months while the
- * guide glides, so they never jump ahead of it.
+ * The dots read the same blended series as the curve, so they ride it rather
+ * than jumping ahead during a morph.
  *
  * Built on react-native-svg + Reanimated (already in the native build), like
  * TrendChart, so it ships over the air with no Skia rebuild.
  */
 export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Props) {
   const colors = useColors();
+  const motion = useMotion();
   const [width, setWidth] = useState(0);
   const n = points.length;
   const plotW = Math.max(0, width - PAD_X * 2);
   const plotH = height - PAD_TOP - PAD_BOTTOM;
   const baseline = PAD_TOP + plotH;
 
-  const top = useMemo(
-    () => niceCeiling(Math.max(0, ...points.map((p) => Math.max(p.incomePaise, p.expensePaise)))),
-    [points],
+  // One string identity for the data: the hook hands back a fresh array on
+  // every refresh, and an unchanged range should not restart the morph.
+  const signature = points.map((p) => `${p.month}:${p.incomePaise}:${p.expensePaise}`).join('|');
+  const series = useMemo(
+    () => ({
+      income: points.map((p) => p.incomePaise),
+      expense: points.map((p) => p.expensePaise),
+      top: niceCeiling(Math.max(0, ...points.map((p) => Math.max(p.incomePaise, p.expensePaise)))),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [signature],
   );
 
-  const geometry = useMemo(() => {
-    const xOf = (i: number) => PAD_X + pointX(i, plotW, n);
-    const yOf = (paise: number) => PAD_TOP + (1 - paise / top) * plotH;
-    const incomeYs = points.map((p) => yOf(p.incomePaise));
-    const expenseYs = points.map((p) => yOf(p.expensePaise));
-    const incomeLine = smoothPath(points.map((_, i) => [xOf(i), incomeYs[i]!]));
-    const expenseLine = smoothPath(points.map((_, i) => [xOf(i), expenseYs[i]!]));
-    const area = (line: string) => (n > 1 ? `${line} L${xOf(n - 1)},${baseline} L${xOf(0)},${baseline} Z` : '');
-    return {
-      incomeYs,
-      expenseYs,
-      incomeLine,
-      expenseLine,
-      incomeArea: area(incomeLine),
-      expenseArea: area(expenseLine),
-      xOf,
+  // --- the morph -----------------------------------------------------------
+  const fromIncome = useSharedValue<number[]>(series.income);
+  const toIncome = useSharedValue<number[]>(series.income);
+  const fromExpense = useSharedValue<number[]>(series.expense);
+  const toExpense = useSharedValue<number[]>(series.expense);
+  const fromTop = useSharedValue(series.top);
+  const toTop = useSharedValue(series.top);
+  const progress = useSharedValue(1);
+  const first = useRef(true);
+
+  useEffect(() => {
+    if (first.current) {
+      first.current = false; // The first data is the starting shape, not a change.
+      return;
+    }
+    const p = progress.value;
+    const width2 = series.income.length;
+    // Re-base on where the blend actually is, then project it onto the new
+    // month grid so both ends of the next blend are the same length.
+    fromIncome.value = resample(lerpArray(fromIncome.value, toIncome.value, p), width2);
+    fromExpense.value = resample(lerpArray(fromExpense.value, toExpense.value, p), width2);
+    fromTop.value = fromTop.value + (toTop.value - fromTop.value) * p;
+    toIncome.value = series.income;
+    toExpense.value = series.expense;
+    toTop.value = series.top;
+    progress.value = 0;
+    progress.value = motion.reduced
+      ? 1
+      : withTiming(1, { duration: motion.morph, easing: Easing.inOut(Easing.cubic) });
+  }, [series, motion, progress, fromIncome, toIncome, fromExpense, toExpense, fromTop, toTop]);
+
+  /** The blended ceiling, in paise. Read by the paths and the dots alike. */
+  const topNow = useDerivedValue(() => fromTop.value + (toTop.value - fromTop.value) * progress.value);
+
+  // Both curves, built once per frame and shared by the line and its fill.
+  const paths = useDerivedValue(() => {
+    const top = topNow.value;
+    const inc = lerpArray(fromIncome.value, toIncome.value, progress.value);
+    const exp = lerpArray(fromExpense.value, toExpense.value, progress.value);
+    const len = inc.length;
+    if (len === 0 || plotW <= 0 || top <= 0) return { income: '', expense: '' };
+    const curve = (v: number[]) => {
+      const xy: [number, number][] = [];
+      for (let i = 0; i < len; i++) {
+        xy.push([PAD_X + pointX(i, plotW, len), PAD_TOP + (1 - v[i]! / top) * plotH]);
+      }
+      return smoothPath(xy);
     };
-  }, [points, plotW, plotH, top, n, baseline]);
+    return { income: curve(inc), expense: curve(exp) };
+  });
+
+  const incomeLine = useAnimatedProps(() => ({ d: paths.value.income }));
+  const expenseLine = useAnimatedProps(() => ({ d: paths.value.expense }));
+  const incomeArea = useAnimatedProps(() => ({
+    d: closeArea(paths.value.income, PAD_X, PAD_X + plotW, baseline),
+  }));
+  const expenseArea = useAnimatedProps(() => ({
+    d: closeArea(paths.value.expense, PAD_X, PAD_X + plotW, baseline),
+  }));
 
   // --- UI-thread scrubber state -------------------------------------------
   const guideX = useSharedValue(0);
   const scrubbing = useSharedValue(0);
   const lastIndex = useSharedValue(selectedIndex);
-  const ys = useSharedValue({ income: geometry.incomeYs, expense: geometry.expenseYs });
-
-  useEffect(() => {
-    ys.value = { income: geometry.incomeYs, expense: geometry.expenseYs };
-  }, [geometry, ys]);
 
   // Follow a selection made from JS (initial render, range change, a11y).
   useEffect(() => {
     if (plotW === 0) return;
     lastIndex.value = selectedIndex;
     const x = PAD_X + pointX(selectedIndex, plotW, n);
-    guideX.value = guideX.value === 0 ? x : withSpring(x, GLIDE);
-  }, [selectedIndex, plotW, n, guideX, lastIndex]);
+    guideX.value = guideX.value === 0 || motion.reduced ? x : withSpring(x, GLIDE);
+  }, [selectedIndex, plotW, n, guideX, lastIndex, motion.reduced]);
 
   const pan = useMemo(() => {
     const pick = (x: number) => {
@@ -136,16 +223,14 @@ export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Pro
   });
 
   const guideProps = useAnimatedProps(() => ({ x1: guideX.value, x2: guideX.value }));
-  const lerp = (arr: number[], f: number) => {
-    'worklet';
-    if (arr.length === 0) return baseline;
-    const i = Math.floor(f);
-    const a = arr[i] ?? arr[arr.length - 1]!;
-    const b = arr[i + 1] ?? a;
-    return a + (b - a) * (f - i);
-  };
-  const incomeDot = useAnimatedProps(() => ({ cx: guideX.value, cy: lerp(ys.value.income, at.value) }));
-  const expenseDot = useAnimatedProps(() => ({ cx: guideX.value, cy: lerp(ys.value.expense, at.value) }));
+  const incomeDot = useAnimatedProps(() => ({
+    cx: guideX.value,
+    cy: sampleY(fromIncome.value, toIncome.value, progress.value, at.value, topNow.value, plotH),
+  }));
+  const expenseDot = useAnimatedProps(() => ({
+    cx: guideX.value,
+    cy: sampleY(fromExpense.value, toExpense.value, progress.value, at.value, topNow.value, plotH),
+  }));
 
   const tip = useAnimatedStyle(() => ({
     opacity: scrubbing.value,
@@ -157,6 +242,7 @@ export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Pro
 
   const sel = points[selectedIndex];
   const step = labelStep(n);
+  const xOf = (i: number) => PAD_X + pointX(i, plotW, n);
 
   const onA11y = (e: AccessibilityActionEvent) => {
     if (e.nativeEvent.actionName === 'increment') onSelect(Math.min(n - 1, selectedIndex + 1));
@@ -177,8 +263,7 @@ export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Pro
           onAccessibilityAction={onA11y}
         >
           {width > 0 && n > 0 ? (
-            // Re-keyed on the range so switching cross-fades instead of snapping.
-            <Animated.View key={n} entering={FadeIn.duration(280)} style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
               <Svg width={width} height={height}>
                 <Defs>
                   <LinearGradient id="areaIncome" x1="0" y1="0" x2="0" y2="1">
@@ -206,8 +291,8 @@ export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Pro
                 ))}
                 <Line x1={PAD_X} x2={width - PAD_X} y1={baseline} y2={baseline} stroke={colors.border} strokeWidth={1} />
 
-                <Path d={geometry.incomeArea} fill="url(#areaIncome)" />
-                <Path d={geometry.expenseArea} fill="url(#areaExpense)" />
+                <AnimatedPath animatedProps={incomeArea} fill="url(#areaIncome)" />
+                <AnimatedPath animatedProps={expenseArea} fill="url(#areaExpense)" />
 
                 <AnimatedLine
                   animatedProps={guideProps}
@@ -218,17 +303,36 @@ export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Pro
                   strokeDasharray="3 3"
                 />
 
-                <Path d={geometry.incomeLine} stroke={colors.income} strokeWidth={2.5} fill="none" strokeLinecap="round" />
-                <Path d={geometry.expenseLine} stroke={colors.expense} strokeWidth={2.5} fill="none" strokeLinecap="round" />
+                <AnimatedPath
+                  animatedProps={incomeLine}
+                  stroke={colors.income}
+                  strokeWidth={2.5}
+                  fill="none"
+                  strokeLinecap="round"
+                />
+                <AnimatedPath
+                  animatedProps={expenseLine}
+                  stroke={colors.expense}
+                  strokeWidth={2.5}
+                  fill="none"
+                  strokeLinecap="round"
+                />
 
                 <AnimatedCircle animatedProps={incomeDot} r={5} fill={colors.card} stroke={colors.income} strokeWidth={2.5} />
                 <AnimatedCircle animatedProps={expenseDot} r={5} fill={colors.card} stroke={colors.expense} strokeWidth={2.5} />
               </Svg>
 
+              {/* The ceiling changes with the range; it cross-fades rather than
+                  ticking through values the axis never actually showed. */}
               <View pointerEvents="none" style={{ position: 'absolute', left: PAD_X, top: 0 }}>
-                <Text style={{ color: colors.subtle, fontFamily: fonts.medium, fontSize: 10 }}>
-                  {formatINRCompact(top)}
-                </Text>
+                <Animated.Text
+                  key={series.top}
+                  entering={FadeIn.duration(motion.base)}
+                  exiting={FadeOut.duration(motion.quick)}
+                  style={{ position: 'absolute', color: colors.subtle, fontFamily: fonts.medium, fontSize: 10 }}
+                >
+                  {formatINRCompact(series.top)}
+                </Animated.Text>
               </View>
 
               {sel ? (
@@ -257,22 +361,30 @@ export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Pro
                   <TipRow color={colors.expense} label="Out" paise={sel.expensePaise} />
                 </Animated.View>
               ) : null}
-            </Animated.View>
+            </View>
           ) : null}
         </View>
       </GestureDetector>
 
-      {/* Month labels, anchored on the latest month so "now" is always labelled. */}
+      {/* Month labels, anchored on the latest month so "now" is always labelled.
+          The whole row cross-fades on a range change: its labels are absolutely
+          positioned, so the outgoing set disturbs nothing on its way out. */}
       <View style={{ height: 16, marginTop: 6 }}>
-        {width > 0
-          ? points.map((p, i) =>
+        {width > 0 ? (
+          <Animated.View
+            key={n}
+            entering={FadeIn.duration(motion.base)}
+            exiting={FadeOut.duration(motion.quick)}
+            style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+          >
+            {points.map((p, i) =>
               (n - 1 - i) % step === 0 ? (
                 <Text
                   key={p.month}
                   numberOfLines={1}
                   style={{
                     position: 'absolute',
-                    left: geometry.xOf(i) - 22,
+                    left: xOf(i) - 22,
                     width: 44,
                     textAlign: 'center',
                     color: i === selectedIndex ? colors.foreground : colors.subtle,
@@ -283,8 +395,9 @@ export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Pro
                   {monthLabel(p.month, n > 12)}
                 </Text>
               ) : null,
-            )
-          : null}
+            )}
+          </Animated.View>
+        ) : null}
       </View>
     </View>
   );

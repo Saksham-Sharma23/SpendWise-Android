@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, type TextStyle } from 'react-native';
 
 import { AreaChart } from '../../../components/charts/AreaChart';
+import { AnimatedAmount } from '../../../components/ui/AnimatedAmount';
 import { Card } from '../../../components/ui/Card';
 import { formatMonthYear, type ISODate } from '../../../lib/dates';
-import { formatINR, formatINRCompact } from '../../../lib/money';
+import { formatINRCompact } from '../../../lib/money';
 import { fonts, useColors } from '../../../lib/theme';
 import { useSpendingTrend } from '../queries';
 
@@ -20,15 +21,24 @@ export function SpendingTrend({ months, today }: { months: number; today: ISODat
   // The selection remembers which range it was made in. A new range starts on
   // its latest month in the SAME render — resetting it in an effect let the
   // scrubber glide to the old index first, then jump.
-  const [selected, setSelected] = useState({ months, index: months - 1 });
+  // `source` says whether the figures below should count up to their new value
+  // or simply arrive: a finger sweeping the chart crosses months faster than
+  // any count-up can finish.
+  const [selected, setSelected] = useState<{ months: number; index: number; source: 'range' | 'scrub' }>({
+    months,
+    index: months - 1,
+    source: 'range',
+  });
 
   // Stable, so the chart's gesture is not rebuilt on every render.
-  const onSelect = useCallback((index: number) => setSelected({ months, index }), [months]);
+  const onSelect = useCallback((index: number) => setSelected({ months, index, source: 'scrub' }), [months]);
 
-  const wanted = selected.months === months ? selected.index : months - 1;
+  const fresh = selected.months !== months;
+  const wanted = fresh ? months - 1 : selected.index;
   const index = Math.min(Math.max(0, wanted), Math.max(0, points.length - 1));
   const active = points[index];
   const net = active ? active.incomePaise - active.expensePaise : 0;
+  const count = fresh || selected.source === 'range';
   const empty = status === 'ok' && points.every((p) => p.incomePaise === 0 && p.expensePaise === 0);
 
   return (
@@ -39,9 +49,9 @@ export function SpendingTrend({ months, today }: { months: number; today: ISODat
       </Text>
 
       <View className="mt-4 flex-row gap-2">
-        <Figure label="Income" color={colors.income} paise={active?.incomePaise ?? 0} />
-        <Figure label="Expense" color={colors.expense} paise={active?.expensePaise ?? 0} />
-        <Figure label="Net" color={net < 0 ? colors.expense : colors.primary} paise={net} />
+        <Figure label="Income" color={colors.income} paise={active?.incomePaise ?? 0} count={count} />
+        <Figure label="Expense" color={colors.expense} paise={active?.expensePaise ?? 0} count={count} />
+        <Figure label="Net" color={net < 0 ? colors.expense : colors.primary} paise={net} count={count} />
       </View>
 
       <View className="mt-5">
@@ -59,22 +69,32 @@ export function SpendingTrend({ months, today }: { months: number; today: ISODat
   );
 }
 
-function Figure({ label, color, paise }: { label: string; color: string; paise: number }) {
+function Figure({ label, color, paise, count }: { label: string; color: string; paise: number; count: boolean }) {
   const colors = useColors();
+  // Lakh-scale figures go compact so three fit across a phone — and a compact
+  // figure ("₹12.4L") has too few digits to count through, so it swaps.
+  const compact = Math.abs(paise) >= 10_00_000 * 100;
+  const style: TextStyle = {
+    color: colors.foreground,
+    fontFamily: fonts.bold,
+    fontSize: 15,
+    marginTop: 3,
+    fontVariant: ['tabular-nums'],
+  };
+
   return (
     <View className="flex-1 rounded-2xl px-3 py-2.5" style={{ backgroundColor: colors.elevated }}>
       <View className="flex-row items-center gap-1.5">
         <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color }} />
         <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>{label}</Text>
       </View>
-      <Text
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 15, marginTop: 3, fontVariant: ['tabular-nums'] }}
-      >
-        {/* Lakh-scale figures go compact so three fit across a phone. */}
-        {Math.abs(paise) >= 10_00_000 * 100 ? formatINRCompact(paise) : formatINR(paise, { whole: true })}
-      </Text>
+      {compact ? (
+        <Text numberOfLines={1} adjustsFontSizeToFit style={style}>
+          {formatINRCompact(paise)}
+        </Text>
+      ) : (
+        <AnimatedAmount paise={paise} animate={count} durationMs={420} options={{ whole: true }} style={style} />
+      )}
     </View>
   );
 }

@@ -26,6 +26,7 @@ import {
   type MigrationConnection,
 } from './migrate';
 import migrations from './migrations/migrations';
+import { purgeExpired } from './retention';
 import { seedIfNeeded } from './seed';
 
 /**
@@ -37,9 +38,12 @@ import { seedIfNeeded } from './seed';
  *      then `VACUUM INTO` a snapshot, keeping the newest two.
  *   4. Migrate with foreign keys OFF (see db/migrate.ts for why), check, turn them on.
  *   5. Seed.
+ *   6. Purge soft-deleted rows past their retention window (db/retention.ts).
  *
- * Nothing here deletes user data. Every failure path leaves the original
- * file where it was, or moved aside intact.
+ * Every failure path leaves the original file where it was, or moved aside
+ * intact. Step 6 is the only step that removes anything, and only rows the
+ * user deleted themselves more than RETENTION_DAYS ago — which Settings →
+ * Recently deleted shows them, with the date, before it happens.
  */
 
 export type BootOutcome =
@@ -133,6 +137,16 @@ export async function bootDatabase(): Promise<BootOutcome> {
     seedIfNeeded();
   } catch (e) {
     return { kind: 'failed', message: `Could not prepare the built-in categories: ${messageOf(e)}` };
+  }
+
+  // 6. Drop soft-deleted rows past their retention window. Deliberately after
+  //    the snapshot and the migration, and deliberately not fatal: failing to
+  //    tidy up is never a reason to refuse to open someone's data.
+  try {
+    const purged = purgeExpired(db);
+    if (__DEV__ && purged > 0) console.log(`[boot] purged ${purged} expired deleted transactions`);
+  } catch (e) {
+    if (__DEV__) console.warn('[boot] could not purge expired deletions', e);
   }
 
   // A previous launch converted a legacy database and this one booted cleanly: drop the kept original.

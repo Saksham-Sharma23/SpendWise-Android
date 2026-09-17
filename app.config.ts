@@ -100,6 +100,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '1.0.0',
   orientation: 'portrait',
   scheme: 'spendwise',
+  // 'automatic' since the light theme shipped (2026-09-15): the native shell —
+  // system dialogs, the text-selection menu — follows the phone, which is what
+  // Settings → System does too.
+  //
+  // It cannot follow a FORCED preference: picking Light on a dark phone still
+  // gets a dark splash, because the splash is drawn by Android before any JS
+  // runs and there is nothing to read the stored preference. The colours below
+  // keep that to one frame of the right family rather than a white flash.
   userInterfaceStyle: 'automatic',
   icon: './assets/icon.png',
   android: {
@@ -127,8 +135,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-splash-screen',
       {
-        backgroundColor: '#FFFFFF',
-        dark: { backgroundColor: '#0D1210' },
+        // Exactly the app's own page colours (lib/theme.ts `background`), so
+        // the handover from the splash to the first screen is invisible. They
+        // used to be #FFFFFF and #0D1210 against an app painted #F4F7F2 and
+        // #0A0A0B, which showed as a flash on every cold start.
+        backgroundColor: '#F4F7F2',
+        dark: { backgroundColor: '#0A0A0B' },
         image: './assets/splash-icon.png',
         imageWidth: 180,
       },

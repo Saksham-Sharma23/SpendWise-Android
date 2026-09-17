@@ -1,4 +1,41 @@
-import { donutArcs, hitArc, labelStep, niceCeiling, pointX, scrubIndex, smoothPath } from '../geometry';
+import { donutArcs, hitArc, labelStep, niceCeiling, pointX, resample, scrubIndex, smoothPath } from '../geometry';
+
+describe('resample', () => {
+  it('leaves a series of the wanted length alone', () => {
+    expect(resample([5, 9, 2], 3)).toEqual([5, 9, 2]);
+  });
+
+  it('keeps the first and last values exactly', () => {
+    // Every range morph starts and ends on real months, so the ends must not
+    // drift — a trend whose latest month is wrong is worse than no animation.
+    for (const n of [2, 3, 6, 12, 24]) {
+      for (const samples of [2, 3, 7, 24, 32]) {
+        const values = Array.from({ length: n }, (_, i) => i * 100 + 7);
+        const out = resample(values, samples);
+        expect(out).toHaveLength(samples);
+        expect(out[0]).toBe(values[0]);
+        expect(out[samples - 1]).toBe(values[n - 1]);
+      }
+    }
+  });
+
+  it('interpolates linearly between neighbours', () => {
+    // 3 values over 5 samples: the new points land halfway between the old.
+    expect(resample([0, 10, 0], 5)).toEqual([0, 5, 10, 5, 0]);
+  });
+
+  it('stretches a 3-month series onto a 24-month grid monotonically', () => {
+    const out = resample([0, 50, 100], 24);
+    expect(out).toHaveLength(24);
+    for (let i = 1; i < out.length; i++) expect(out[i]!).toBeGreaterThanOrEqual(out[i - 1]!);
+  });
+
+  it('survives the empty and single-value cases a fresh ledger produces', () => {
+    expect(resample([], 4)).toEqual([0, 0, 0, 0]);
+    expect(resample([42], 3)).toEqual([42, 42, 42]);
+    expect(resample([1, 2, 3], 0)).toEqual([]);
+  });
+});
 
 describe('scrubIndex / pointX', () => {
   it('snaps a finger to the nearest point, edge to edge', () => {

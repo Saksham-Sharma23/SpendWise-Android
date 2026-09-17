@@ -3,98 +3,74 @@
 @tailwind utilities;
 
 /*
- * Design tokens — the SpendWise look: one electric lime accent, green for
- * money in, coral for money out, over a near-black ground (dark) or a faint
- * sage off-white one (light).
+ * GENERATED FILE — do not edit by hand.
  *
- * Two palettes since 2026-09-15. `:root` is LIGHT and `.dark:root` is DARK,
- * which is how NativeWind's class strategy resolves them; the app sets the
- * colour scheme from the stored preference (lib/themeStore.ts).
+ * Every colour below comes from the palettes in lib/theme.ts; run
+ * `npm run theme:css` after changing one. lib/themeCss.ts holds the mapping
+ * from these Tailwind variable names to the app's own token names, and
+ * lib/__tests__/themeCss.test.ts fails if this file is out of date.
  *
- * JS-side colours (icons, SVG, charts) come from lib/theme.ts, which mirrors
- * these values — change both together.
+ * `:root` is LIGHT and `.dark:root` is DARK, which is how NativeWind's class
+ * strategy resolves them; the app sets the colour scheme from the stored
+ * preference (lib/themeStore.ts).
  */
 
 @layer base {
-  /* ---------------------------------------------------------------- light */
+  /* light — mirrors `light` in lib/theme.ts */
   :root {
-    /* Faint cool sage (#F4F7F2), so true-white cards have something to sit on. */
     --background: 96 24% 96%;
     --foreground: 143 18% 9%;
-
     --card: 0 0% 100%;
     --card-foreground: 143 18% 9%;
-
     --elevated: 93 24% 93%;
-
+    /* Tailwind muted = a surface, not text */
     --muted: 93 24% 93%;
+    /* the app’s `muted` IS the text colour */
     --muted-foreground: 143 7% 36%;
-
     --border: 95 19% 88%;
     --input: 96 14% 79%;
-
-    /*
-     * Leaf green (#3F7D0B) from the lime's family: white text clears 4.5:1 on
-     * it, and it reads as text on a card. At the dark theme's 67% lightness
-     * the lime cannot carry white text, and a large fill of it glares.
-     */
     --primary: 93 84% 27%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 93 24% 93%;
     --secondary-foreground: 143 18% 9%;
-
-    --accent: 93 37% 89%;
-    --accent-foreground: 94 85% 21%;
-
-    /* #08654A emerald. Mirrors lib/theme `income`. */
+    --accent: 93 24% 93%;
+    --accent-foreground: 93 84% 27%;
     --success: 163 85% 21%;
     --success-foreground: 0 0% 100%;
-    /* #B25E09 amber. */
     --warning: 30 90% 37%;
     --warning-foreground: 0 0% 100%;
-    /* #D2383E crimson-coral — white text on it clears 4.5:1. Mirrors lib/theme `expense`. */
     --destructive: 358 63% 52%;
     --destructive-foreground: 0 0% 100%;
-
     --ring: 93 84% 27%;
     --radius: 1rem;
   }
 
-  /* ----------------------------------------------------------------- dark */
+  /* dark — mirrors `dark` in lib/theme.ts */
   .dark:root {
-    --background: 240 6% 4%;
+    --background: 240 5% 4%;
     --foreground: 240 5% 96%;
-
-    --card: 225 6% 9%;
+    --card: 225 9% 9%;
     --card-foreground: 240 5% 96%;
-
-    --elevated: 225 5% 12%;
-
-    --muted: 225 5% 13%;
-    --muted-foreground: 228 4% 57%;
-
-    --border: 228 5% 16%;
-    --input: 228 5% 18%;
-
-    /* Electric lime — the brand. Always paired with near-black text. */
-    --primary: 74 87% 67%;
-    --primary-foreground: 80 60% 6%;
-
-    --secondary: 225 5% 13%;
+    --elevated: 228 8% 12%;
+    /* Tailwind muted = a surface, not text */
+    --muted: 228 8% 12%;
+    /* the app’s `muted` IS the text colour */
+    --muted-foreground: 228 5% 56%;
+    --border: 230 7% 16%;
+    --input: 231 6% 22%;
+    --primary: 73 88% 66%;
+    --primary-foreground: 81 74% 5%;
+    --secondary: 228 8% 12%;
     --secondary-foreground: 240 5% 96%;
-
-    --accent: 74 40% 14%;
-    --accent-foreground: 74 87% 67%;
-
-    --success: 152 62% 52%;
-    --success-foreground: 152 60% 8%;
-    --warning: 38 92% 60%;
-    --warning-foreground: 38 60% 8%;
-    --destructive: 0 84% 68%;
-    --destructive-foreground: 0 60% 8%;
-
-    --ring: 74 87% 67%;
+    --accent: 228 8% 12%;
+    --accent-foreground: 73 88% 66%;
+    --success: 154 69% 55%;
+    --success-foreground: 240 5% 4%;
+    --warning: 38 90% 61%;
+    --warning-foreground: 240 5% 4%;
+    --destructive: 0 91% 71%;
+    --destructive-foreground: 240 5% 4%;
+    --ring: 73 88% 66%;
     --radius: 1rem;
   }
 }

@@ -1,17 +1,20 @@
 import { useRouter } from 'expo-router';
 import { Check, X } from 'lucide-react-native';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryIcon } from '../../components/ui/CategoryIcon';
+import { DatePickerSheet } from '../../components/ui/DatePickerSheet';
 import { PressableScale } from '../../components/ui/PressableScale';
 import { Segmented } from '../../components/ui/Segmented';
 import { colorForCategory } from '../../lib/categoryColor';
 import { useFilterStore } from '../../features/transactions/filterStore';
+import { DATE_PRESETS, NO_DATES, resolveDateRange } from '../../features/transactions/filters';
 import { hasActiveFilters, useCategories } from '../../features/transactions/queries';
-import { addDays, formatDayMonth, todayISO } from '../../lib/dates';
+import { formatDayMonth } from '../../lib/dates';
+import { useToday } from '../../lib/today';
 import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
 
 /**
@@ -19,15 +22,12 @@ import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
  *
  * Every control here compiles to a SQL predicate in `buildWhere` rather than
  * to a JS `.filter()` — which is what keeps filtering instant on a ledger of
- * any size, and why the date presets are stored as plain ISO bounds.
+ * any size.
+ *
+ * A preset is stored as its NAME, never as the dates it happened to mean when
+ * it was tapped; `buildWhere` resolves it against today on every run. A custom
+ * range is the other shape, and the two are mutually exclusive.
  */
-
-const PRESETS: { label: string; from: () => string; to: () => string }[] = [
-  { label: 'Last 7 days', from: () => addDays(todayISO(), -6), to: todayISO },
-  { label: 'Last 30 days', from: () => addDays(todayISO(), -29), to: todayISO },
-  { label: 'This month', from: () => `${todayISO().slice(0, 7)}-01`, to: todayISO },
-  { label: 'Last 12 months', from: () => addDays(todayISO(), -364), to: todayISO },
-];
 
 type TypeFilter = 'all' | 'income' | 'expense';
 
@@ -35,11 +35,15 @@ export default function FiltersModal() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const today = useToday();
   const { filters, patch, reset } = useFilterStore();
   const { data: categories = [] } = useCategories();
+  const [picking, setPicking] = useState<'from' | 'to' | null>(null);
 
   const selectedCats = filters.categoryIds ?? [];
   const active = hasActiveFilters(filters);
+  const custom = filters.datePreset == null && (filters.dateFrom != null || filters.dateTo != null);
+  const range = resolveDateRange(filters, today);
 
   const toggleCat = (id: number) => {
     const next = selectedCats.includes(id) ? selectedCats.filter((c) => c !== id) : [...selectedCats, id];
@@ -84,17 +88,15 @@ export default function FiltersModal() {
 
         <Section label="Date range" index={1}>
           <View className="flex-row flex-wrap gap-2">
-            {PRESETS.map((p) => {
-              const on = filters.dateFrom === p.from() && filters.dateTo === p.to();
+            {DATE_PRESETS.map((p) => {
+              const on = filters.datePreset === p.value;
               return (
                 <PressableScale
-                  key={p.label}
+                  key={p.value}
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
                   scaleTo={0.94}
-                  onPress={() =>
-                    on ? patch({ dateFrom: undefined, dateTo: undefined }) : patch({ dateFrom: p.from(), dateTo: p.to() })
-                  }
+                  onPress={() => patch(on ? NO_DATES : { ...NO_DATES, datePreset: p.value })}
                   className="flex-row items-center gap-1.5 rounded-full border px-4 py-2"
                   style={{
                     borderColor: on ? colors.primaryBorder : colors.border,
@@ -109,11 +111,52 @@ export default function FiltersModal() {
               );
             })}
           </View>
+
+          {/* A custom range for anything the presets cannot say — "March 2025". */}
+          <View className="mt-3 flex-row items-center gap-2">
+            <Bound
+              label="From"
+              value={custom ? filters.dateFrom : undefined}
+              placeholder="Start"
+              onPress={() => setPicking('from')}
+            />
+            <Text style={{ color: colors.subtle, fontFamily: fonts.medium, fontSize: 13 }}>→</Text>
+            <Bound
+              label="To"
+              value={custom ? filters.dateTo : undefined}
+              placeholder="Today"
+              onPress={() => setPicking('to')}
+            />
+          </View>
+
           <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12, marginTop: 10 }}>
-            {filters.dateFrom
-              ? `${formatDayMonth(filters.dateFrom)} ${filters.dateFrom.slice(0, 4)} – ${formatDayMonth(filters.dateTo ?? filters.dateFrom)} ${(filters.dateTo ?? filters.dateFrom).slice(0, 4)}`
-              : 'Showing all time'}
+            {filters.datePreset
+              ? `${DATE_PRESETS.find((p) => p.value === filters.datePreset)?.label}: ${describe(range.from)} – ${describe(range.to)}`
+              : range.from || range.to
+                ? `${describe(range.from)} – ${describe(range.to)}`
+                : 'Showing all time'}
           </Text>
+
+          <DatePickerSheet
+            visible={picking != null}
+            value={(picking === 'to' ? filters.dateTo : filters.dateFrom) ?? today}
+            today={today}
+            title={picking === 'to' ? 'Up to' : 'From'}
+            onSelect={(d) => {
+              // Choosing either bound replaces a preset: the two shapes never
+              // coexist, or which one wins becomes a guess.
+              const base = custom ? { dateFrom: filters.dateFrom, dateTo: filters.dateTo } : {};
+              const next = picking === 'to' ? { ...base, dateTo: d } : { ...base, dateFrom: d };
+              // Keep the bounds in order however they were entered.
+              if (next.dateFrom && next.dateTo && next.dateFrom > next.dateTo) {
+                patch({ ...NO_DATES, dateFrom: next.dateTo, dateTo: next.dateFrom });
+              } else {
+                patch({ ...NO_DATES, ...next });
+              }
+              setPicking(null);
+            }}
+            onClose={() => setPicking(null)}
+          />
         </Section>
 
         <Section label={`Categories${selectedCats.length ? ` · ${selectedCats.length}` : ''}`} index={2}>
@@ -162,6 +205,50 @@ export default function FiltersModal() {
       </View>
     </View>
   );
+}
+
+/** One end of a custom range. Empty until the user sets it. */
+function Bound({
+  label,
+  value,
+  placeholder,
+  onPress,
+}: {
+  label: string;
+  value?: string;
+  placeholder: string;
+  onPress: () => void;
+}) {
+  const colors = useColors();
+  const set = value != null;
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${set ? value : placeholder}. Opens a calendar`}
+      onPress={onPress}
+      scaleTo={0.96}
+      className="flex-1 rounded-2xl border px-3 py-2.5"
+      style={{
+        borderColor: set ? colors.primaryBorder : colors.border,
+        backgroundColor: set ? colors.primarySoft : colors.elevated,
+      }}
+    >
+      <Text style={{ color: colors.subtle, fontFamily: fonts.medium, fontSize: 10, letterSpacing: 0.6 }}>
+        {label.toUpperCase()}
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={{ color: set ? colors.primary : colors.muted, fontFamily: fonts.semibold, fontSize: 13, marginTop: 2 }}
+      >
+        {set ? `${formatDayMonth(value)} ${value.slice(0, 4)}` : placeholder}
+      </Text>
+    </PressableScale>
+  );
+}
+
+/** A bound as a label, or the open end it stands for. */
+function describe(date?: string): string {
+  return date ? `${formatDayMonth(date)} ${date.slice(0, 4)}` : 'all time';
 }
 
 function Section({ label, index, children }: { label: string; index: number; children: ReactNode }) {

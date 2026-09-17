@@ -5,7 +5,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { categories, transactions } from '../../../db/schema';
-import { buildWhere, hasActiveFilters, type TransactionFilters } from '../filters';
+import { buildWhere, hasActiveFilters, resolveDateRange, type TransactionFilters } from '../filters';
 
 /**
  * Drives the REAL filter builder against a REAL database in Node.
@@ -57,12 +57,12 @@ function seed(db: Db) {
     .run();
 }
 
-function run(db: Db, filters: TransactionFilters): number[] {
+function run(db: Db, filters: TransactionFilters, today?: string): number[] {
   return db
     .select({ id: transactions.id })
     .from(transactions)
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(buildWhere(filters))
+    .where(today ? buildWhere(filters, today) : buildWhere(filters))
     .orderBy(desc(transactions.date), desc(transactions.id))
     .all()
     .map((r) => r.id);
@@ -139,6 +139,72 @@ describe('transaction filters', () => {
   });
 });
 
+describe('date presets resolve against today, not against when they were tapped', () => {
+  let db: Db;
+  beforeEach(() => {
+    db = makeDb();
+    seed(db);
+  });
+
+  it('moves with the date — the midnight bug this replaces', () => {
+    const filters: TransactionFilters = { datePreset: 'last7' };
+    // Chosen at 23:50 on 20 March, the window ends that day...
+    expect(resolveDateRange(filters, '2026-03-20')).toEqual({ from: '2026-03-14', to: '2026-03-20' });
+    // ...and ten minutes later the SAME stored filter means the next window.
+    expect(resolveDateRange(filters, '2026-03-21')).toEqual({ from: '2026-03-15', to: '2026-03-21' });
+
+    // Which is what keeps a transaction added after midnight inside the filter
+    // it was added under. Storing the resolved dates made it vanish instead.
+    db.insert(transactions)
+      .values({ id: 6, type: 'expense', amountPaise: 100, date: '2026-03-21', categoryId: 1, createdAt: 'x', updatedAt: 'x' })
+      .run();
+    expect(run(db, filters, '2026-03-20')).not.toContain(6);
+    expect(run(db, filters, '2026-03-21')).toContain(6);
+  });
+
+  it('resolves every preset against the given day', () => {
+    expect(resolveDateRange({ datePreset: 'last30' }, '2026-03-20')).toEqual({
+      from: '2026-02-19',
+      to: '2026-03-20',
+    });
+    expect(resolveDateRange({ datePreset: 'thisMonth' }, '2026-03-20')).toEqual({
+      from: '2026-03-01',
+      to: '2026-03-20',
+    });
+    expect(resolveDateRange({ datePreset: 'last12m' }, '2026-03-20')).toEqual({
+      from: '2025-03-21',
+      to: '2026-03-20',
+    });
+  });
+
+  it('crosses a month boundary correctly', () => {
+    // 1 March looking back 7 days lands in February, leap year included.
+    expect(resolveDateRange({ datePreset: 'last7' }, '2024-03-01')).toEqual({
+      from: '2024-02-24',
+      to: '2024-03-01',
+    });
+  });
+
+  it('falls back to the explicit range when there is no preset', () => {
+    expect(resolveDateRange({ dateFrom: '2026-01-01', dateTo: '2026-01-31' }, '2026-09-16')).toEqual({
+      from: '2026-01-01',
+      to: '2026-01-31',
+    });
+    expect(resolveDateRange({}, '2026-09-16')).toEqual({ from: undefined, to: undefined });
+  });
+
+  it('lets a preset win over stale explicit bounds, so the two can never disagree', () => {
+    const mixed: TransactionFilters = { datePreset: 'thisMonth', dateFrom: '2020-01-01', dateTo: '2020-12-31' };
+    expect(resolveDateRange(mixed, '2026-03-20')).toEqual({ from: '2026-03-01', to: '2026-03-20' });
+  });
+
+  it('filters rows by a preset through the real SQL', () => {
+    // "This month" on 3 Feb 2026 keeps the two February rows.
+    expect(run(db, { datePreset: 'thisMonth' }, '2026-02-03').sort()).toEqual([2, 3]);
+    expect(run(db, { datePreset: 'thisMonth' }, '2026-01-31')).toEqual([1]);
+  });
+});
+
 describe('hasActiveFilters', () => {
   it('is false for empty or all-types filters', () => {
     expect(hasActiveFilters({})).toBe(false);
@@ -151,6 +217,7 @@ describe('hasActiveFilters', () => {
     expect(hasActiveFilters({ type: 'expense' })).toBe(true);
     expect(hasActiveFilters({ categoryIds: [1] })).toBe(true);
     expect(hasActiveFilters({ dateFrom: '2026-01-01' })).toBe(true);
+    expect(hasActiveFilters({ datePreset: 'last7' })).toBe(true);
     expect(hasActiveFilters({ search: 'x' })).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CalendarDays, ChevronLeft, ChevronRight, StickyNote, Trash2, X } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, ScrollView, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
 import { CategoryIcon } from '../../components/ui/CategoryIcon';
+import { DatePickerSheet } from '../../components/ui/DatePickerSheet';
 import { PressableScale } from '../../components/ui/PressableScale';
 import { Segmented } from '../../components/ui/Segmented';
 import { colorForCategory } from '../../lib/categoryColor';
@@ -73,6 +74,7 @@ export default function TransactionModal() {
     handleSubmit,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
@@ -100,6 +102,24 @@ export default function TransactionModal() {
   const date = watch('date');
   const isIncome = type === 'income';
   const tone = isIncome ? colors.income : colors.expense;
+  const [pickingDate, setPickingDate] = useState(false);
+
+  // Only categories that make sense for the chosen type: "Salary" has no
+  // business on an expense (TASKS2 [U3]). `kind` comes from migration 0001.
+  const choices = useMemo(
+    () => categories.filter((c) => c.kind === 'both' || c.kind === type),
+    [categories, type],
+  );
+
+  /** Switching type drops a selection the new type cannot hold. */
+  const onTypeChange = (next: TransactionFormValues['type'], apply: (v: string) => void) => {
+    apply(next);
+    const chosenId = getValues('categoryId');
+    const chosen = categories.find((c) => c.id === chosenId);
+    if (chosen && chosen.kind !== 'both' && chosen.kind !== next) {
+      setValue('categoryId', null, { shouldValidate: true });
+    }
+  };
 
   // Double-tap guard. handleSubmit validates asynchronously, so two quick
   // taps both reach onSubmit before any re-render could disable the button —
@@ -174,7 +194,7 @@ export default function TransactionModal() {
             render={({ field }) => (
               <Segmented
                 value={field.value}
-                onChange={field.onChange}
+                onChange={(v) => onTypeChange(v, field.onChange)}
                 options={[
                   { value: 'expense', label: 'Expense', tint: colors.expense, onTint: colors.onAccent },
                   { value: 'income', label: 'Income', tint: colors.income, onTint: colors.onAccent },
@@ -236,7 +256,7 @@ export default function TransactionModal() {
             name="categoryId"
             render={({ field }) => (
               <View className="flex-row flex-wrap gap-2">
-                {categories.map((c) => {
+                {choices.map((c) => {
                   const on = field.value === c.id;
                   const color = c.color ?? colorForCategory(c.name);
                   return (
@@ -280,10 +300,18 @@ export default function TransactionModal() {
             <RoundButton label="Previous day" onPress={() => setValue('date', addDays(date, -1), { shouldValidate: true })} plain>
               <ChevronLeft size={18} color={colors.foreground} />
             </RoundButton>
-            <View className="flex-1 flex-row items-center justify-center gap-2">
+            {/* The label is the way into the calendar: the arrows are for
+                nudging a day either side, not for backdating three months. */}
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={`Date: ${dateLabel(date, today)}. Opens a calendar`}
+              onPress={() => setPickingDate(true)}
+              scaleTo={0.96}
+              className="flex-1 flex-row items-center justify-center gap-2 py-2"
+            >
               <CalendarDays size={16} color={colors.primary} />
               <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>{dateLabel(date, today)}</Text>
-            </View>
+            </PressableScale>
             <RoundButton label="Next day" onPress={() => setValue('date', addDays(date, 1), { shouldValidate: true })} plain>
               <ChevronRight size={18} color={colors.foreground} />
             </RoundButton>
@@ -314,6 +342,17 @@ export default function TransactionModal() {
             })}
           </View>
           {errors.date?.message ? <ErrorText>{errors.date.message}</ErrorText> : null}
+          <DatePickerSheet
+            visible={pickingDate}
+            value={date}
+            today={today}
+            title={isIncome ? 'When did it come in?' : 'When was it spent?'}
+            onSelect={(d) => {
+              setValue('date', d, { shouldValidate: true });
+              setPickingDate(false);
+            }}
+            onClose={() => setPickingDate(false)}
+          />
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(240).duration(350)} className="mt-6 gap-3">

@@ -222,7 +222,8 @@ export function Ledger() {
   const active = hasActiveFilters(filters);
   // Filters the sheet owns beyond type — shown as a count on the filter button.
   const sheetCount =
-    (sheetFilters.categoryIds?.length ? 1 : 0) + (sheetFilters.dateFrom || sheetFilters.dateTo ? 1 : 0);
+    (sheetFilters.categoryIds?.length ? 1 : 0) +
+    (sheetFilters.datePreset || sheetFilters.dateFrom || sheetFilters.dateTo ? 1 : 0);
   const net = (summary?.incomePaise ?? 0) - (summary?.expensePaise ?? 0);
 
   return (
@@ -370,7 +371,7 @@ export function Ledger() {
               title="No transactions yet"
               description="Add your first one, or import a spreadsheet you already keep."
               action={{ label: 'Add a transaction', onPress: () => router.push('/(modals)/transaction') }}
-              secondary={{ label: 'Import a sheet', onPress: () => router.push('/import/pick') }}
+              secondary={{ label: 'Import a sheet', onPress: () => router.push('/sheets') }}
             />
           )}
         </View>

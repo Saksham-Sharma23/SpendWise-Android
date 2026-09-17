@@ -12,6 +12,7 @@
  * month's real value by a visible amount.
  */
 export function smoothPath(xy: [number, number][]): string {
+  'worklet';
   if (xy.length === 0) return '';
   if (xy.length === 1) return `M${xy[0]![0]},${xy[0]![1]}`;
   const t = 0.18;
@@ -28,6 +29,31 @@ export function smoothPath(xy: [number, number][]): string {
     d += ` C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
   }
   return d;
+}
+
+/**
+ * Spread a series of any length over a fixed number of evenly spaced samples,
+ * interpolating linearly between neighbours.
+ *
+ * This is what lets one range morph into another: 3 months and 24 months are
+ * different-length arrays and cannot be interpolated element by element, but
+ * their resamplings can. The first and last values always survive exactly, so
+ * the curve still starts and ends on real months.
+ */
+export function resample(values: number[], samples: number): number[] {
+  if (samples <= 0) return [];
+  const n = values.length;
+  if (n === 0) return new Array(samples).fill(0) as number[];
+  if (n === 1 || samples === 1) return new Array(samples).fill(values[0]!) as number[];
+
+  const out: number[] = [];
+  for (let j = 0; j < samples; j++) {
+    const at = (j / (samples - 1)) * (n - 1);
+    const i = Math.min(n - 2, Math.floor(at));
+    const f = at - i;
+    out.push(values[i]! + (values[i + 1]! - values[i]!) * f);
+  }
+  return out;
 }
 
 /**

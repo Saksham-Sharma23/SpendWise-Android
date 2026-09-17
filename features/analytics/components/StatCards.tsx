@@ -6,6 +6,7 @@ import { AnimatedAmount } from '../../../components/ui/AnimatedAmount';
 import { Card } from '../../../components/ui/Card';
 import { CategoryIcon } from '../../../components/ui/CategoryIcon';
 import { PressableScale } from '../../../components/ui/PressableScale';
+import { Swap } from '../../../components/ui/Swap';
 import { categoryColor } from '../../../lib/categoryColor';
 import type { DbQueryResult } from '../../../lib/db/useDbQuery';
 import { formatDayMonth } from '../../../lib/dates';
@@ -175,16 +176,22 @@ function Stat({
           </View>
         )}
       </View>
-      <Text
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 20, letterSpacing: -0.4, marginTop: 10, fontVariant: ['tabular-nums'] }}
-      >
-        {value}
-      </Text>
-      <Text numberOfLines={2} style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11, marginTop: 4 }}>
-        {detail}
-      </Text>
+      {/* These are not all numbers — a category name, a percentage, an em dash
+          — so they cross-fade rather than count up like the summary above. */}
+      <Swap swapKey={value}>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 20, letterSpacing: -0.4, marginTop: 10, fontVariant: ['tabular-nums'] }}
+        >
+          {value}
+        </Text>
+      </Swap>
+      <Swap swapKey={detail}>
+        <Text numberOfLines={2} style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11, marginTop: 4 }}>
+          {detail}
+        </Text>
+      </Swap>
     </Card>
   );
 

@@ -1,9 +1,16 @@
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { Easing, useAnimatedProps, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
+import { useMotion } from '../../lib/motion';
 import { useColors } from '../../lib/theme';
 import { donutArcs, hitArc, type Arc } from './geometry';
 
@@ -35,20 +42,23 @@ interface Props {
  * path per frame. Taps are hit-tested by angle (geometry.hitArc), because
  * every segment is the same circle and SVG's own hit-testing would always
  * hand the touch to whichever was drawn last.
+ *
+ * The turn-in entrance plays **once, on mount**. It used to be keyed on the
+ * slice values, so every month step and every edit spun the whole ring — the
+ * screen's most distracting animation, and a 620 ms wait to read a figure
+ * that had barely changed.
  */
 export function Donut({ slices, selectedKey, onSelect, size = 188, thickness = 22, children }: Props) {
   const colors = useColors();
+  const m = useMotion();
   const arcs = useMemo(() => donutArcs(slices.map((s) => s.value)), [slices]);
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  // Entrance: the ring turns in and settles whenever the set of slices changes.
-  const signature = slices.map((s) => `${s.key}:${s.value}`).join('|');
   const enter = useSharedValue(0);
   useEffect(() => {
-    enter.value = 0;
-    enter.value = withTiming(1, { duration: 620, easing: Easing.out(Easing.cubic) });
-  }, [signature, enter]);
+    enter.value = m.reduced ? 1 : withTiming(1, { duration: 620, easing: Easing.out(Easing.cubic) });
+  }, [enter, m.reduced]);
 
   const ring = useAnimatedStyle(() => ({
     opacity: enter.value,
@@ -61,7 +71,7 @@ export function Donut({ slices, selectedKey, onSelect, size = 188, thickness = 2
         .runOnJS(true)
         .onEnd((e) => {
           const i = hitArc(e.x, e.y, size, thickness, arcs);
-          const key = i >= 0 ? slices[i]?.key ?? null : null;
+          const key = i >= 0 ? (slices[i]?.key ?? null) : null;
           onSelect(key != null && key !== selectedKey ? key : null);
         }),
     [size, thickness, arcs, slices, selectedKey, onSelect],
@@ -110,13 +120,14 @@ function Segment({
   thickness: number;
   state: 'idle' | 'on' | 'off';
 }) {
+  const m = useMotion();
   const width = useSharedValue(thickness);
   const opacity = useSharedValue(1);
 
   useEffect(() => {
-    width.value = withTiming(state === 'on' ? thickness + 7 : thickness, { duration: 220 });
-    opacity.value = withTiming(state === 'off' ? 0.32 : 1, { duration: 220 });
-  }, [state, thickness, width, opacity]);
+    width.value = withTiming(state === 'on' ? thickness + 7 : thickness, { duration: m.base });
+    opacity.value = withTiming(state === 'off' ? 0.32 : 1, { duration: m.base });
+  }, [state, thickness, width, opacity, m.base]);
 
   const props = useAnimatedProps(() => ({ strokeWidth: width.value, strokeOpacity: opacity.value }));
 
@@ -131,7 +142,10 @@ function Segment({
       stroke={color}
       fill="none"
       strokeDasharray={[arc.length * circumference, circumference]}
-      // Start at 12 o'clock, then turn to this segment's start angle.
+      // Start at 12 o'clock, then turn to this segment's start angle. Length
+      // and angle stay plain props: only stroke width and opacity are animated
+      // natively here, and the figures behind them change behind the month
+      // cross-fade anyway.
       transform={`rotate(${-90 + arc.start * 360} ${c} ${c})`}
     />
   );

@@ -11,6 +11,7 @@ import { CategoryIcon } from '../../../components/ui/CategoryIcon';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { PressableScale } from '../../../components/ui/PressableScale';
 import { Segmented } from '../../../components/ui/Segmented';
+import { Swap } from '../../../components/ui/Swap';
 import { deterministicColor, deterministicIcon } from '../../../lib/identity';
 import { formatINR } from '../../../lib/money';
 import { fonts, useColors } from '../../../lib/theme';
@@ -87,7 +88,11 @@ export function GroupsHub() {
               />
             </Animated.View>
 
-            {tab === 'groups' ? <GroupList hub={hub} /> : <FriendList hub={hub} />}
+            {/* The list travels the way the pill just did, so the switch reads
+                as one movement rather than a swap of contents. */}
+            <Swap swapKey={tab} direction={tab === 'friends' ? 1 : -1}>
+              {tab === 'groups' ? <GroupList hub={hub} /> : <FriendList hub={hub} />}
+            </Swap>
           </View>
         )}
       </Screen>
