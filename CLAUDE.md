@@ -38,7 +38,7 @@
 | Project root | `D:\Projects\SpendWise_Android` |
 | Node | 22.x |
 | Test device | One physical Android phone over wireless debugging. No emulator |
-| Git | Default branch `main` (work has been on `master`; see R0) |
+| Git | Branch `main`. **No remote yet** — the repo is local-only (plan.md R0-1) |
 
 ---
 
@@ -118,7 +118,6 @@ features/
   groups/                    split.ts · debts.ts · balances.ts · draft.ts · wording.ts (pure) · sql.ts · writes.ts
                              (take db) · queries.ts (hooks) · mutations.ts (safeWrite) · components/
   boot/components/BootFailure.tsx   settings/components/Appearance.tsx
-  backup/ import/            empty folders (remove in R0)
 components/
   ui/                        Card, PressableScale, Segmented, CategoryIcon, LedgerRow, AnimatedAmount,
                              DatePickerSheet, EmptyState, Swap, AmountDial, Avatar, *Card presentational pieces

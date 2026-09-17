@@ -22,7 +22,7 @@
 | 0–5 | Foundations → Analytics | — | ✅ Code complete · 🟡 device checks open |
 | G | Groups — split expenses | — | ✅ Code complete · 🟡 device checks open |
 | F0–F3, F5 | Fix phases (TASKS2) | — | ✅ Code complete · 🟡 device checks open |
-| **R0** | Stabilise the repo | ½ d | ⬜ |
+| **R0** | Stabilise the repo | ½ d | 🟡 R0-1/2/5/6/7 done; README + unused deps left |
 | **R1** | Correctness bugs | 1½ d | ⬜ |
 | **R2** | Guard rails: lint, format, CI | 1½ d | ⬜ |
 | **R3** | One data layer | 3 d | ⬜ |
@@ -49,11 +49,13 @@ the boundaries are enforced *while* files move.
 ## R0 — Stabilise the repo
 **Goal:** a clean starting point that someone else can clone and understand. **Est:** ½ day.
 
-- [ ] **Commit the F5 working tree on a branch, merge to `main`, stop working on `master`** (T8)
-  *Why:* 32 modified files (date picker, recently deleted, generated theme CSS) exist only on one disk.
-  The default branch is `main`; `master` diverging from it is how work gets lost.
-- [ ] **Add `.gitattributes` (`* text=auto eol=lf`), `.editorconfig`, `.nvmrc` (22)** (T2)
-  *Why:* every git command warns about LF→CRLF on 30 files. Line-ending churn hides real diffs in review.
+- [x] **Commit the F5 working tree; work on `main`** (T8) *(done 2026-09-17: `b29f79a` code, `173b303` docs,
+  `ead7d44` R0. `main` did not exist and there is no remote, so `master` was renamed rather than merged.)*
+  *Why:* 32 modified files (date picker, recently deleted, generated theme CSS) existed only on one disk.
+  **Still open: no remote.** The repo is local-only, so a disk failure still loses everything.
+- [x] **Add `.gitattributes` (`* text=auto eol=lf`), `.editorconfig`, `.nvmrc` (22)** (T2) *(done 2026-09-17)*
+  *Why:* every git command warned about LF→CRLF on 30 files. Line-ending churn hides real diffs in review.
+  *(No renormalise commit was needed: the files were already stored as LF.)*
 - [ ] **Write `README.md`**: what the app is (3 lines), prerequisites, `npm ci`, run on a phone, test,
   build, where the docs are
   *Why:* CLAUDE.md is an agent context file. A human needs a one-page entry point.
@@ -61,11 +63,11 @@ the boundaries are enforced *while* files move.
   `expo-local-authentication` (T6). Re-add each in the phase that uses it (6A: document picker; 8: local auth)
   *Why:* native ones are autolinked into every APK and pull in manifest entries that must then be blocked.
   **Rebuild and run `npm run verify:apk`** afterwards, because this is a native change.
-- [ ] **Fix the misleading comments** (T4): `lib/icons.ts:10` (the test it cites doesn't exist, see R2),
+- [x] **Fix the misleading comments** (T4) *(done 2026-09-17, `ead7d44`)*: `lib/icons.ts:10` (the test it cites doesn't exist, see R2),
   `drizzle.studio.config.ts` (the device DB is no longer encrypted), `lib/theme.ts:7` (global.css is generated),
   the `dashboard/queries.ts` header (`features/devtools` doesn't exist), `categories/mutations.ts:163` (see B15)
   *Why:* a wrong comment costs a newcomer more than a missing one.
-- [ ] **Delete the empty folders** `features/backup/`, `features/import/`, `lib/notifications/` (recreate them when their phase starts)
+- [x] **Delete the empty folders** `features/backup/`, `features/import/`, `lib/notifications/` *(done 2026-09-17; they were untracked, so no commit shows them)*
 - [x] **Consolidate trackers and move designs out of CLAUDE.md** *(done 2026-09-17: this file; `docs/history/`, `docs/design/`)*
 
 **Done when:** `git status` is clean on `main`, `npm ci && npx tsc --noEmit && npx jest` pass on a fresh clone,

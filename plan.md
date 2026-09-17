@@ -193,13 +193,13 @@ Status: ⬜ not started · 🟡 in progress · ✅ done
 
 | ID | Task | Ref | Pri | Est | Status |
 |---|---|---|---|---|---|
-| **R0** | **Stabilise the repo** | | | **½ d** | |
-| R0-1 | Commit the F5 batch, move to `main` | T8 | P0 | 1 h | ⬜ |
-| R0-2 | `.gitattributes`, `.editorconfig`, `.nvmrc` | T2 | P1 | 30 m | ⬜ |
+| **R0** | **Stabilise the repo** | | | **½ d** | 🟡 4 of 7 |
+| R0-1 | Commit the F5 batch, move to `main` | T8 | P0 | 1 h | ✅ |
+| R0-2 | `.gitattributes`, `.editorconfig`, `.nvmrc` | T2 | P1 | 30 m | ✅ |
 | R0-3 | Write `README.md` | T2 | P1 | 1 h | ⬜ |
 | R0-4 | Remove unused dependencies | T6 | P1 | 1 h + build | ⬜ |
-| R0-5 | Fix misleading comments | T4 | P1 | 30 m | ⬜ |
-| R0-6 | Delete empty placeholder folders | T3 | P2 | 5 m | ⬜ |
+| R0-5 | Fix misleading comments | T4 | P1 | 30 m | ✅ |
+| R0-6 | Delete empty placeholder folders | T3 | P2 | 5 m | ✅ |
 | R0-7 | Consolidate trackers, move designs out of CLAUDE.md | T3, T5 | — | — | ✅ |
 | **R1** | **Correctness bugs** | | | **1½ d** | |
 | R1-1 | Bound "top categories" (and Home trend) to the month | B1 | P0 | 1 h | ⬜ |
@@ -274,7 +274,7 @@ Status: ⬜ not started · 🟡 in progress · ✅ done
 **Done when:** `git status` is clean on `main`; `npm ci && npx tsc --noEmit && npx jest` pass on a fresh
 clone; the README gets a new person to a running dev build.
 
-### ⬜ R0-1 — Commit the F5 batch and move work to `main`
+### ✅ R0-1 — Commit the F5 batch and move work to `main`  *(done 2026-09-17)*
 **Ref:** T8 · **Priority:** P0 · **Est:** 1 h · **Depends on:** nothing
 
 **Problem.** Work happens on `master`, the default branch is `main`, and the entire F5 batch is
@@ -303,7 +303,14 @@ gets lost or merged wrongly.
 
 **Done when:** `git status` is clean, `git log main` contains both commits, and no work happens on `master`.
 
-### ⬜ R0-2 — Line endings, editor settings and Node version
+**Outcome (2026-09-17).** `main` did **not** exist and the repo has **no remote**, so steps 4–6 became a
+plain `git branch -m master main`. Committed as three commits, not two (`b29f79a` F5 code, `173b303` docs,
+`ead7d44` R0-2/R0-5/R0-6). `AGENTS.md` was deleted and its one instruction (read the versioned Expo docs)
+moved into CLAUDE.md *Read this first*. Tests green before and after (478 in 35 suites).
+**Still open — not covered by this task:** the repo is local-only. A disk failure loses all history. Add a
+remote (a private GitHub repo) before R2-6, which needs one for CI anyway.
+
+### ✅ R0-2 — Line endings, editor settings and Node version  *(done 2026-09-17)*
 **Ref:** T2 · **Priority:** P1 · **Est:** 30 m · **Depends on:** R0-1
 
 **Problem.** No `.gitattributes`, `.editorconfig` or `.nvmrc`. Every git command warns
@@ -330,6 +337,10 @@ contributor doesn't know which Node version to use.
 
 **Done when:** `git status` after a fresh checkout shows no CRLF warnings, and the renormalise commit
 contains no content changes (`git diff --ignore-all-space HEAD~1` is empty).
+
+**Outcome (2026-09-17).** Step 4 was a no-op: `git add --renormalize .` staged **zero** files, because the
+repository already stored LF and only the Windows *working copy* had CRLF. `.gitattributes` stops that
+drift from reaching the index in future. Also added `engines: { node: ">=22 <23" }` to `package.json`.
 
 ### ⬜ R0-3 — Write `README.md`
 **Ref:** T2 · **Priority:** P1 · **Est:** 1 h · **Depends on:** R0-1
@@ -382,7 +393,7 @@ permissions (`USE_BIOMETRIC`, `USE_FINGERPRINT`) that end up in the release unle
 **Done when:** none of the five appear in `package.json`, and the release APK's permission list is
 unchanged or smaller.
 
-### ⬜ R0-5 — Fix misleading comments
+### ✅ R0-5 — Fix misleading comments  *(done 2026-09-17)*
 **Ref:** T4 · **Priority:** P1 · **Est:** 30 m · **Depends on:** R0-1
 
 **Problem.** Comments that state things that aren't true:
@@ -397,7 +408,7 @@ unchanged or smaller.
 
 **Done when:** each row is corrected; grep for `features/devtools` returns only planned-future references.
 
-### ⬜ R0-6 — Delete empty placeholder folders
+### ✅ R0-6 — Delete empty placeholder folders  *(done 2026-09-17)*
 **Ref:** T3 · **Priority:** P2 · **Est:** 5 m
 
 **Problem.** `features/backup/`, `features/import/` and `lib/notifications/` exist but hold nothing
