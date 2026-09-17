@@ -1,0 +1,8 @@
+# Commits that changed formatting only. `git blame --ignore-revs-file`
+# skips them, so blame points at whoever last changed the CODE.
+#
+# Configure once per clone:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Format with Prettier (R2-2)
+e4775052bc836de60d81f582800913ac2d914311
