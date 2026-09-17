@@ -6,6 +6,7 @@ import { appMeta, budgets, categories, META_KEYS, subscriptions, transactions } 
 import type { BillingCycle, SubscriptionStatus } from '../../db/schema';
 import { useDbQuery, type DbQueryResult } from '../../lib/db/useDbQuery';
 import { addMonthsClamped, getCycleWindow, startOfMonth, type ISODate } from '../../lib/dates';
+import { topCategoriesQuery, trendQuery } from './sql';
 
 /**
  * The dashboard's query boundary.
@@ -18,9 +19,6 @@ import { addMonthsClamped, getCycleWindow, startOfMonth, type ISODate } from '..
  * Every hook returns the full `DbQueryResult` so a screen can tell "no data
  * yet" (pending) from "genuinely empty" (ok + empty) from "failed" (error).
  */
-
-const income = sql<number>`coalesce(sum(case when ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`;
-const expense = sql<number>`coalesce(sum(case when ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`;
 
 export interface MonthOverview {
   incomePaise: number;
@@ -166,29 +164,11 @@ export function useRecentTransactions(limit = 5): DbQueryResult<RecentTransactio
 // ---------------------------------------------------------------------------
 // Query builders — shared by the hooks above and the dev benchmark
 // (db/benchmark.ts), so the timed SQL is exactly the shipped SQL.
+//
+// The month-bounded builders TAKE `db`, so features/dashboard/__tests__ can run
+// the shipped SQL on better-sqlite3 (convention #18). The rest still close over
+// readDb until R3 moves the whole feature to the standard layout.
 // ---------------------------------------------------------------------------
-
-function trendQuery(months: number, today: ISODate) {
-  const firstKey = addMonthsClamped(startOfMonth(today), -(months - 1)).slice(0, 7);
-  return readDb
-    .select({ month: sql<string>`${transactions.month}`, incomePaise: income, expensePaise: expense })
-    .from(transactions)
-    .where(and(isNull(transactions.deletedAt), gte(transactions.month, firstKey)))
-    .groupBy(transactions.month)
-    .orderBy(asc(transactions.month));
-}
-
-function topCategoriesQuery(today: ISODate, limit: number) {
-  const total = sql<number>`sum(${transactions.amountPaise})`;
-  return readDb
-    .select({ id: categories.id, name: categories.name, color: categories.color, icon: categories.icon, totalPaise: total })
-    .from(transactions)
-    .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(and(isNull(transactions.deletedAt), eq(transactions.type, 'expense'), gte(transactions.date, startOfMonth(today))))
-    .groupBy(transactions.categoryId)
-    .orderBy(desc(total))
-    .limit(limit);
-}
 
 function recentQuery(limit: number) {
   return readDb
@@ -209,10 +189,14 @@ function recentQuery(limit: number) {
     .limit(limit);
 }
 
+/**
+ * Bound to the app's read handle, so the benchmark times exactly what screens
+ * run. Tests import the builders from `./sql` and pass their own handle.
+ */
 export const dashboardQueries = {
   overview: overviewQuery,
-  trend: trendQuery,
-  topCategories: topCategoriesQuery,
+  trend: (months: number, today: ISODate) => trendQuery(readDb, months, today),
+  topCategories: (today: ISODate, limit: number) => topCategoriesQuery(readDb, today, limit),
   recent: recentQuery,
 };
 

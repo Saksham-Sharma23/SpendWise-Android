@@ -10,13 +10,21 @@
  * random splits that must each sum exactly.
  */
 
+// lib/money.ts is pure and imports nothing, so this file stays loadable in
+// Node without pulling in React Native.
+import { MAX_AMOUNT_PAISE } from '../../lib/money';
+
 /**
- * The largest expense a group can record: ₹10 crore (10,00,00,000 rupees),
- * in paise. Keeps `total × weight` — weights reach 10,000 basis points — at
- * most 1e14, far below Number.MAX_SAFE_INTEGER (~9e15), so the integer maths
- * below is exact.
+ * The largest expense a group can record: the app-wide ₹10 crore typo guard
+ * (`lib/money.ts`), which Groups has always used while the three form schemas
+ * declared ₹100 crore by mistake (B5) — the same guard, ten times apart.
+ *
+ * The value also has to stay at or below ₹10 crore for the split maths here:
+ * it keeps `total × weight` — weights reach 10,000 basis points — at most
+ * 1e14, far below Number.MAX_SAFE_INTEGER (~9e15), so the integer arithmetic
+ * below is exact. A test in `__tests__/split.test.ts` pins that.
  */
-export const MAX_EXPENSE_PAISE = 10_00_00_000 * 100;
+export const MAX_EXPENSE_PAISE = MAX_AMOUNT_PAISE;
 
 /** A percentage as basis points: 100% = 10,000; 33.33% = 3,333. */
 export const FULL_PERCENT_BP = 10_000;

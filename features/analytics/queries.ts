@@ -30,12 +30,19 @@ import {
 // sqlite-proxy is the async member of the same Drizzle family the builders accept.
 const db = readDb as unknown as AnalyticsDb;
 
-/** The builders bound to the read handle, shared with the dev benchmark. */
+/**
+ * The builders bound to the read handle, shared with the dev benchmark.
+ *
+ * Every range takes BOTH ends (#5). The upper end is always the current month:
+ * the date picker allows a year ahead, and before B2 was fixed a future-dated
+ * row inflated the totals, avg/day and savings-rate cards while the trend chart
+ * dropped it — the same screen disagreeing with itself.
+ */
 export const analyticsQueries = {
-  trend: (firstMonth: string) => trendQuery(db, firstMonth),
-  totals: (firstMonth: string) => totalsQuery(db, firstMonth),
-  earliestDate: () => earliestDateQuery(db),
-  biggestExpense: (firstMonth: string) => biggestExpenseQuery(db, firstMonth),
+  trend: (firstMonth: string, lastMonth: string) => trendQuery(db, firstMonth, lastMonth),
+  totals: (firstMonth: string, lastMonth: string) => totalsQuery(db, firstMonth, lastMonth),
+  earliestDate: (lastMonth: string) => earliestDateQuery(db, lastMonth),
+  biggestExpense: (firstMonth: string, lastMonth: string) => biggestExpenseQuery(db, firstMonth, lastMonth),
   categoryTotals: (fromMonth: string, toMonth: string, limit?: number) =>
     categoryTotalsQuery(db, fromMonth, toMonth, limit),
 };
@@ -49,10 +56,11 @@ const EMPTY_TREND: TrendPoint[] = [];
  */
 export function useSpendingTrend(months: number, today: ISODate): DbQueryResult<TrendPoint[]> {
   const { firstMonth } = periodWindow(months, today);
+  const currentMonth = today.slice(0, 7);
   const result = useDbQuery(
-    async () => (await analyticsQueries.trend(firstMonth)) as TrendPoint[],
+    async () => (await analyticsQueries.trend(firstMonth, currentMonth)) as TrendPoint[],
     ['transactions'],
-    [firstMonth],
+    [firstMonth, currentMonth],
     EMPTY_TREND,
   );
 
@@ -113,9 +121,9 @@ export function usePeriodStats(months: number, today: ISODate): DbQueryResult<Pe
   return useDbQuery(
     async () => {
       const [[totals], [earliest], [biggest], [top]] = await Promise.all([
-        analyticsQueries.totals(firstMonth),
-        analyticsQueries.earliestDate(),
-        analyticsQueries.biggestExpense(firstMonth),
+        analyticsQueries.totals(firstMonth, currentMonth),
+        analyticsQueries.earliestDate(currentMonth),
+        analyticsQueries.biggestExpense(firstMonth, currentMonth),
         analyticsQueries.categoryTotals(firstMonth, currentMonth, 1),
       ]);
 
@@ -158,14 +166,17 @@ export function useCategoryBreakdown(month: string): DbQueryResult<CategoryTotal
 }
 
 /**
- * The ledger's first transaction date, or null when there is none. Decides
- * the empty state and how far back the donut's month picker may go.
+ * The ledger's first transaction date at or before this month, or null when
+ * there is none. Decides the empty state and how far back the donut's month
+ * picker may go — bounded, so a future-dated row cannot open a month the
+ * breakdown would show as empty.
  */
-export function useEarliestDate(): DbQueryResult<ISODate | null> {
+export function useEarliestDate(today: ISODate): DbQueryResult<ISODate | null> {
+  const currentMonth = today.slice(0, 7);
   return useDbQuery(
-    async () => (await analyticsQueries.earliestDate())[0]?.date ?? null,
+    async () => (await analyticsQueries.earliestDate(currentMonth))[0]?.date ?? null,
     ['transactions'],
-    [],
+    [currentMonth],
     null,
   );
 }

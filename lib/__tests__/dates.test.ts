@@ -10,6 +10,7 @@ import {
   getNextRenewal,
   getUrgency,
   toMonthlyPaise,
+  toYearlyPaise,
 } from '../dates';
 
 describe('fromISODate — the timezone trap', () => {
@@ -220,6 +221,31 @@ describe('toMonthlyPaise', () => {
   it('returns integers — never a fractional paise', () => {
     for (const cycle of ['monthly', 'yearly', 'quarterly', 'weekly'] as const) {
       expect(Number.isInteger(toMonthlyPaise(99999, cycle))).toBe(true);
+    }
+  });
+});
+
+describe('toYearlyPaise', () => {
+  it('multiplies the charge, so a yearly plan costs exactly its price', () => {
+    expect(toYearlyPaise(149900, 'yearly')).toBe(149900);
+    expect(toYearlyPaise(49900, 'monthly')).toBe(49900 * 12);
+    expect(toYearlyPaise(19900, 'quarterly')).toBe(19900 * 4);
+    expect(toYearlyPaise(9900, 'weekly')).toBe(9900 * 52);
+  });
+
+  /**
+   * The B3 bug in one line: the old code went through the rounded monthly
+   * equivalent, which turned ₹1,499 into ₹1,499.04.
+   */
+  it('never round-trips through the monthly equivalent', () => {
+    expect(toMonthlyPaise(149900, 'yearly') * 12).toBe(149904);
+    expect(toYearlyPaise(149900, 'yearly')).toBe(149900);
+  });
+
+  it('is exact for every amount and cycle', () => {
+    for (let paise = 1; paise < 200000; paise += 997) {
+      expect(toYearlyPaise(paise, 'yearly')).toBe(paise);
+      expect(Number.isInteger(toYearlyPaise(paise, 'weekly'))).toBe(true);
     }
   });
 });

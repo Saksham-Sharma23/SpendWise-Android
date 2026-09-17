@@ -4,6 +4,7 @@ import {
   paiseToDecimalString,
   groupIndianManually,
   formatINR,
+  MAX_AMOUNT_PAISE,
   formatINRCompact,
   formatCount,
   parseAmountToPaise,
@@ -99,12 +100,66 @@ describe('formatINR', () => {
   });
 });
 
+/**
+ * B5: three form schemas declared `MAX_PAISE = 100_00_00_000 * 100` — ₹100
+ * crore — while every comment said ₹10 crore and Groups enforced ₹10 crore.
+ * The typo guard was ten times looser than documented, and inconsistent.
+ */
+describe('MAX_AMOUNT_PAISE', () => {
+  it('is ₹10 crore, exactly as the comments claim', () => {
+    // ₹10,00,00,000 × 100 paise = 10,000,000,000 paise.
+    expect(MAX_AMOUNT_PAISE).toBe(10_000_000_000);
+    expect(fromPaise(MAX_AMOUNT_PAISE)).toBe(10_00_00_000);
+    // The old value was ten times this — ₹100 crore — in three form schemas.
+    expect(MAX_AMOUNT_PAISE).not.toBe(100_00_00_000 * 100);
+  });
+
+  it('keeps the Groups split arithmetic inside safe-integer range', () => {
+    // split.ts multiplies the total by a weight of up to 10,000 basis points.
+    expect(MAX_AMOUNT_PAISE * 10_000).toBeLessThan(Number.MAX_SAFE_INTEGER);
+  });
+});
+
 describe('formatINRCompact', () => {
   it('uses Indian scale words', () => {
     expect(formatINRCompact(1_50_00_000 * 100)).toBe('₹1.5Cr');
     expect(formatINRCompact(2_50_000 * 100)).toBe('₹2.5L');
     expect(formatINRCompact(5_500 * 100)).toBe('₹5.5K');
     expect(formatINRCompact(999 * 100)).toBe('₹999');
+  });
+
+  /**
+   * B6: the unit was chosen from the raw value and only then rounded to one
+   * decimal, so a value just under a boundary rendered with a two-digit
+   * mantissa of the SMALLER unit — "₹100.0K", which no one writes.
+   */
+  it('rounds before choosing the unit, so "100.0<unit>" can never appear', () => {
+    expect(formatINRCompact(99_960 * 100)).toBe('₹1.0L');
+    expect(formatINRCompact(99_950 * 100)).toBe('₹1.0L');
+    expect(formatINRCompact(99_96_000 * 100)).toBe('₹1.0Cr');
+  });
+
+  it('keeps the smaller unit until rounding genuinely reaches the next one', () => {
+    expect(formatINRCompact(99_949 * 100)).toBe('₹99.9K');
+    expect(formatINRCompact(99_94_999 * 100)).toBe('₹99.9L');
+  });
+
+  it('formats each unit at its exact boundary', () => {
+    expect(formatINRCompact(1_000 * 100)).toBe('₹1.0K');
+    expect(formatINRCompact(1_00_000 * 100)).toBe('₹1.0L');
+    expect(formatINRCompact(1_00_00_000 * 100)).toBe('₹1.0Cr');
+    expect(formatINRCompact(10_00_00_000 * 100)).toBe('₹10.0Cr');
+  });
+
+  it('mirrors negatives', () => {
+    expect(formatINRCompact(-99_960 * 100)).toBe('-₹1.0L');
+    expect(formatINRCompact(-5_500 * 100)).toBe('-₹5.5K');
+  });
+
+  it('never renders a mantissa of 100 or more, at any value', () => {
+    for (let rupees = 1; rupees < 2_00_00_000; rupees += 9_973) {
+      expect(formatINRCompact(rupees * 100)).not.toMatch(/\b1\d\d\.\d(K|L|Cr)/);
+    }
   });
 });
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { fromISODate, toISODate } from '../../lib/dates';
-import { parseAmountToPaise } from '../../lib/money';
+import { MAX_AMOUNT_PAISE, parseAmountToPaise } from '../../lib/money';
 import type { TransactionInput } from './queries';
 
 /**
@@ -16,9 +16,6 @@ import type { TransactionInput } from './queries';
 
 const MAX_NOTE = 200;
 
-/** ₹10 crore. Not a real limit, just a typo guard — a missed decimal point. */
-const MAX_PAISE = 100_00_00_000 * 100;
-
 export const transactionFormSchema = z.object({
   type: z.enum(['expense', 'income']),
 
@@ -28,7 +25,7 @@ export const transactionFormSchema = z.object({
     .min(1, 'Enter an amount')
     .refine((v) => parseAmountToPaise(v) !== null, 'That is not a valid amount')
     .refine((v) => (parseAmountToPaise(v) ?? 0) !== 0, 'Amount cannot be zero')
-    .refine((v) => Math.abs(parseAmountToPaise(v) ?? 0) <= MAX_PAISE, 'That amount looks too large'),
+    .refine((v) => Math.abs(parseAmountToPaise(v) ?? 0) <= MAX_AMOUNT_PAISE, 'That amount looks too large'),
 
   date: z
     .string()

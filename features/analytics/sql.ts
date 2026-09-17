@@ -26,18 +26,21 @@ const live = isNull(transactions.deletedAt);
 const income = sql<number>`coalesce(sum(case when ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`;
 const expense = sql<number>`coalesce(sum(case when ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`;
 
-/** Income and expense per month from `firstMonth` ('YYYY-MM') on, oldest first. Months with no rows are absent. */
-export function trendQuery(db: AnalyticsDb, firstMonth: string) {
+/**
+ * Income and expense per month between `firstMonth` and `lastMonth`
+ * ('YYYY-MM') inclusive, oldest first. Months with no rows are absent.
+ */
+export function trendQuery(db: AnalyticsDb, firstMonth: string, lastMonth: string) {
   return db
     .select({ month: sql<string>`${transactions.month}`, incomePaise: income, expensePaise: expense })
     .from(transactions)
-    .where(and(live, gte(transactions.month, firstMonth)))
+    .where(and(live, gte(transactions.month, firstMonth), lte(transactions.month, lastMonth)))
     .groupBy(transactions.month)
     .orderBy(asc(transactions.month));
 }
 
 /** Income, expense and transaction count for the whole range in one pass. */
-export function totalsQuery(db: AnalyticsDb, firstMonth: string) {
+export function totalsQuery(db: AnalyticsDb, firstMonth: string, lastMonth: string) {
   return db
     .select({
       incomePaise: income,
@@ -45,18 +48,22 @@ export function totalsQuery(db: AnalyticsDb, firstMonth: string) {
       count: sql<number>`count(*)`,
     })
     .from(transactions)
-    .where(and(live, gte(transactions.month, firstMonth)));
+    .where(and(live, gte(transactions.month, firstMonth), lte(transactions.month, lastMonth)));
 }
 
 /**
- * The ledger's first transaction date, or null when it is empty. One step
- * down tx_ledger_idx (date, partial on deleted_at IS NULL) — never a scan.
+ * The ledger's first transaction date at or before `lastMonth`, or null when
+ * there is none. One step down tx_ledger_idx (date, partial on
+ * deleted_at IS NULL) — never a scan.
+ *
+ * Bounded like every other builder here: this date is the denominator of
+ * "average per day", so a future-dated row must not stretch the window.
  */
-export function earliestDateQuery(db: AnalyticsDb) {
+export function earliestDateQuery(db: AnalyticsDb, lastMonth: string) {
   return db
     .select({ date: sql<string | null>`min(${transactions.date})` })
     .from(transactions)
-    .where(live);
+    .where(and(live, lte(transactions.month, lastMonth)));
 }
 
 /**
@@ -67,7 +74,7 @@ export function earliestDateQuery(db: AnalyticsDb) {
  * pass with no sort step, where ORDER BY amount DESC LIMIT 1 would ask for a
  * temporary B-tree. On an empty range it returns one row of NULLs.
  */
-export function biggestExpenseQuery(db: AnalyticsDb, firstMonth: string) {
+export function biggestExpenseQuery(db: AnalyticsDb, firstMonth: string, lastMonth: string) {
   return db
     .select({
       amountPaise: sql<number | null>`max(${transactions.amountPaise})`,
@@ -80,7 +87,14 @@ export function biggestExpenseQuery(db: AnalyticsDb, firstMonth: string) {
     })
     .from(transactions)
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(and(live, eq(transactions.type, 'expense'), gte(transactions.month, firstMonth)));
+    .where(
+      and(
+        live,
+        eq(transactions.type, 'expense'),
+        gte(transactions.month, firstMonth),
+        lte(transactions.month, lastMonth),
+      ),
+    );
 }
 
 /**

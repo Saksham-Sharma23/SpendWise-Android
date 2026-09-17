@@ -67,7 +67,7 @@ describe('analytics SQL — correctness', () => {
   afterAll(() => ctx.sqlite.close());
 
   it('trend: one row per month with data, oldest first, deleted rows excluded', async () => {
-    const rows = await trendQuery(ctx.db, '2026-07');
+    const rows = await trendQuery(ctx.db, '2026-07', '2026-09');
     expect(rows).toEqual([
       { month: '2026-07', incomePaise: 80_000_00, expensePaise: 10_700_00 },
       { month: '2026-08', incomePaise: 80_000_00, expensePaise: 1_150_00 },
@@ -76,22 +76,22 @@ describe('analytics SQL — correctness', () => {
   });
 
   it('totals: the range summed in one row', async () => {
-    const [row] = await totalsQuery(ctx.db, '2026-07');
+    const [row] = await totalsQuery(ctx.db, '2026-07', '2026-09');
     expect(row).toEqual({ incomePaise: 160_000_00, expensePaise: 13_850_00, count: 7 });
   });
 
   it('totals: an empty range sums to zero, not NULL', async () => {
-    const [row] = await totalsQuery(ctx.db, '2030-01');
+    const [row] = await totalsQuery(ctx.db, '2030-01', '2030-12');
     expect(row).toEqual({ incomePaise: 0, expensePaise: 0, count: 0 });
   });
 
   it('earliest date ignores nothing live and everything deleted', async () => {
-    const [row] = await earliestDateQuery(ctx.db);
+    const [row] = await earliestDateQuery(ctx.db, '2026-09');
     expect(row?.date).toBe('2025-12-24');
   });
 
   it('biggest expense: the largest live expense in range, with its category', async () => {
-    const [row] = await biggestExpenseQuery(ctx.db, '2026-07');
+    const [row] = await biggestExpenseQuery(ctx.db, '2026-07', '2026-09');
     // The deleted 99,999 and the out-of-range 30,000 must both lose.
     expect(row).toMatchObject({
       amountPaise: 9_500_00,
@@ -103,7 +103,7 @@ describe('analytics SQL — correctness', () => {
   });
 
   it('biggest expense: an empty range yields a NULL amount', async () => {
-    const [row] = await biggestExpenseQuery(ctx.db, '2030-01');
+    const [row] = await biggestExpenseQuery(ctx.db, '2030-01', '2030-12');
     expect(row?.amountPaise).toBeNull();
   });
 
@@ -127,6 +127,63 @@ describe('analytics SQL — correctness', () => {
   });
 });
 
+/**
+ * B2: `trendQuery`, `totalsQuery` and `biggestExpenseQuery` had no upper bound
+ * while `categoryTotalsQuery` did, so a future-dated row (the picker allows a
+ * year ahead) inflated the stat cards while the chart dropped it — one screen
+ * disagreeing with itself.
+ *
+ * The last test here is the one that matters long-term: it ties the chart and
+ * the cards together, so any future change that bounds one and not the other
+ * fails regardless of which bound moved.
+ */
+describe('analytics SQL — every range is bounded at both ends (B2)', () => {
+  let ctx: Awaited<ReturnType<typeof small>>;
+  beforeAll(async () => {
+    ctx = await small();
+    // A transaction dated NEXT month, as the date picker permits.
+    ctx.db
+      .insert(transactions)
+      .values({ uid: 'future', type: 'expense', amountPaise: 50_000_00, date: '2026-10-05', categoryId: 2 })
+      .run();
+  });
+  afterAll(() => ctx.sqlite.close());
+
+  const RANGE = ['2026-07', '2026-09'] as const;
+
+  it('totals exclude a future-dated expense', async () => {
+    const [row] = await totalsQuery(ctx.db, ...RANGE);
+    expect(row?.expensePaise).toBe(13_850_00);
+    expect(row?.count).toBe(7);
+  });
+
+  it('the trend stops at the current month', async () => {
+    const rows = await trendQuery(ctx.db, ...RANGE);
+    expect(rows.map((r) => r.month)).not.toContain('2026-10');
+  });
+
+  it('the biggest expense is not a future one', async () => {
+    const [row] = await biggestExpenseQuery(ctx.db, ...RANGE);
+    expect(row?.amountPaise).toBe(9_500_00);
+  });
+
+  it('the earliest date ignores months beyond the range', async () => {
+    const [row] = await earliestDateQuery(ctx.db, '2026-09');
+    expect(row?.date).toBe('2025-12-24');
+  });
+
+  it('the trend sums to exactly what the totals card shows', async () => {
+    const [totals] = await totalsQuery(ctx.db, ...RANGE);
+    const trend = await trendQuery(ctx.db, ...RANGE);
+    const summed = trend.reduce(
+      (acc, r) => ({ income: acc.income + r.incomePaise, expense: acc.expense + r.expensePaise }),
+      { income: 0, expense: 0 },
+    );
+    expect(summed.income).toBe(totals?.incomePaise);
+    expect(summed.expense).toBe(totals?.expensePaise);
+  });
+});
+
 describe('analytics SQL — plans at 50k rows', () => {
   let fresh: Fresh;
   let db: AnalyticsDb;
@@ -146,25 +203,25 @@ describe('analytics SQL — plans at 50k rows', () => {
   }
 
   it('trend walks tx_month_idx with no sort', () => {
-    const p = planOf(trendQuery(db, '2024-10'));
+    const p = planOf(trendQuery(db, '2024-10', '2026-09'));
     expect(p).toMatch(/INDEX tx_month_idx/);
     expect(p).not.toMatch(/TEMP B-TREE/);
   });
 
   it('totals walk tx_month_idx', () => {
-    const p = planOf(totalsQuery(db, '2024-10'));
+    const p = planOf(totalsQuery(db, '2024-10', '2026-09'));
     expect(p).toMatch(/INDEX tx_month_idx/);
     expect(p).not.toMatch(/SCAN transactions(?! USING)/);
   });
 
   it('earliest date is a lookup on tx_ledger_idx, not a scan', () => {
-    const p = planOf(earliestDateQuery(db));
+    const p = planOf(earliestDateQuery(db, '2026-09'));
     expect(p).toMatch(/tx_ledger_idx/);
     expect(p).not.toMatch(/SCAN transactions(?! USING)/);
   });
 
   it('biggest expense finds its row without a sort step', () => {
-    const p = planOf(biggestExpenseQuery(db, '2024-10'));
+    const p = planOf(biggestExpenseQuery(db, '2024-10', '2026-09'));
     expect(p).toMatch(/INDEX tx_month_idx/);
     expect(p).not.toMatch(/TEMP B-TREE/);
   });
@@ -175,7 +232,7 @@ describe('analytics SQL — plans at 50k rows', () => {
   });
 
   it('24 months of 50k rows reach JS as at most 24 trend rows', async () => {
-    const rows = await trendQuery(db, '2024-10');
+    const rows = await trendQuery(db, '2024-10', '2026-09');
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.length).toBeLessThanOrEqual(24);
     for (const r of rows) {

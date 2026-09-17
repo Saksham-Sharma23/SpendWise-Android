@@ -3,6 +3,7 @@ import {
   getNextRenewal,
   getUrgency,
   toMonthlyPaise,
+  toYearlyPaise,
   todayISO,
   type BillingCycle,
   type ISODate,
@@ -56,9 +57,9 @@ export function enrich(row: SubscriptionRow, today: ISODate = todayISO()): Enric
     nextRenewal,
     daysUntilRenewal,
     monthlyCostPaise,
-    // ×12 of the monthly equivalent, not ×12 of the charge: a yearly
-    // subscription's yearly cost is the charge itself.
-    yearlyCostPaise: monthlyCostPaise * 12,
+    // From the CHARGE, never ×12 of the rounded monthly equivalent (B3):
+    // a yearly plan's yearly cost IS the charge, to the paisa.
+    yearlyCostPaise: toYearlyPaise(row.amountPaise, row.billingCycle),
     // Only an active subscription renews; paused and cancelled read as muted.
     urgency: getUrgency(daysUntilRenewal, row.status === 'active'),
     icon: row.categoryIcon ?? deterministicIcon(row.name),
@@ -120,18 +121,22 @@ export interface TrackerSummary {
 export function summarise(rows: EnrichedSubscription[]): TrackerSummary {
   const active = rows.filter((r) => r.status === 'active');
   let monthlyTotalPaise = 0;
+  // Summed from each row's EXACT yearly cost, not monthlyTotal × 12, which
+  // would multiply every row's rounding error by twelve (B3).
+  let yearlyTotalPaise = 0;
   let dueSoonCount = 0;
   let next: EnrichedSubscription | null = null;
 
   for (const r of active) {
     monthlyTotalPaise += r.monthlyCostPaise;
+    yearlyTotalPaise += r.yearlyCostPaise;
     if (r.urgency === 'soon') dueSoonCount += 1;
     if (!next || r.daysUntilRenewal < next.daysUntilRenewal) next = r;
   }
 
   return {
     monthlyTotalPaise,
-    yearlyTotalPaise: monthlyTotalPaise * 12,
+    yearlyTotalPaise,
     activeCount: active.length,
     dueSoonCount,
     next,

@@ -7,6 +7,21 @@
  */
 
 // ---------------------------------------------------------------------------
+// Limits
+// ---------------------------------------------------------------------------
+
+/**
+ * ₹10 crore, in paise. A TYPO GUARD, not a business rule: it catches a missed
+ * decimal point, nothing more.
+ *
+ * One constant for the whole app (B5). There used to be four: three features
+ * declared `MAX_PAISE = 100_00_00_000 * 100`, which is ₹100 **crore** — ten
+ * times what their own comments claimed — while Groups used ₹10 crore. So the
+ * ledger and Groups disagreed about the same guard.
+ */
+export const MAX_AMOUNT_PAISE = 10_00_00_000 * 100;
+
+// ---------------------------------------------------------------------------
 // Conversion
 // ---------------------------------------------------------------------------
 
@@ -154,9 +169,30 @@ export function formatINRCompact(paise: number): string {
   const rupees = Math.abs(fromPaise(paise));
   const sign = paise < 0 ? '-' : '';
 
-  if (rupees >= 1_00_00_000) return `${sign}₹${(rupees / 1_00_00_000).toFixed(1)}Cr`;
-  if (rupees >= 1_00_000) return `${sign}₹${(rupees / 1_00_000).toFixed(1)}L`;
-  if (rupees >= 1_000) return `${sign}₹${(rupees / 1_000).toFixed(1)}K`;
+  // Smallest unit first, each with the next one up as its promotion target.
+  // Rounding is applied BEFORE the unit is settled (B6): picking the unit from
+  // the raw value and only then calling toFixed(1) rendered ₹99,960 as
+  // "₹100.0K" rather than "₹1.0L", and ₹99,96,000 as "₹100.0L".
+  const UNITS = [
+    [1_000, 'K', 1_00_000, 'L'],
+    [1_00_000, 'L', 1_00_00_000, 'Cr'],
+    [1_00_00_000, 'Cr', Infinity, ''],
+  ] as const;
+
+  for (const [size, suffix, nextSize, nextSuffix] of UNITS) {
+    if (rupees >= nextSize) continue; // Belongs to a larger unit entirely.
+    if (rupees < size) {
+      // Below this unit, but rounding to one decimal may still reach it:
+      // ₹99,950 is 99.95K, which displays as 100.0K — i.e. ₹1.0L.
+      continue;
+    }
+    const tenths = Math.round((rupees / size) * 10);
+    // Promote when the rounded figure fills the next unit (10.0L -> 1.0Cr).
+    if (nextSize !== Infinity && tenths >= Math.round((nextSize / size) * 10)) {
+      return `${sign}₹1.0${nextSuffix}`;
+    }
+    return `${sign}₹${(tenths / 10).toFixed(1)}${suffix}`;
+  }
   return formatINR(paise, { whole: true });
 }
 

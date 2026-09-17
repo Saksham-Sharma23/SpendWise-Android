@@ -39,7 +39,7 @@ export function Insights() {
   const router = useRouter();
   const today = useToday();
   const [range, setRange] = useState<RangeMonths>(12);
-  const earliest = useEarliestDate();
+  const earliest = useEarliestDate(today);
   // One subscription feeds both the summary and the stat cards.
   const stats = usePeriodStats(range, today);
 

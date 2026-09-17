@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { parseAmountToPaise } from '../../lib/money';
+import { MAX_AMOUNT_PAISE, parseAmountToPaise } from '../../lib/money';
 import type { BudgetInput } from './queries';
 
 /**
@@ -10,9 +10,6 @@ import type { BudgetInput } from './queries';
  * `parseAmountToPaise` turns it straight into integer paise — no float ever
  * exists (CLAUDE.md #2).
  */
-
-/** ₹10 crore, the same typo guard the transaction form uses. */
-const MAX_PAISE = 100_00_00_000 * 100;
 
 export const budgetFormSchema = z.object({
   categoryId: z
@@ -26,7 +23,7 @@ export const budgetFormSchema = z.object({
     .min(1, 'Enter a limit')
     .refine((v) => parseAmountToPaise(v) !== null, 'That is not a valid amount')
     .refine((v) => (parseAmountToPaise(v) ?? 0) > 0, 'A limit has to be more than zero')
-    .refine((v) => (parseAmountToPaise(v) ?? 0) <= MAX_PAISE, 'That limit looks too large'),
+    .refine((v) => (parseAmountToPaise(v) ?? 0) <= MAX_AMOUNT_PAISE, 'That limit looks too large'),
 
   /**
    * 1–31. 31 is not "invalid in February": getCycleWindow clamps it to the

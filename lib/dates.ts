@@ -254,7 +254,12 @@ export function getUrgency(daysUntil: number, isActive: boolean): Urgency {
   return daysUntil <= 3 ? 'soon' : 'ok';
 }
 
-/** Normalise any billing cycle to a monthly-equivalent cost, in paise. */
+/**
+ * Normalise any billing cycle to a monthly-equivalent cost, in paise.
+ *
+ * This one ROUNDS: a yearly plan has no exact monthly price, so the figure is
+ * a display equivalent. Never multiply it back up — use `toYearlyPaise`.
+ */
 export function toMonthlyPaise(amountPaise: number, cycle: BillingCycle): number {
   switch (cycle) {
     case 'monthly':
@@ -265,5 +270,27 @@ export function toMonthlyPaise(amountPaise: number, cycle: BillingCycle): number
       return Math.round(amountPaise / 3);
     case 'weekly':
       return Math.round((amountPaise * 52) / 12);
+  }
+}
+
+/**
+ * The exact cost of a full year of a billing cycle, in paise.
+ *
+ * Multiplies the CHARGE, never the rounded monthly equivalent (B3). The old
+ * `toMonthlyPaise(x) * 12` turned ₹1,499/year into ₹1,499.04: round(149900/12)
+ * = 12492, and 12492 × 12 = 149904. Four paise is nothing as money and a great
+ * deal as a signal — it is exactly the drift integer paise exists to prevent,
+ * in the Tracker's headline figure.
+ */
+export function toYearlyPaise(amountPaise: number, cycle: BillingCycle): number {
+  switch (cycle) {
+    case 'monthly':
+      return amountPaise * 12;
+    case 'yearly':
+      return amountPaise;
+    case 'quarterly':
+      return amountPaise * 4;
+    case 'weekly':
+      return amountPaise * 52;
   }
 }

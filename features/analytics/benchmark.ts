@@ -16,11 +16,11 @@ export function analyticsBenchQueries(today = todayISO()): BenchQuery[] {
   const m24 = periodWindow(24, today).firstMonth;
   const m3 = periodWindow(3, today).firstMonth;
   return [
-    { name: 'analytics trend (24 months)', build: () => analyticsQueries.trend(m24) },
-    { name: 'analytics trend (3 months)', build: () => analyticsQueries.trend(m3) },
-    { name: 'period totals (24 months)', build: () => analyticsQueries.totals(m24) },
-    { name: 'earliest date', build: () => analyticsQueries.earliestDate() },
-    { name: 'biggest expense (24 months)', build: () => analyticsQueries.biggestExpense(m24) },
+    { name: 'analytics trend (24 months)', build: () => analyticsQueries.trend(m24, month) },
+    { name: 'analytics trend (3 months)', build: () => analyticsQueries.trend(m3, month) },
+    { name: 'period totals (24 months)', build: () => analyticsQueries.totals(m24, month) },
+    { name: 'earliest date', build: () => analyticsQueries.earliestDate(month) },
+    { name: 'biggest expense (24 months)', build: () => analyticsQueries.biggestExpense(m24, month) },
     { name: 'top category (24 months)', build: () => analyticsQueries.categoryTotals(m24, month, 1) },
     { name: 'category donut (month)', build: () => analyticsQueries.categoryTotals(month, month) },
   ];

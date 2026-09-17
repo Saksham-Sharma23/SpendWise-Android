@@ -86,6 +86,28 @@ describe('enrich — cost normalisation', () => {
     expect(Number.isInteger(e.monthlyCostPaise)).toBe(true);
     expect(Number.isInteger(e.yearlyCostPaise)).toBe(true);
   });
+
+  /**
+   * B3: `yearlyCostPaise` was `round(amount / 12) * 12`, so a ₹1,499 plan
+   * displayed ₹1,499.04 — the app inventing four paise on a price the user
+   * typed. ₹1,200 divides evenly by 12, which is why the existing tests never
+   * caught it; every amount here deliberately does not.
+   */
+  it('a yearly plan costs exactly its charge per year', () => {
+    const e = enrich(sub({ amountPaise: 1_499_00, billingCycle: 'yearly' }), '2026-09-14');
+    expect(e.yearlyCostPaise).toBe(1_499_00);
+    expect(e.yearlyCostPaise).not.toBe(e.monthlyCostPaise * 12);
+  });
+
+  it('every cycle multiplies the charge, never the rounded monthly figure', () => {
+    const yearly = (amountPaise: number, billingCycle: 'monthly' | 'yearly' | 'quarterly' | 'weekly') =>
+      enrich(sub({ amountPaise, billingCycle }), '2026-09-14').yearlyCostPaise;
+
+    expect(yearly(199_00, 'monthly')).toBe(199_00 * 12);
+    expect(yearly(1_499_00, 'yearly')).toBe(1_499_00);
+    expect(yearly(199_00, 'quarterly')).toBe(199_00 * 4);
+    expect(yearly(99_00, 'weekly')).toBe(99_00 * 52);
+  });
 });
 
 describe('enrich — urgency', () => {
@@ -167,6 +189,20 @@ describe('summarise', () => {
     expect(s.activeCount).toBe(2);
     expect(s.dueSoonCount).toBe(1);
     expect(s.next?.id).toBe(2);
+  });
+
+  it('sums each row‘s exact yearly cost, not the monthly total × 12 (B3)', () => {
+    // Three plans whose yearly cost is NOT divisible by 12, so rounding the
+    // monthly figure first and multiplying back drifts on every one.
+    const rows = [
+      enrich(sub({ id: 1, amountPaise: 1_499_00, billingCycle: 'yearly', anchorDate: '2026-09-20' }), today),
+      enrich(sub({ id: 2, amountPaise: 599_00, billingCycle: 'yearly', anchorDate: '2026-09-25' }), today),
+      enrich(sub({ id: 3, amountPaise: 99_00, billingCycle: 'weekly', anchorDate: '2026-09-18' }), today),
+    ];
+    const s = summarise(rows);
+
+    expect(s.yearlyTotalPaise).toBe(1_499_00 + 599_00 + 99_00 * 52);
+    expect(s.yearlyTotalPaise).not.toBe(s.monthlyTotalPaise * 12);
   });
 
   it('is all zeros with nothing to track', () => {

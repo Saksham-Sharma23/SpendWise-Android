@@ -112,3 +112,25 @@ describe('emptyTransactionForm', () => {
     expect(transactionFormSchema.safeParse(f).success).toBe(false);
   });
 });
+
+/**
+ * B5: the guard read `MAX_PAISE = 100_00_00_000 * 100` — ₹100 crore — while
+ * the comment beside it said ₹10 crore, and Groups enforced ₹10 crore. No test
+ * asserted the boundary, which is exactly why the wrong value survived.
+ */
+describe('the amount typo guard', () => {
+  const at = (amount: string) => transactionFormSchema.safeParse({ ...base, amount }).success;
+
+  it('accepts ₹10 crore and refuses a paisa more', () => {
+    expect(at('100000000')).toBe(true); // ₹10,00,00,000
+    expect(at('100000000.01')).toBe(false);
+  });
+
+  it('refuses the old ₹100 crore ceiling', () => {
+    expect(at('1000000000')).toBe(false);
+  });
+
+  it('applies to income as well as expense', () => {
+    expect(transactionFormSchema.safeParse({ ...base, type: 'income', amount: '1000000000' }).success).toBe(false);
+  });
+});

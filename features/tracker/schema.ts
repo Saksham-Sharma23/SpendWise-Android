@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { fromISODate, toISODate } from '../../lib/dates';
-import { parseAmountToPaise } from '../../lib/money';
+import { MAX_AMOUNT_PAISE, parseAmountToPaise } from '../../lib/money';
 import type { SubscriptionInput } from './queries';
 
 /**
@@ -12,8 +12,6 @@ import type { SubscriptionInput } from './queries';
  * disagree.
  */
 
-const MAX_PAISE = 100_00_00_000 * 100;
-
 export const subscriptionFormSchema = z.object({
   name: z.string().trim().min(1, 'Give it a name').max(60, 'Keep the name under 60 characters'),
 
@@ -23,7 +21,7 @@ export const subscriptionFormSchema = z.object({
     .min(1, 'Enter an amount')
     .refine((v) => parseAmountToPaise(v) !== null, 'That is not a valid amount')
     .refine((v) => (parseAmountToPaise(v) ?? 0) > 0, 'Amount has to be more than zero')
-    .refine((v) => (parseAmountToPaise(v) ?? 0) <= MAX_PAISE, 'That amount looks too large'),
+    .refine((v) => (parseAmountToPaise(v) ?? 0) <= MAX_AMOUNT_PAISE, 'That amount looks too large'),
 
   billingCycle: z.enum(['weekly', 'monthly', 'quarterly', 'yearly']),
 
