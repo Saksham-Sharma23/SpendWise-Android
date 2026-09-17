@@ -197,10 +197,7 @@ export function BudgetAmountDial({ value, onChange, autoFocusKeypad = false }: P
             })}
           </View>
 
-          <Text
-            className="mt-3"
-            style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11 }}
-          >
+          <Text className="mt-3" style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11 }}>
             Drag around the dial · each notch is {formatINR(scale.stepPaise, { whole: true })}
           </Text>
         </>

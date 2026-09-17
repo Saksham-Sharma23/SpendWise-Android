@@ -47,7 +47,9 @@ function Button({
       }`}
       style={{ opacity: busy ? 0.6 : 1 }}
     >
-      {busy ? <ActivityIndicator size="small" color={tone === 'danger' ? colors.background : colors.onPrimary} /> : null}
+      {busy ? (
+        <ActivityIndicator size="small" color={tone === 'danger' ? colors.background : colors.onPrimary} />
+      ) : null}
       <Text
         className={tone === 'danger' ? 'text-destructive-foreground' : 'text-primary-foreground'}
         style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}
@@ -127,7 +129,11 @@ function DevHarness() {
       const r = devEncryptedCopyRoundTrip();
       const mismatched = r.tables.filter((t) => t.live !== t.copy).map((t) => `${t.name} ${t.live}≠${t.copy}`);
       say(r.encrypted ? 'Encrypted copy header: ciphertext ✓' : 'Encrypted copy header: PLAIN SQLite ✗');
-      say(r.matches ? `Row counts match across ${r.tables.length} tables ✓` : `Row counts differ: ${mismatched.join(', ')} ✗`);
+      say(
+        r.matches
+          ? `Row counts match across ${r.tables.length} tables ✓`
+          : `Row counts differ: ${mismatched.join(', ')} ✗`,
+      );
     } catch (e) {
       say(`Encrypted round trip failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -165,13 +171,8 @@ function DevHarness() {
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         <View className="gap-3 px-5">
           <View className="rounded-3xl border border-border bg-card p-4">
-            <Text className="text-xs uppercase tracking-wider text-muted-foreground">
-              Database
-            </Text>
-            <Text
-              className="mt-1 text-2xl text-card-foreground"
-              style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}
-            >
+            <Text className="text-xs uppercase tracking-wider text-muted-foreground">Database</Text>
+            <Text className="mt-1 text-2xl text-card-foreground" style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>
               {formatCount(count)} rows
             </Text>
             <Text className="text-xs text-muted-foreground">{sizeMb} MB on disk</Text>
@@ -179,17 +180,8 @@ function DevHarness() {
 
           <Button label="Seed 50,000 transactions" onPress={onSeed} busy={busy === 'seed'} />
           <Button label="Run analytics benchmark" onPress={onBench} busy={busy === 'bench'} />
-          <Button
-            label="Encrypted backup file round trip"
-            onPress={onEncryptedRoundTrip}
-            busy={busy === 'encrypted'}
-          />
-          <Button
-            label="Clear all transactions"
-            onPress={onClear}
-            busy={busy === 'clear'}
-            tone="danger"
-          />
+          <Button label="Encrypted backup file round trip" onPress={onEncryptedRoundTrip} busy={busy === 'encrypted'} />
+          <Button label="Clear all transactions" onPress={onClear} busy={busy === 'clear'} tone="danger" />
 
           {passed !== null ? (
             <View
@@ -209,7 +201,11 @@ function DevHarness() {
               </Text>
               <Text className="mt-1 text-xs" style={{ color: passed ? colors.income : colors.expense }}>
                 Trend query {trend?.ms}ms (target ≤{THRESHOLD_MS}ms)
-                {trend?.scan ? ' · full table scan detected' : trend?.tempSort ? ' · temporary sort detected' : ' · index, no sort'}
+                {trend?.scan
+                  ? ' · full table scan detected'
+                  : trend?.tempSort
+                    ? ' · temporary sort detected'
+                    : ' · index, no sort'}
               </Text>
             </View>
           ) : null}

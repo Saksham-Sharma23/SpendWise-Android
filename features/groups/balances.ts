@@ -36,7 +36,11 @@ export interface GroupBalances {
 }
 
 /** Per-group balances and settle-up edges for every group in `groups`. */
-export function buildGroupBalances(groups: readonly GroupRef[], nets: readonly NetRow[], pairs: readonly PairRow[]): Map<number, GroupBalances> {
+export function buildGroupBalances(
+  groups: readonly GroupRef[],
+  nets: readonly NetRow[],
+  pairs: readonly PairRow[],
+): Map<number, GroupBalances> {
   const out = new Map<number, GroupBalances>();
   const netsBy = new Map<number, Map<PersonId, number>>();
   for (const r of nets) {

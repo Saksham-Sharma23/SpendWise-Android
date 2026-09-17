@@ -14,8 +14,19 @@ import { freshDb } from './support';
  */
 
 function seed(sqlite: Database.Database, count: number): void {
-  const cats = ['Food & Dining', 'Groceries', 'Transport', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Health', 'Salary'];
-  const insertCat = sqlite.prepare("INSERT INTO categories (name, icon, color, is_system) VALUES (?, 'circle', '#888888', 1)");
+  const cats = [
+    'Food & Dining',
+    'Groceries',
+    'Transport',
+    'Shopping',
+    'Entertainment',
+    'Bills & Utilities',
+    'Health',
+    'Salary',
+  ];
+  const insertCat = sqlite.prepare(
+    "INSERT INTO categories (name, icon, color, is_system) VALUES (?, 'circle', '#888888', 1)",
+  );
   for (const c of cats) insertCat.run(c);
 
   const insertTx = sqlite.prepare(
@@ -33,7 +44,16 @@ function seed(sqlite: Database.Database, count: number): void {
       const date = new Date(start + Math.floor(rand() * 4 * 365) * 86_400_000).toISOString().slice(0, 10);
       const isIncome = rand() < 0.08;
       const amount = isIncome ? Math.round((35_000 + rand() * 60_000) * 100) : Math.round((20 + rand() * 3_000) * 100);
-      insertTx.run(isIncome ? 'income' : 'expense', amount, date, 'note', Math.floor(rand() * cats.length) + 1, `h${i}`, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+      insertTx.run(
+        isIncome ? 'income' : 'expense',
+        amount,
+        date,
+        'note',
+        Math.floor(rand() * cats.length) + 1,
+        `h${i}`,
+        '2026-01-01T00:00:00.000Z',
+        '2026-01-01T00:00:00.000Z',
+      );
     }
   })();
   sqlite.exec('ANALYZE');
@@ -49,7 +69,9 @@ beforeAll(async () => {
 afterAll(() => sqlite?.close());
 
 function plan(sql: string, ...params: unknown[]): string {
-  return (sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[]).map((r) => r.detail).join(' | ');
+  return (sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[])
+    .map((r) => r.detail)
+    .join(' | ');
 }
 
 describe('constraints', () => {
@@ -65,9 +87,13 @@ describe('constraints', () => {
 
   it('enforces one LIVE budget per category, and [D4] allows re-creating after a soft delete', () => {
     sqlite.prepare('INSERT INTO budgets (category_id, limit_paise) VALUES (1, 100000)').run();
-    expect(() => sqlite.prepare('INSERT INTO budgets (category_id, limit_paise) VALUES (1, 200000)').run()).toThrow(/UNIQUE/i);
+    expect(() => sqlite.prepare('INSERT INTO budgets (category_id, limit_paise) VALUES (1, 200000)').run()).toThrow(
+      /UNIQUE/i,
+    );
     sqlite.prepare("UPDATE budgets SET deleted_at = '2026-09-14T00:00:00.000Z' WHERE category_id = 1").run();
-    expect(() => sqlite.prepare('INSERT INTO budgets (category_id, limit_paise) VALUES (1, 200000)').run()).not.toThrow();
+    expect(() =>
+      sqlite.prepare('INSERT INTO budgets (category_id, limit_paise) VALUES (1, 200000)').run(),
+    ).not.toThrow();
   });
 
   it('generates a uid for rows inserted without one', () => {
@@ -77,9 +103,15 @@ describe('constraints', () => {
 
   it('sets transactions.category_id to NULL when a category is hard-deleted', () => {
     const catId = Number(sqlite.prepare("INSERT INTO categories (name) VALUES ('Temp')").run().lastInsertRowid);
-    sqlite.prepare("INSERT INTO transactions (type, amount_paise, date, category_id) VALUES ('expense', 5000, '2026-03-01', ?)").run(catId);
+    sqlite
+      .prepare(
+        "INSERT INTO transactions (type, amount_paise, date, category_id) VALUES ('expense', 5000, '2026-03-01', ?)",
+      )
+      .run(catId);
     sqlite.prepare('DELETE FROM categories WHERE id = ?').run(catId);
-    const row = sqlite.prepare("SELECT category_id FROM transactions WHERE date = '2026-03-01' AND amount_paise = 5000").get() as {
+    const row = sqlite
+      .prepare("SELECT category_id FROM transactions WHERE date = '2026-03-01' AND amount_paise = 5000")
+      .get() as {
       category_id: number | null;
     };
     expect(row.category_id).toBeNull();
@@ -125,15 +157,22 @@ describe('analytics queries', () => {
   });
 
   it('keeps every aggregate an exact integer — no float drift', () => {
-    const row = sqlite.prepare('SELECT SUM(amount_paise) AS total FROM transactions WHERE deleted_at IS NULL').get() as { total: number };
+    const row = sqlite
+      .prepare('SELECT SUM(amount_paise) AS total FROM transactions WHERE deleted_at IS NULL')
+      .get() as { total: number };
     expect(Number.isInteger(row.total)).toBe(true);
     expect(row.total).toBeLessThanOrEqual(Number.MAX_SAFE_INTEGER);
   });
 
   it('excludes soft-deleted rows from aggregates', () => {
-    const count = () => (sqlite.prepare('SELECT COUNT(*) AS n FROM transactions WHERE deleted_at IS NULL').get() as { n: number }).n;
+    const count = () =>
+      (sqlite.prepare('SELECT COUNT(*) AS n FROM transactions WHERE deleted_at IS NULL').get() as { n: number }).n;
     const before = count();
-    sqlite.prepare("UPDATE transactions SET deleted_at='2026-09-11T00:00:00.000Z' WHERE id IN (SELECT id FROM transactions LIMIT 10)").run();
+    sqlite
+      .prepare(
+        "UPDATE transactions SET deleted_at='2026-09-11T00:00:00.000Z' WHERE id IN (SELECT id FROM transactions LIMIT 10)",
+      )
+      .run();
     expect(count()).toBe(before - 10);
     sqlite.prepare("UPDATE transactions SET deleted_at=NULL WHERE deleted_at='2026-09-11T00:00:00.000Z'").run();
   });
@@ -152,13 +191,20 @@ describe('ledger and lookup plans', () => {
   });
 
   it('[S4] serves a keyset page as an index range with no sort step', () => {
-    const p = plan(`${LEDGER_JOIN} AND (t.date, t.id) < (?, ?) ORDER BY t.date DESC, t.id DESC LIMIT 40`, '2025-01-01', 99999);
+    const p = plan(
+      `${LEDGER_JOIN} AND (t.date, t.id) < (?, ?) ORDER BY t.date DESC, t.id DESC LIMIT 40`,
+      '2025-01-01',
+      99999,
+    );
     expect(p).toMatch(/tx_ledger_idx/);
     expect(p).not.toMatch(/TEMP B-TREE/);
   });
 
   it('keyset paging returns contiguous, non-overlapping pages', () => {
-    const first = sqlite.prepare(`${LEDGER_JOIN} ORDER BY t.date DESC, t.id DESC LIMIT 40`).all() as { id: number; date: string }[];
+    const first = sqlite.prepare(`${LEDGER_JOIN} ORDER BY t.date DESC, t.id DESC LIMIT 40`).all() as {
+      id: number;
+      date: string;
+    }[];
     const last = first[first.length - 1]!;
     const second = sqlite
       .prepare(`${LEDGER_JOIN} AND (t.date, t.id) < (?, ?) ORDER BY t.date DESC, t.id DESC LIMIT 40`)

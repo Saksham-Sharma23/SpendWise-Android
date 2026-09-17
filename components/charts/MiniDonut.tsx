@@ -44,14 +44,7 @@ export function MiniDonut({ fill, color, size = 52, thickness = 5, children }: P
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={colors.elevated}
-          strokeWidth={thickness}
-          fill="none"
-        />
+        <Circle cx={size / 2} cy={size / 2} r={radius} stroke={colors.elevated} strokeWidth={thickness} fill="none" />
         <AnimatedCircle
           cx={size / 2}
           cy={size / 2}

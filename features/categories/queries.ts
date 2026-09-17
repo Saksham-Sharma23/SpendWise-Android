@@ -41,10 +41,7 @@ export function useCategoriesWithUsageResult(): DbQueryResult<CategoryWithUsage[
           transactionCount: sql<number>`count(${transactions.id})`,
         })
         .from(categories)
-        .leftJoin(
-          transactions,
-          and(eq(transactions.categoryId, categories.id), isNull(transactions.deletedAt)),
-        )
+        .leftJoin(transactions, and(eq(transactions.categoryId, categories.id), isNull(transactions.deletedAt)))
         .where(isNull(categories.deletedAt))
         .groupBy(categories.id)
         .orderBy(asc(sql`lower(${categories.name})`))) as CategoryWithUsage[],

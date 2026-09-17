@@ -24,7 +24,13 @@ import { RoundButton, SectionLabel } from './kit';
  * The amount starts at what is owed and can be lowered for a partial payment.
  */
 export function SettleUpForm() {
-  const params = useLocalSearchParams<{ groupId?: string; friendId?: string; from?: string; to?: string; amount?: string }>();
+  const params = useLocalSearchParams<{
+    groupId?: string;
+    friendId?: string;
+    from?: string;
+    to?: string;
+    amount?: string;
+  }>();
   return params.friendId ? <FriendSettle personId={Number(params.friendId)} /> : <GroupSettle params={params} />;
 }
 
@@ -36,7 +42,8 @@ function GroupSettle({ params }: { params: { groupId?: string; from?: string; to
 
   // Default: the first payment involving you, else the group's first suggestion.
   const suggestion = useMemo(() => {
-    if (params.from && params.to) return { from: Number(params.from), to: Number(params.to), paise: Number(params.amount ?? 0) };
+    if (params.from && params.to)
+      return { from: Number(params.from), to: Number(params.to), paise: Number(params.amount ?? 0) };
     const edges = data.balances?.edges ?? [];
     return edges.find((e) => e.from === data.selfId || e.to === data.selfId) ?? edges[0] ?? null;
   }, [params.from, params.to, params.amount, data.balances, data.selfId]);
@@ -111,12 +118,16 @@ function FriendSettle({ personId }: { personId: number }) {
       selfId={hub.selfId}
       people={[hub.selfId, personId]}
       owedBetween={() => total}
-      footnote={balance.perGroup.length > 1 ? `Spread across ${balance.perGroup.length} groups, oldest first.` : undefined}
+      footnote={
+        balance.perGroup.length > 1 ? `Spread across ${balance.perGroup.length} groups, oldest first.` : undefined
+      }
       onSave={(_from, _to, paise, date) => {
         const plan = planFriendSettlement(balance, hub.selfId, paise, paise >= total);
         const result = settleMany(plan, date);
         if (!result.ok) return false;
-        toast.success(theyOwe ? `Recorded: ${name} paid you ${formatINR(paise)}` : `Recorded: you paid ${name} ${formatINR(paise)}`);
+        toast.success(
+          theyOwe ? `Recorded: ${name} paid you ${formatINR(paise)}` : `Recorded: you paid ${name} ${formatINR(paise)}`,
+        );
         router.back();
         return true;
       }}
@@ -180,12 +191,19 @@ function SettleShell({
   };
 
   return (
-    <KeyboardAvoidingView behavior="padding" className="flex-1" style={{ paddingTop: insets.top, backgroundColor: colors.background }}>
+    <KeyboardAvoidingView
+      behavior="padding"
+      className="flex-1"
+      style={{ paddingTop: insets.top, backgroundColor: colors.background }}
+    >
       <View className="flex-row items-center justify-between px-5 py-3">
         <RoundButton label="Close" onPress={() => router.back()}>
           <X size={19} color={colors.foreground} />
         </RoundButton>
-        <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 16, flexShrink: 1 }}>
+        <Text
+          numberOfLines={1}
+          style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 16, flexShrink: 1 }}
+        >
           Settle up · {title}
         </Text>
         <View style={{ width: 44 }} />
@@ -193,12 +211,18 @@ function SettleShell({
 
       {emptyMessage ? (
         <View className="flex-1 items-center justify-center px-8">
-          <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 15, textAlign: 'center' }}>{emptyMessage}</Text>
+          <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 15, textAlign: 'center' }}>
+            {emptyMessage}
+          </Text>
         </View>
       ) : (
         <ScrollView className="px-5" keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
           <View className="mt-6 flex-row items-center justify-center gap-4">
-            <Person name={nameOf(from)} isSelf={from === selfId} onPress={fixedDirection ? undefined : () => setFrom(cycle(from, to))} />
+            <Person
+              name={nameOf(from)}
+              isSelf={from === selfId}
+              onPress={fixedDirection ? undefined : () => setFrom(cycle(from, to))}
+            />
             <View className="items-center">
               <ArrowRight size={26} color={colors.primary} strokeWidth={2.4} />
               {!fixedDirection ? (
@@ -217,9 +241,15 @@ function SettleShell({
                 </PressableScale>
               ) : null}
             </View>
-            <Person name={nameOf(to)} isSelf={to === selfId} onPress={fixedDirection ? undefined : () => setTo(cycle(to, from))} />
+            <Person
+              name={nameOf(to)}
+              isSelf={to === selfId}
+              onPress={fixedDirection ? undefined : () => setTo(cycle(to, from))}
+            />
           </View>
-          <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14, marginTop: 14, textAlign: 'center' }}>
+          <Text
+            style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14, marginTop: 14, textAlign: 'center' }}
+          >
             {nameOf(from)} {from === selfId ? 'pay' : 'pays'} {to === selfId ? 'you' : nameOf(to)}
           </Text>
 
@@ -232,10 +262,26 @@ function SettleShell({
               placeholder="0"
               placeholderTextColor={colors.subtle}
               selectionColor={colors.primary}
-              style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 46, letterSpacing: -1.5, minWidth: 60, paddingVertical: 0, fontVariant: ['tabular-nums'] }}
+              style={{
+                color: colors.foreground,
+                fontFamily: fonts.bold,
+                fontSize: 46,
+                letterSpacing: -1.5,
+                minWidth: 60,
+                paddingVertical: 0,
+                fontVariant: ['tabular-nums'],
+              }}
             />
           </View>
-          <Text style={{ color: over ? colors.expense : colors.subtle, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: 6 }}>
+          <Text
+            style={{
+              color: over ? colors.expense : colors.subtle,
+              fontFamily: fonts.regular,
+              fontSize: 12,
+              textAlign: 'center',
+              marginTop: 6,
+            }}
+          >
             {over
               ? `That's more than the ${formatINR(owed)} owed`
               : owed > 0
@@ -245,12 +291,25 @@ function SettleShell({
                 : 'No balance between these two — this records a payment anyway'}
           </Text>
           {footnote ? (
-            <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: 2 }}>{footnote}</Text>
+            <Text
+              style={{
+                color: colors.subtle,
+                fontFamily: fonts.regular,
+                fontSize: 12,
+                textAlign: 'center',
+                marginTop: 2,
+              }}
+            >
+              {footnote}
+            </Text>
           ) : null}
 
           <View className="mt-8">
             <SectionLabel>Date</SectionLabel>
-            <View className="flex-row items-center rounded-2xl border p-1.5" style={{ backgroundColor: colors.card, borderColor: colors.border }}>
+            <View
+              className="flex-row items-center rounded-2xl border p-1.5"
+              style={{ backgroundColor: colors.card, borderColor: colors.border }}
+            >
               <RoundButton label="Previous day" onPress={() => setDate(addDays(date, -1))}>
                 <ChevronLeft size={18} color={colors.foreground} />
               </RoundButton>
@@ -274,13 +333,22 @@ function SettleShell({
               placeholderTextColor={colors.subtle}
               selectionColor={colors.primary}
               className="mt-4 rounded-2xl border px-4 py-3.5"
-              style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 14, backgroundColor: colors.card, borderColor: colors.border }}
+              style={{
+                color: colors.foreground,
+                fontFamily: fonts.medium,
+                fontSize: 14,
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              }}
             />
           ) : null}
         </ScrollView>
       )}
 
-      <View className="px-5 pt-3" style={{ paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.border }}>
+      <View
+        className="px-5 pt-3"
+        style={{ paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.border }}
+      >
         <PressableScale
           accessibilityRole="button"
           disabled={paise <= 0 || over || !!emptyMessage}
@@ -302,15 +370,25 @@ function Person({ name, isSelf, onPress }: { name: string; isSelf: boolean; onPr
   const body = (
     <View className="items-center">
       <Avatar name={name} isSelf={isSelf} size={64} />
-      <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 13, marginTop: 6, maxWidth: 96 }}>
+      <Text
+        numberOfLines={1}
+        style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 13, marginTop: 6, maxWidth: 96 }}
+      >
         {name}
       </Text>
-      {onPress ? <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 10 }}>tap to change</Text> : null}
+      {onPress ? (
+        <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 10 }}>tap to change</Text>
+      ) : null}
     </View>
   );
   if (!onPress) return body;
   return (
-    <PressableScale accessibilityRole="button" accessibilityLabel={`${name}, tap to change`} onPress={onPress} scaleTo={0.94}>
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={`${name}, tap to change`}
+      onPress={onPress}
+      scaleTo={0.94}
+    >
       {body}
     </PressableScale>
   );

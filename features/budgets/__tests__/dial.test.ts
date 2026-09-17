@@ -25,7 +25,7 @@ const TAU = Math.PI * 2;
 const [SMALL, MEDIUM] = DIAL_SCALES as [(typeof DIAL_SCALES)[0], (typeof DIAL_SCALES)[1]];
 
 describe('angleOf — a clock, not a graph', () => {
-  it('puts zero at twelve o\'clock', () => {
+  it("puts zero at twelve o'clock", () => {
     expect(angleOf(0, -100)).toBeCloseTo(0);
   });
 
@@ -36,7 +36,13 @@ describe('angleOf — a clock, not a graph', () => {
   });
 
   it('never returns a negative angle', () => {
-    for (const [dx, dy] of [[-1, -1], [-1, 1], [1, 1], [1, -1], [-1, 0]]) {
+    for (const [dx, dy] of [
+      [-1, -1],
+      [-1, 1],
+      [1, 1],
+      [1, -1],
+      [-1, 0],
+    ]) {
       expect(angleOf(dx!, dy!)).toBeGreaterThanOrEqual(0);
     }
   });

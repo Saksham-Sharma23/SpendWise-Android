@@ -35,7 +35,8 @@ import {
 
 const w = db as unknown as GroupsWriteDb;
 
-export const addFriend = (name: string): WriteResult<number> => safeWrite('add the friend', () => createPerson(w, name));
+export const addFriend = (name: string): WriteResult<number> =>
+  safeWrite('add the friend', () => createPerson(w, name));
 
 export const renameFriend = (id: number, name: string): WriteResult<void> =>
   safeWrite('rename the friend', () => renamePerson(w, id, name));
@@ -43,12 +44,15 @@ export const renameFriend = (id: number, name: string): WriteResult<void> =>
 export function removeFriend(id: number, name: string): WriteResult<void> {
   const result = safeWrite('remove the friend', () => deletePerson(w, id));
   if (result.ok) {
-    toast.success(`${name} removed`, { action: { label: 'Undo', onClick: () => void safeWrite('undo', () => restorePerson(w, id)) } });
+    toast.success(`${name} removed`, {
+      action: { label: 'Undo', onClick: () => void safeWrite('undo', () => restorePerson(w, id)) },
+    });
   }
   return result;
 }
 
-export const addGroup = (input: GroupInput): WriteResult<number> => safeWrite('create the group', () => createGroup(w, input));
+export const addGroup = (input: GroupInput): WriteResult<number> =>
+  safeWrite('create the group', () => createGroup(w, input));
 
 export const editGroup = (id: number, input: GroupInput): WriteResult<void> =>
   safeWrite('save the group', () => updateGroup(w, id, input));
@@ -56,7 +60,9 @@ export const editGroup = (id: number, input: GroupInput): WriteResult<void> =>
 export function removeGroup(id: number, name: string): WriteResult<void> {
   const result = safeWrite('delete the group', () => deleteGroup(w, id));
   if (result.ok) {
-    toast.success(`${name} deleted`, { action: { label: 'Undo', onClick: () => void safeWrite('undo', () => restoreGroup(w, id)) } });
+    toast.success(`${name} deleted`, {
+      action: { label: 'Undo', onClick: () => void safeWrite('undo', () => restoreGroup(w, id)) },
+    });
   }
   return result;
 }
@@ -71,7 +77,9 @@ export const saveSplitExpense = (input: ExpenseInput, id?: number): WriteResult<
 export function removeExpense(id: number, description: string): WriteResult<void> {
   const result = safeWrite('delete the expense', () => deleteExpense(w, id));
   if (result.ok) {
-    toast.success(`${description} deleted`, { action: { label: 'Undo', onClick: () => void safeWrite('undo', () => restoreExpense(w, id)) } });
+    toast.success(`${description} deleted`, {
+      action: { label: 'Undo', onClick: () => void safeWrite('undo', () => restoreExpense(w, id)) },
+    });
   }
   return result;
 }
@@ -85,7 +93,9 @@ export const settleMany = (plan: readonly PlannedSettlement[], date: string): Wr
 export function removeSettlements(ids: readonly number[]): WriteResult<void> {
   const result = safeWrite('delete the payment', () => deleteSettlements(w, ids));
   if (result.ok) {
-    toast.success('Payment deleted', { action: { label: 'Undo', onClick: () => void safeWrite('undo', () => restoreSettlements(w, ids)) } });
+    toast.success('Payment deleted', {
+      action: { label: 'Undo', onClick: () => void safeWrite('undo', () => restoreSettlements(w, ids)) },
+    });
   }
   return result;
 }

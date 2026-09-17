@@ -35,7 +35,6 @@ import { MAX_EXPENSE_PAISE } from './split';
  * transaction — so balances can never disagree with the expenses behind them.
  */
 
- 
 export type GroupsWriteDb = BaseSQLiteDatabase<'sync', any, typeof schema>;
 
 const now = () => new Date().toISOString();
@@ -59,13 +58,20 @@ function cleanName(name: string, what: string): string {
 }
 
 export function createPerson(db: GroupsWriteDb, name: string): number {
-  return db.insert(people).values({ name: cleanName(name, 'friend') }).returning({ id: people.id }).all()[0]!.id;
+  return db
+    .insert(people)
+    .values({ name: cleanName(name, 'friend') })
+    .returning({ id: people.id })
+    .all()[0]!.id;
 }
 
 export function renamePerson(db: GroupsWriteDb, id: number, name: string): void {
   const clean = cleanName(name, 'friend');
   runWriteTx(db, (tx) => {
-    tx.update(people).set({ name: clean, updatedAt: now() }).where(and(eq(people.id, id), eq(people.isSelf, false))).run();
+    tx.update(people)
+      .set({ name: clean, updatedAt: now() })
+      .where(and(eq(people.id, id), eq(people.isSelf, false)))
+      .run();
     // The hidden 1:1 group is named after the friend.
     tx.update(splitGroups).set({ name: clean, updatedAt: now() }).where(eq(splitGroups.directPersonId, id)).run();
   });
@@ -101,7 +107,10 @@ export function deletePerson(db: GroupsWriteDb, id: number): void {
   runWriteTx(db, (tx) => {
     const at = now();
     tx.update(people).set({ deletedAt: at }).where(eq(people.id, id)).run();
-    tx.update(splitGroups).set({ deletedAt: at }).where(and(eq(splitGroups.directPersonId, id), isNull(splitGroups.deletedAt))).run();
+    tx.update(splitGroups)
+      .set({ deletedAt: at })
+      .where(and(eq(splitGroups.directPersonId, id), isNull(splitGroups.deletedAt)))
+      .run();
   });
 }
 
@@ -139,7 +148,9 @@ export function createGroup(db: GroupsWriteDb, input: GroupInput): number {
       .returning({ id: splitGroups.id })
       .all()[0]!.id;
     const members = [...new Set([me, ...input.memberIds])];
-    tx.insert(groupMembers).values(members.map((personId) => ({ groupId: id, personId }))).run();
+    tx.insert(groupMembers)
+      .values(members.map((personId) => ({ groupId: id, personId })))
+      .run();
     return id;
   });
 }
@@ -197,7 +208,9 @@ export function updateGroup(db: GroupsWriteDb, groupId: number, input: GroupInpu
 
     const joining = [...wanted].filter((id) => !currentIds.has(id));
     if (joining.length > 0) {
-      tx.insert(groupMembers).values(joining.map((personId) => ({ groupId, personId }))).run();
+      tx.insert(groupMembers)
+        .values(joining.map((personId) => ({ groupId, personId })))
+        .run();
     }
   });
 }
@@ -257,7 +270,11 @@ export function getOrCreateDirectGroup(db: GroupsWriteDb, personId: number): num
       .all()[0];
     if (existing) return existing.id;
 
-    const person = tx.select().from(people).where(and(eq(people.id, personId), isNull(people.deletedAt))).all()[0];
+    const person = tx
+      .select()
+      .from(people)
+      .where(and(eq(people.id, personId), isNull(people.deletedAt)))
+      .all()[0];
     if (!person || person.isSelf) throw new UserFacingError('That friend no longer exists');
     const me = tx.select({ id: people.id }).from(people).where(eq(people.isSelf, true)).all()[0]!.id;
 
@@ -266,10 +283,12 @@ export function getOrCreateDirectGroup(db: GroupsWriteDb, personId: number): num
       .values({ name: person.name, directPersonId: personId, simplifyDebts: false })
       .returning({ id: splitGroups.id })
       .all()[0]!.id;
-    tx.insert(groupMembers).values([
-      { groupId: id, personId: me },
-      { groupId: id, personId },
-    ]).run();
+    tx.insert(groupMembers)
+      .values([
+        { groupId: id, personId: me },
+        { groupId: id, personId },
+      ])
+      .run();
     return id;
   });
 }
@@ -308,7 +327,8 @@ export function validateExpense(input: ExpenseInput, memberIds: ReadonlySet<numb
     const ids = new Set<number>();
     let sum = 0;
     for (const c of list) {
-      if (!Number.isSafeInteger(c.paise) || c.paise < 0) throw new UserFacingError(`Every ${label} amount must be a whole amount`);
+      if (!Number.isSafeInteger(c.paise) || c.paise < 0)
+        throw new UserFacingError(`Every ${label} amount must be a whole amount`);
       if (ids.has(c.personId)) throw new UserFacingError(`Someone is listed twice in ${label}`);
       if (!memberIds.has(c.personId)) throw new UserFacingError(`Everyone in ${label} must be in the group`);
       ids.add(c.personId);
@@ -385,7 +405,9 @@ export function saveExpense(db: GroupsWriteDb, input: ExpenseInput, id?: number)
       tx.delete(splitDebts).where(eq(splitDebts.expenseId, id)).run();
     }
 
-    tx.insert(splitExpensePayers).values(payers.map((p) => ({ expenseId, personId: p.personId, paidPaise: p.paise }))).run();
+    tx.insert(splitExpensePayers)
+      .values(payers.map((p) => ({ expenseId, personId: p.personId, paidPaise: p.paise })))
+      .run();
     tx.insert(splitExpenseShares)
       .values(shares.map((s) => ({ expenseId, personId: s.personId, owedPaise: s.paise, input: s.input })))
       .run();
@@ -426,7 +448,12 @@ export function restoreExpense(db: GroupsWriteDb, id: number): void {
       .all()[0];
     if (!expense) throw new UserFacingError('That expense no longer exists');
 
-    assertPeopleStillMembers(tx as unknown as GroupsWriteDb, expense.groupId, peopleOnExpense(tx as unknown as GroupsWriteDb, id), 'expense');
+    assertPeopleStillMembers(
+      tx as unknown as GroupsWriteDb,
+      expense.groupId,
+      peopleOnExpense(tx as unknown as GroupsWriteDb, id),
+      'expense',
+    );
 
     tx.update(splitExpenses).set({ deletedAt: null }).where(eq(splitExpenses.id, id)).run();
   });
@@ -469,11 +496,7 @@ function assertPeopleStillMembers(
   if (missing.length === 0) return;
 
   const name =
-    db
-      .select({ name: people.name })
-      .from(people)
-      .where(eq(people.id, missing[0]!))
-      .all()[0]?.name ?? 'Someone';
+    db.select({ name: people.name }).from(people).where(eq(people.id, missing[0]!)).all()[0]?.name ?? 'Someone';
   throw new UserFacingError(`${name} is no longer in this group, so that ${what} can’t be restored`);
 }
 
@@ -519,7 +542,8 @@ export function recordSettlement(db: GroupsWriteDb, input: SettlementInput): num
 /** A friend settle-up across several groups, all or nothing. Returns the new settlement ids. */
 export function recordSettlements(db: GroupsWriteDb, plan: readonly PlannedSettlement[], date: string): number[] {
   if (plan.length === 0) throw new UserFacingError('There is nothing to settle');
-  for (const p of plan) validateSettlement({ ...p, amountPaise: p.paise, date, note: null }, liveMemberIds(db, p.groupId));
+  for (const p of plan)
+    validateSettlement({ ...p, amountPaise: p.paise, date, note: null }, liveMemberIds(db, p.groupId));
   return runWriteTx(db, (tx) =>
     plan.map(
       (p) =>
@@ -534,7 +558,10 @@ export function recordSettlements(db: GroupsWriteDb, plan: readonly PlannedSettl
 
 export function deleteSettlements(db: GroupsWriteDb, ids: readonly number[]): void {
   if (ids.length === 0) return;
-  db.update(settlements).set({ deletedAt: now() }).where(inArray(settlements.id, [...ids])).run();
+  db.update(settlements)
+    .set({ deletedAt: now() })
+    .where(inArray(settlements.id, [...ids]))
+    .run();
 }
 
 /** Undo a settle-up — only while both people are still members (B14, as restoreExpense). */
@@ -551,7 +578,10 @@ export function restoreSettlements(db: GroupsWriteDb, ids: readonly number[]): v
       assertPeopleStillMembers(tx as unknown as GroupsWriteDb, r.groupId, [r.from, r.to], 'settlement');
     }
 
-    tx.update(settlements).set({ deletedAt: null }).where(inArray(settlements.id, [...ids])).run();
+    tx.update(settlements)
+      .set({ deletedAt: null })
+      .where(inArray(settlements.id, [...ids]))
+      .run();
   });
 }
 

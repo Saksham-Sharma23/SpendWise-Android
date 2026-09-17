@@ -167,13 +167,34 @@ describe('simplifyDebts', () => {
   });
 
   it('settles a settled-up group with no payments', () => {
-    expect(simplifyDebts(new Map([[1, 0], [2, 0]]))).toEqual([]);
+    expect(
+      simplifyDebts(
+        new Map([
+          [1, 0],
+          [2, 0],
+        ]),
+      ),
+    ).toEqual([]);
     expect(simplifyDebts(new Map())).toEqual([]);
   });
 
   it('refuses balances that do not sum to zero', () => {
-    expect(() => simplifyDebts(new Map([[1, 100], [2, -99]]))).toThrow(/sum to zero/);
-    expect(() => simplifyDebts(new Map([[1, 0.5], [2, -0.5]]))).toThrow(/whole paise/);
+    expect(() =>
+      simplifyDebts(
+        new Map([
+          [1, 100],
+          [2, -99],
+        ]),
+      ),
+    ).toThrow(/sum to zero/);
+    expect(() =>
+      simplifyDebts(
+        new Map([
+          [1, 0.5],
+          [2, -0.5],
+        ]),
+      ),
+    ).toThrow(/whole paise/);
   });
 
   it('random groups: nets preserved, at most n − 1 payments, deterministic', () => {
@@ -233,7 +254,11 @@ function randomNets(n: number, rand: () => number): Map<PersonId, number> {
   let sum = 0;
   for (let id = 1; id < n; id++) {
     // Mix small and large, and repeat amounts so exact pairs occur.
-    const v = rand() < 0.2 ? 0 : (rand() < 0.5 ? -1 : 1) * [500, 1_000, 2_50_00][Math.floor(rand() * 3)]! * (1 + Math.floor(rand() * 4)) + Math.floor(rand() * 3);
+    const v =
+      rand() < 0.2
+        ? 0
+        : (rand() < 0.5 ? -1 : 1) * [500, 1_000, 2_50_00][Math.floor(rand() * 3)]! * (1 + Math.floor(rand() * 4)) +
+          Math.floor(rand() * 3);
     nets.set(id, v);
     sum += v;
   }

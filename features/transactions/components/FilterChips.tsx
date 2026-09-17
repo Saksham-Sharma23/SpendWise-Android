@@ -95,10 +95,11 @@ export function FilterChips({ filters, categories, onChange, onClearSearch, onCl
                 backgroundColor: chip.tint ? withAlpha(chip.tint, 0.12) : colors.elevated,
               }}
             >
-              {chip.tint ? (
-                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: chip.tint }} />
-              ) : null}
-              <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 12, maxWidth: 160 }}>
+              {chip.tint ? <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: chip.tint }} /> : null}
+              <Text
+                numberOfLines={1}
+                style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 12, maxWidth: 160 }}
+              >
                 {chip.label}
               </Text>
               <X size={13} color={colors.muted} />

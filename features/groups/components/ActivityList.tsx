@@ -42,7 +42,15 @@ export function ActivityList({
         return (
           <View key={`${row.kind}-${row.id}`}>
             {header ? (
-              <Text style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 13, marginTop: 14, marginBottom: 6 }}>
+              <Text
+                style={{
+                  color: colors.muted,
+                  fontFamily: fonts.semibold,
+                  fontSize: 13,
+                  marginTop: 14,
+                  marginBottom: 6,
+                }}
+              >
                 {MONTHS_LONG[Number(month.slice(5, 7)) - 1]} {month.slice(0, 4)}
               </Text>
             ) : null}
@@ -55,7 +63,12 @@ export function ActivityList({
         );
       })}
       {hasMore ? (
-        <PressableScale accessibilityRole="button" onPress={onShowMore} className="mt-3 items-center rounded-full py-3" style={{ backgroundColor: colors.card }}>
+        <PressableScale
+          accessibilityRole="button"
+          onPress={onShowMore}
+          className="mt-3 items-center rounded-full py-3"
+          style={{ backgroundColor: colors.card }}
+        >
           <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 13 }}>Show older</Text>
         </PressableScale>
       ) : null}
@@ -67,8 +80,12 @@ function DateBlock({ date }: { date: string }) {
   const colors = useColors();
   return (
     <View style={{ width: 34 }} className="items-center">
-      <Text style={{ color: colors.subtle, fontFamily: fonts.medium, fontSize: 10 }}>{MONTHS_SHORT[Number(date.slice(5, 7)) - 1]}</Text>
-      <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17, marginTop: -2 }}>{Number(date.slice(8, 10))}</Text>
+      <Text style={{ color: colors.subtle, fontFamily: fonts.medium, fontSize: 10 }}>
+        {MONTHS_SHORT[Number(date.slice(5, 7)) - 1]}
+      </Text>
+      <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17, marginTop: -2 }}>
+        {Number(date.slice(8, 10))}
+      </Text>
     </View>
   );
 }
@@ -103,9 +120,18 @@ function ExpenseRow({ row, people, selfId }: { row: ActivityRow; people: Map<num
         </Text>
       </View>
       <View className="items-end" style={{ minWidth: 86 }}>
-        <Text style={{ color: toneColor(effect.tone, colors), fontFamily: fonts.medium, fontSize: 11 }}>{effect.text}</Text>
+        <Text style={{ color: toneColor(effect.tone, colors), fontFamily: fonts.medium, fontSize: 11 }}>
+          {effect.text}
+        </Text>
         {effect.amount ? (
-          <Text style={{ color: toneColor(effect.tone, colors), fontFamily: fonts.bold, fontSize: 15, fontVariant: ['tabular-nums'] }}>
+          <Text
+            style={{
+              color: toneColor(effect.tone, colors),
+              fontFamily: fonts.bold,
+              fontSize: 15,
+              fontVariant: ['tabular-nums'],
+            }}
+          >
             {effect.amount}
           </Text>
         ) : null}
@@ -118,7 +144,13 @@ function SettlementRow({ row, people, selfId }: { row: ActivityRow; people: Map<
   const colors = useColors();
   const from = row.fromId != null ? people.get(row.fromId) : undefined;
   const to = row.toId != null ? people.get(row.toId) : undefined;
-  const text = settlementLine(from?.name ?? 'Someone', to?.name ?? 'someone', row.amountPaise, row.fromId === selfId, row.toId === selfId);
+  const text = settlementLine(
+    from?.name ?? 'Someone',
+    to?.name ?? 'someone',
+    row.amountPaise,
+    row.fromId === selfId,
+    row.toId === selfId,
+  );
 
   return (
     <PressableScale
@@ -130,7 +162,10 @@ function SettlementRow({ row, people, selfId }: { row: ActivityRow; people: Map<
       className="flex-row items-center gap-3 py-2.5"
     >
       <DateBlock date={row.date} />
-      <View className="items-center justify-center rounded-2xl" style={{ width: 40, height: 40, backgroundColor: withAlpha(colors.income, 0.14) }}>
+      <View
+        className="items-center justify-center rounded-2xl"
+        style={{ width: 40, height: 40, backgroundColor: withAlpha(colors.income, 0.14) }}
+      >
         <Handshake size={19} color={colors.income} strokeWidth={2.1} />
       </View>
       <View className="flex-1">
@@ -138,7 +173,10 @@ function SettlementRow({ row, people, selfId }: { row: ActivityRow; people: Map<
           {text}
         </Text>
         {row.title ? (
-          <Text numberOfLines={1} style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
+          <Text
+            numberOfLines={1}
+            style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}
+          >
             {row.title}
           </Text>
         ) : null}

@@ -86,7 +86,8 @@ export function evaluate(draft: Draft, memberIds: readonly PersonId[]): Evaluati
     } else {
       const list = parts as Contribution[];
       paidRemaining = amount - list.reduce((a, p) => a + p.paise, 0);
-      if (paidRemaining !== 0) problem = paidRemaining > 0 ? 'Paid amounts are short of the total' : 'Paid amounts are more than the total';
+      if (paidRemaining !== 0)
+        problem = paidRemaining > 0 ? 'Paid amounts are short of the total' : 'Paid amounts are more than the total';
       else payers = list.filter((p) => p.paise > 0);
     }
   }
@@ -111,7 +112,8 @@ export function evaluate(draft: Draft, memberIds: readonly PersonId[]): Evaluati
       problem ??= 'One of the amounts is not a number';
     } else {
       const check = splitExact(amount, values as number[]);
-      if (check.ok) shares = memberIds.map((personId, i) => ({ personId, paise: check.shares[i]!, input: check.shares[i]! }));
+      if (check.ok)
+        shares = memberIds.map((personId, i) => ({ personId, paise: check.shares[i]!, input: check.shares[i]! }));
       else {
         splitRemaining = check.reason === 'mismatch' ? check.remaining : 0;
         problem ??= splitRemaining > 0 ? 'The split is short of the total' : 'The split is more than the total';

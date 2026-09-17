@@ -2,19 +2,19 @@
 
 > A **standalone, offline-only** Android expense tracker. Every rupee lives in a SQLite database on the
 > phone. **There is no server, no account and no network call.** It shares the SpendWise web app's
-> *design* and *domain model*, and nothing else: no shared code, API or database.
+> _design_ and _domain model_, and nothing else: no shared code, API or database.
 >
-> | Doc | What it is for |
-> |---|---|
-> | [`TASKS.md`](TASKS.md) | **The only live tracker**: status, next work in order, device checks, decisions |
-> | [`plan.md`](plan.md) | **Task cards** for every remaining item: problem with file/line, fix steps, tests, done-when |
-> | [`docs/architecture-review-2026-09-17.md`](docs/architecture-review-2026-09-17.md) | Known bugs (`B1`…), architecture problems (`A1`…) and the **target architecture** |
-> | [`docs/design/`](docs/design/) | Designs for unbuilt phases: Sheets (6A/6B), Backup & native layer (7/8) |
-> | [`docs/run-on-phone.md`](docs/run-on-phone.md) | Getting a dev build running on the phone, with troubleshooting |
-> | [`docs/history/`](docs/history/) | Archived trackers: the *why* behind code that looks unusual |
-> | [`pcref/CLAUDE.md`](pcref/CLAUDE.md) | The web app's context. **Design and domain reference only.** Never call its API |
+> | Doc                                                                                | What it is for                                                                               |
+> | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+> | [`TASKS.md`](TASKS.md)                                                             | **The only live tracker**: status, next work in order, device checks, decisions              |
+> | [`plan.md`](plan.md)                                                               | **Task cards** for every remaining item: problem with file/line, fix steps, tests, done-when |
+> | [`docs/architecture-review-2026-09-17.md`](docs/architecture-review-2026-09-17.md) | Known bugs (`B1`…), architecture problems (`A1`…) and the **target architecture**            |
+> | [`docs/design/`](docs/design/)                                                     | Designs for unbuilt phases: Sheets (6A/6B), Backup & native layer (7/8)                      |
+> | [`docs/run-on-phone.md`](docs/run-on-phone.md)                                     | Getting a dev build running on the phone, with troubleshooting                               |
+> | [`docs/history/`](docs/history/)                                                   | Archived trackers: the _why_ behind code that looks unusual                                  |
+> | [`pcref/CLAUDE.md`](pcref/CLAUDE.md)                                               | The web app's context. **Design and domain reference only.** Never call its API              |
 >
-> *Last checked against the code: 2026-09-17 (`7f69c5c` + the uncommitted F5 batch).*
+> _Last checked against the code: 2026-09-17 (`7f69c5c` + the uncommitted F5 batch)._
 
 ---
 
@@ -26,57 +26,57 @@
   a token refresh is wrong, and predates the 2026-09-11 decision. The release build does not even declare
   `INTERNET`.
 - **Current phase: refactoring (R0–R4 in TASKS.md) before Backup (7) and Sheets (6A).** New code goes in the
-  **target layout** described in *Architecture*, even where older features have not moved yet.
+  **target layout** described in _Architecture_, even where older features have not moved yet.
 - **Tests are the safety net.** `npx tsc --noEmit` and `npx jest` (478 tests; ~5 min on this machine — the migration tests build 50k-row fixtures) must stay green.
   There is no ESLint yet (R2), so the conventions below are enforced by review.
 
 ## System
 
-| | |
-|---|---|
-| OS | Windows 10. PowerShell 5.1 default; Git Bash available |
-| Project root | `D:\Projects\SpendWise_Android` |
-| Node | 22.x |
-| Test device | One physical Android phone over wireless debugging. No emulator |
-| Git | Branch `main`. **No remote yet** — the repo is local-only (plan.md R0-1) |
+|              |                                                                          |
+| ------------ | ------------------------------------------------------------------------ |
+| OS           | Windows 10. PowerShell 5.1 default; Git Bash available                   |
+| Project root | `D:\Projects\SpendWise_Android`                                          |
+| Node         | 22.x                                                                     |
+| Test device  | One physical Android phone over wireless debugging. No emulator          |
+| Git          | Branch `main`. **No remote yet** — the repo is local-only (plan.md R0-1) |
 
 ---
 
 ## The locked decisions
 
-| Decision | Choice | Consequence |
-|---|---|---|
-| **Architecture** | Standalone, zero network | No auth, HTTP, server cache or offline queue. Only files cross the boundary: spreadsheets in, backups out |
-| **Storage** | SQLite (`expo-sqlite`) + Drizzle ORM | Typed queries, generated migrations. `useDbQuery` + `readDb` replace any server-state library |
-| **Analytics** | Aggregate in SQL on the device | `GROUP BY` in SQLite; never `SELECT` rows you intend to sum |
-| **Durability** | Manual export **+** Android auto-backup **+** monthly reminder | All three must ship (Phases 7/8). Today only auto-backup rules exist, **so a factory reset loses everything** |
-| **Encryption** *(amended 2026-09-14)* | Main DB **unkeyed**; SQLCipher only for passphrase-encrypted **backup files** | A Keystore-keyed DB restored by auto-backup could not be opened. FBE + the sandbox protect data at rest |
+| Decision                              | Choice                                                                        | Consequence                                                                                                   |
+| ------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Architecture**                      | Standalone, zero network                                                      | No auth, HTTP, server cache or offline queue. Only files cross the boundary: spreadsheets in, backups out     |
+| **Storage**                           | SQLite (`expo-sqlite`) + Drizzle ORM                                          | Typed queries, generated migrations. `useDbQuery` + `readDb` replace any server-state library                 |
+| **Analytics**                         | Aggregate in SQL on the device                                                | `GROUP BY` in SQLite; never `SELECT` rows you intend to sum                                                   |
+| **Durability**                        | Manual export **+** Android auto-backup **+** monthly reminder                | All three must ship (Phases 7/8). Today only auto-backup rules exist, **so a factory reset loses everything** |
+| **Encryption** _(amended 2026-09-14)_ | Main DB **unkeyed**; SQLCipher only for passphrase-encrypted **backup files** | A Keystore-keyed DB restored by auto-backup could not be opened. FBE + the sandbox protect data at rest       |
 
 ---
 
 ## Stack (as installed)
 
-| Layer | Choice | Notes |
-|---|---|---|
-| Runtime | `expo@57`, React Native 0.86 (New Architecture, Hermes), React 19.2 | Install with `npx expo install`; never hand-pin RN/Reanimated/expo-router |
-| Language | TypeScript 6.0, `strict` + `noUncheckedIndexedAccess` | Types flow from `db/schema.ts` |
-| Routing | `expo-router` (typed routes) | File-based |
-| Database | `expo-sqlite` (SQLCipher build) + `drizzle-orm` 0.45 / `drizzle-kit` 0.31 | Migrations bundled via `babel-plugin-inline-import`, so a schema change ships over the air |
-| Reads | `useDbQuery` (`lib/db`) over `readDb` (`db/read.ts`) | Native worker thread, coalesced per table, paused while unfocused. **Not** Drizzle's `useLiveQuery` |
-| Styling | `nativewind` v4 + tokens in `lib/theme.ts` | Light + dark palettes; System/Light/Dark in Settings. `global.css` is **generated** (`npm run theme:css`, test-enforced) |
-| State | `zustand` | Ledger filters, today's date, theme only |
-| Preferences | `react-native-mmkv` | Theme preference (synchronous read at startup). **Not for records** |
-| Forms | `react-hook-form` + `zod` | Amounts stay strings until `parseAmountToPaise` |
-| Lists | `@shopify/flash-list` v2 | |
-| Charts | `react-native-svg` + Reanimated/worklets | Pure maths in `components/charts/geometry.ts`. No Skia |
-| Motion/gestures | `react-native-reanimated` 4, `react-native-gesture-handler` | `useMotion()` honours "Remove animations" |
-| Toasts · Icons · Font | `sonner-native` · `lucide-react-native` · Plus Jakarta Sans | Same as the web app |
-| Files | `expo-file-system`, `expo-sharing` | CSV export, boot recovery sharing |
-| Declared, not yet used | `expo-notifications` (config plugin only) | Phase 8 |
-| Legacy, to remove | `expo-secure-store` | Only for `db/legacyEncryption.ts` (R6) |
-| Unused (remove in R0) | `date-fns`, `@gorhom/bottom-sheet`, `expo-crypto`, `expo-document-picker`, `expo-local-authentication` | |
-| Planned | SheetJS (vendor tarball) + papaparse + ExcelJS (6A, after a spike) · `react-native-android-widget` (8) | Not installed |
-| Tests | Jest 30 + ts-jest, Node environment, `better-sqlite3` running the real migrations | No component tests |
+| Layer                  | Choice                                                                                                 | Notes                                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Runtime                | `expo@57`, React Native 0.86 (New Architecture, Hermes), React 19.2                                    | Install with `npx expo install`; never hand-pin RN/Reanimated/expo-router                                                |
+| Language               | TypeScript 6.0, `strict` + `noUncheckedIndexedAccess`                                                  | Types flow from `db/schema.ts`                                                                                           |
+| Routing                | `expo-router` (typed routes)                                                                           | File-based                                                                                                               |
+| Database               | `expo-sqlite` (SQLCipher build) + `drizzle-orm` 0.45 / `drizzle-kit` 0.31                              | Migrations bundled via `babel-plugin-inline-import`, so a schema change ships over the air                               |
+| Reads                  | `useDbQuery` (`lib/db`) over `readDb` (`db/read.ts`)                                                   | Native worker thread, coalesced per table, paused while unfocused. **Not** Drizzle's `useLiveQuery`                      |
+| Styling                | `nativewind` v4 + tokens in `lib/theme.ts`                                                             | Light + dark palettes; System/Light/Dark in Settings. `global.css` is **generated** (`npm run theme:css`, test-enforced) |
+| State                  | `zustand`                                                                                              | Ledger filters, today's date, theme only                                                                                 |
+| Preferences            | `react-native-mmkv`                                                                                    | Theme preference (synchronous read at startup). **Not for records**                                                      |
+| Forms                  | `react-hook-form` + `zod`                                                                              | Amounts stay strings until `parseAmountToPaise`                                                                          |
+| Lists                  | `@shopify/flash-list` v2                                                                               |                                                                                                                          |
+| Charts                 | `react-native-svg` + Reanimated/worklets                                                               | Pure maths in `components/charts/geometry.ts`. No Skia                                                                   |
+| Motion/gestures        | `react-native-reanimated` 4, `react-native-gesture-handler`                                            | `useMotion()` honours "Remove animations"                                                                                |
+| Toasts · Icons · Font  | `sonner-native` · `lucide-react-native` · Plus Jakarta Sans                                            | Same as the web app                                                                                                      |
+| Files                  | `expo-file-system`, `expo-sharing`                                                                     | CSV export, boot recovery sharing                                                                                        |
+| Declared, not yet used | `expo-notifications` (config plugin only)                                                              | Phase 8                                                                                                                  |
+| Legacy, to remove      | `expo-secure-store`                                                                                    | Only for `db/legacyEncryption.ts` (R6)                                                                                   |
+| Unused (remove in R0)  | `date-fns`, `@gorhom/bottom-sheet`, `expo-crypto`, `expo-document-picker`, `expo-local-authentication` |                                                                                                                          |
+| Planned                | SheetJS (vendor tarball) + papaparse + ExcelJS (6A, after a spike) · `react-native-android-widget` (8) | Not installed                                                                                                            |
+| Tests                  | Jest 30 + ts-jest, Node environment, `better-sqlite3` running the real migrations                      | No component tests                                                                                                       |
 
 **Crash reporting:** none in release builds. Sentry is ruled out (it needs `INTERNET`); a local crash log is planned (R6).
 
@@ -91,10 +91,12 @@ app/  →  features/  →  components/  ·  data/*  →  db/  →  lib/
 routes   screens,       presentational  shared    SQLite   pure utilities
          feature data   UI              queries*  runtime  (+ lib/db runtime)
 ```
+
 `*data/` is the **target** shared layer (R3) and does not exist yet. Rules:
+
 1. A feature never imports another feature. Something two features need moves **down** (`data/`, `components/`, `lib/`).
 2. `components/` and `lib/` never import `features/`. `lib/` stays free of React Native where it holds pure logic, so Node tests can load it.
-3. `app/` imports `db/` only in `app/_layout.tsx` (boot). *Today `app/settings/index.tsx` and `app/dev.tsx` also do; R4 moves them.*
+3. `app/` imports `db/` only in `app/_layout.tsx` (boot). _Today `app/settings/index.tsx` and `app/dev.tsx` also do; R4 moves them._
 
 ### Repository layout (as it is today)
 
@@ -161,6 +163,7 @@ data/                 shared queries two or more features need: ledger aggregate
 components/ui/        Text (variants), Button, IconButton, Chip, Field, FormModal + useSubmitOnce, Section…
 db/types.ts           one SyncDb / AnyDb type
 ```
+
 `features/analytics` and `features/groups` are closest to this today; copy them, not `transactions`.
 
 ---
@@ -192,20 +195,20 @@ db/types.ts           one SyncDb / AnyDb type
 
 `db/schema.ts` is authoritative. Nine migrations (`0000`–`0008`) are applied on the dev phone up to 0006 (verified 2026-09-15).
 
-| Table | Holds | Notes |
-|---|---|---|
-| `categories` | name, icon, color, `kind` (`expense`/`income`/`both`), `is_system` | System rows have fixed `sys:<slug>` uids and are reconciled by `SEED_VERSION` (`db/seed.ts`). `cat_name_unique` (lower(name), live rows) lives in custom migration 0006. Deleted rows get a tombstone name |
-| `transactions` | `type`, `amount_paise`, `date`, generated `month`, note, `category_id`, `import_batch_id`, `dedupe_hash` | Indexes: `tx_ledger_idx (date) WHERE deleted_at IS NULL` (keyset pages), `tx_month_idx (month,type,amount_paise)` partial, `tx_cat_idx`, `tx_batch_idx`, `tx_dedupe_idx` |
-| `budgets` | `category_id`, `limit_paise`, `reset_day` 1–31, `is_active` | One **live** budget per category. The cycle window is computed in TS (`getCycleWindow`) and bound as parameters |
-| `subscriptions` | name, `amount_paise` per cycle, `billing_cycle`, `status`, `anchor_date`, `category_id`, `reminder_days_before` | Next renewal is computed on read (`getNextRenewal`), never stored. The reminder is unused until Phase 8 |
-| `import_batches` | source name, counts, `undone_at` | For Phase 6 undo |
-| `app_meta` | key/value | `schema_version`, `seed_version`, `seeded_at`, `last_backup_at`, `onboarding_dismissed` (`META_KEYS`) |
-| `people` | friends + exactly one `is_self` row (`sys:self`, migration 0008) | Groups |
-| `split_groups` | name, icon, `simplify_debts`, `direct_person_id` | A 1:1 friendship is a **hidden group** with `direct_person_id` set |
-| `group_members` | soft-removable membership | Removal allowed only at a zero balance |
-| `split_expenses` + `split_expense_payers` + `split_expense_shares` | amount, method, payers, shares (+ typed `input`) | Payers and shares each sum **exactly** to the amount |
-| `split_debts` | derived pairwise debts per expense | Rewritten with its expense in one `writeTx` |
-| `settlements` | a payment between two members | |
+| Table                                                              | Holds                                                                                                           | Notes                                                                                                                                                                                                      |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `categories`                                                       | name, icon, color, `kind` (`expense`/`income`/`both`), `is_system`                                              | System rows have fixed `sys:<slug>` uids and are reconciled by `SEED_VERSION` (`db/seed.ts`). `cat_name_unique` (lower(name), live rows) lives in custom migration 0006. Deleted rows get a tombstone name |
+| `transactions`                                                     | `type`, `amount_paise`, `date`, generated `month`, note, `category_id`, `import_batch_id`, `dedupe_hash`        | Indexes: `tx_ledger_idx (date) WHERE deleted_at IS NULL` (keyset pages), `tx_month_idx (month,type,amount_paise)` partial, `tx_cat_idx`, `tx_batch_idx`, `tx_dedupe_idx`                                   |
+| `budgets`                                                          | `category_id`, `limit_paise`, `reset_day` 1–31, `is_active`                                                     | One **live** budget per category. The cycle window is computed in TS (`getCycleWindow`) and bound as parameters                                                                                            |
+| `subscriptions`                                                    | name, `amount_paise` per cycle, `billing_cycle`, `status`, `anchor_date`, `category_id`, `reminder_days_before` | Next renewal is computed on read (`getNextRenewal`), never stored. The reminder is unused until Phase 8                                                                                                    |
+| `import_batches`                                                   | source name, counts, `undone_at`                                                                                | For Phase 6 undo                                                                                                                                                                                           |
+| `app_meta`                                                         | key/value                                                                                                       | `schema_version`, `seed_version`, `seeded_at`, `last_backup_at`, `onboarding_dismissed` (`META_KEYS`)                                                                                                      |
+| `people`                                                           | friends + exactly one `is_self` row (`sys:self`, migration 0008)                                                | Groups                                                                                                                                                                                                     |
+| `split_groups`                                                     | name, icon, `simplify_debts`, `direct_person_id`                                                                | A 1:1 friendship is a **hidden group** with `direct_person_id` set                                                                                                                                         |
+| `group_members`                                                    | soft-removable membership                                                                                       | Removal allowed only at a zero balance                                                                                                                                                                     |
+| `split_expenses` + `split_expense_payers` + `split_expense_shares` | amount, method, payers, shares (+ typed `input`)                                                                | Payers and shares each sum **exactly** to the amount                                                                                                                                                       |
+| `split_debts`                                                      | derived pairwise debts per expense                                                                              | Rewritten with its expense in one `writeTx`                                                                                                                                                                |
+| `settlements`                                                      | a payment between two members                                                                                   |                                                                                                                                                                                                            |
 
 Every user table has `uid` (32 hex chars from SQLite, or `sys:*`) for export → restore identity, plus `created_at`/`deleted_at` (and `updated_at` where edited).
 **Groups never touch the ledger:** no group expense creates a transaction or moves a budget, Home or Insights figure. **Balances are never stored.** `netsQuery` sums flows per (group, person); JS runs `simplifyDebts` (pairing pre-pass + two max-heaps, ≤ n − 1 payments) or `pairwiseNet`. See `docs/diagrams/01-debt-simplification.mmd`.
@@ -220,6 +223,7 @@ Every user table has `uid` (32 hex chars from SQLite, or `sys:*`) for export →
 More → Budgets · Tracker · Categories · Groups · Sheets* · Backup* · Settings (Appearance, Recently deleted) · Dev harness (dev)
                                                    * placeholder screens
 ```
+
 - **Home:** net balance, income/expense vs last month, insight banner (`lib/insight.ts`), 6/12-month bar/line trend, top categories, budgets card, renewals card, recent transactions. A first-run Welcome (add · import · restore) shows while the ledger is empty and not dismissed.
 - **Transactions:** keyset-paged FlashList with sticky month headers, 150 ms debounced search (note + category name), type switch, filter sheet (type, date presets or a custom range, categories) with removable chips, swipe delete + undo, long-press multi-select, CSV export of the current filter.
 - **Insights:** 3/6/12/24-month range drives the summary, a scrubbable area chart and stat cards (avg/day, biggest expense, top category, savings rate); category donut with a month picker.
@@ -254,17 +258,19 @@ npm run db:generate                   # after editing db/schema.ts, then READ th
 ## Gotchas
 
 **Database**
-- **drizzle-kit 0.31 emits broken SQLite migrations in three cases. Read every generated file.** (1) Adding a column *and* rebuilding a table in one generate copies the new column from the old table: split the generate. (2) A rebuild copies VIRTUAL generated columns, which SQLite rejects: `transactions.month` must be dropped and re-added around any future rebuild of `transactions`. (3) A partial expression index is emitted as a backticked column name: write it in a `--custom` migration.
+
+- **drizzle-kit 0.31 emits broken SQLite migrations in three cases. Read every generated file.** (1) Adding a column _and_ rebuilding a table in one generate copies the new column from the old table: split the generate. (2) A rebuild copies VIRTUAL generated columns, which SQLite rejects: `transactions.month` must be dropped and re-added around any future rebuild of `transactions`. (3) A partial expression index is emitted as a backticked column name: write it in a `--custom` migration.
 - **Never migrate with foreign keys on.** Drizzle runs all pending migrations in one transaction, where `PRAGMA foreign_keys=OFF` is ignored, so rebuilding `categories` would cascade-delete budgets. `migrateWithForeignKeysOff` handles it; a test proves the loss without it.
 - **Screens read through `db/read.ts`.** The expo Drizzle driver runs synchronously on the JS thread even when awaited. `db/client.ts` is for writes in `writeTx` and tiny point reads (edit-form prefill).
 - **In a single-table Drizzle select, `${table.column}` renders unqualified.** Inside a correlated subquery SQLite binds it to the inner table. Write `split_groups.id` literally there.
-- **Through `readDb`, a raw `db.all(sql\`…\`)` returns bare arrays.** Wrap raw SQL as `select({...}).from(sql\`(…) x\`)`.
+- **Through `readDb`, a raw `db.all(sql\`…\`)`returns bare arrays.** Wrap raw SQL as`select({...}).from(sql\`(…) x\`)`.
 - **A partial index is used only if the query repeats its predicate** (`deleted_at IS NULL`). Month aggregates must filter on `month`, not `substr(date,…)`.
 - **Change events name base tables, never views**, and fire once per row (the change hub coalesces them).
 - **Migrations on an empty database prove nothing.** Empty tables hide every constraint violation.
 
 **Android and build**
-- **Verify permissions on the built APK, never on `expo config` or the manifest.** `android.permissions` only *adds*; library manifests contribute more; a stale `android/` keeps the old policy. Only `blockedPermissions` removes, and only `aapt2 dump permissions` on the artifact tells the truth.
+
+- **Verify permissions on the built APK, never on `expo config` or the manifest.** `android.permissions` only _adds_; library manifests contribute more; a stale `android/` keeps the old policy. Only `blockedPermissions` removes, and only `aapt2 dump permissions` on the artifact tells the truth.
 - **`expo-notifications` drags in FCM, Install Referrer and ~18 OEM badge permissions.** All are blocked in `app.config.ts`. `WAKE_LOCK` is kept for scheduled notifications.
 - **Auto-backup has a 25 MB quota and fails silently.** Backup rules are exclude-only (any `<include>` narrows the backup), have no wildcards, and exclude WAL/SHM, snapshots, legacy, unreadable and the dev-launcher bundle.
 - **A Keystore-keyed database cannot survive auto-backup.** If on-device encryption ever returns, the key must be recoverable by the user (a recovery code), never Keystore-only.
@@ -272,6 +278,7 @@ npm run db:generate                   # after editing db/schema.ts, then READ th
 - **Splash colours** equal `background` in `lib/theme.ts`. A forced Light theme on a dark phone still gets the dark splash (drawn before JS runs).
 
 **React Native and UI**
+
 - **Reanimated rejects exponent notation in colour strings.** Use `interpolateColor`, never `rgba(… ${alpha})` templates.
 - **`toLocaleString("en-IN")` silently falls back to US grouping without ICU.** Always go through `lib/money.ts`.
 - **Flexbox defaults to `column`; text styles don't cascade through `View`.** NativeWind can't do `hover:`, `position: fixed`, z-index stacking or real CSS grid.
@@ -282,10 +289,10 @@ npm run db:generate                   # after editing db/schema.ts, then READ th
 
 ## Deferred, with reasons
 
-| Item | Why | Cost later |
-|---|---|---|
-| Multi-device sync | No server by design | A real project; `uid` columns already exist |
-| Rollup tables | Premature: plans verified index-only, desktop trend 3.5 ms at 50k | Only if on-device timings exceed 50 ms |
-| Multi-currency | The web app is INR-only | Follows the web app |
-| Live Google Sheets sync | Needs `INTERNET` | Drive-stored `.xlsx` files already work through the picker (6A) |
-| Bank SMS capture | `READ_SMS` is incompatible with Play and the privacy promise | — |
+| Item                    | Why                                                               | Cost later                                                      |
+| ----------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------- |
+| Multi-device sync       | No server by design                                               | A real project; `uid` columns already exist                     |
+| Rollup tables           | Premature: plans verified index-only, desktop trend 3.5 ms at 50k | Only if on-device timings exceed 50 ms                          |
+| Multi-currency          | The web app is INR-only                                           | Follows the web app                                             |
+| Live Google Sheets sync | Needs `INTERNET`                                                  | Drive-stored `.xlsx` files already work through the picker (6A) |
+| Bank SMS capture        | `READ_SMS` is incompatible with Play and the privacy promise      | —                                                               |

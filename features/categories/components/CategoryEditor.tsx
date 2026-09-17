@@ -6,11 +6,7 @@ import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
-import {
-  CATEGORY_COLORS,
-  CATEGORY_ICON_NAMES,
-  CategoryIcon,
-} from '../../../components/ui/CategoryIcon';
+import { CATEGORY_COLORS, CATEGORY_ICON_NAMES, CategoryIcon } from '../../../components/ui/CategoryIcon';
 import { PressableScale } from '../../../components/ui/PressableScale';
 import { formatCount } from '../../../lib/money';
 import { fonts, useColors, withAlpha } from '../../../lib/theme';
@@ -132,7 +128,11 @@ export function CategoryEditor() {
   const trimmed = name.trim();
 
   return (
-    <KeyboardAvoidingView behavior="padding" className="flex-1" style={{ paddingTop: insets.top, backgroundColor: colors.background }}>
+    <KeyboardAvoidingView
+      behavior="padding"
+      className="flex-1"
+      style={{ paddingTop: insets.top, backgroundColor: colors.background }}
+    >
       <View className="flex-row items-center justify-between px-5 py-3">
         <PressableScale
           accessibilityRole="button"
@@ -150,18 +150,33 @@ export function CategoryEditor() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView className="px-5" contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="px-5"
+        contentContainerStyle={{ paddingBottom: 24 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Live preview: exactly how it will look in the ledger. */}
         <Animated.View entering={FadeInDown.duration(350)} className="items-center py-6">
           <Animated.View layout={LinearTransition.springify()}>
             <CategoryIcon icon={icon} color={color} size={76} />
           </Animated.View>
-          <Text numberOfLines={1} style={{ color: trimmed ? colors.foreground : colors.subtle, fontFamily: fonts.bold, fontSize: 22, marginTop: 14 }}>
+          <Text
+            numberOfLines={1}
+            style={{
+              color: trimmed ? colors.foreground : colors.subtle,
+              fontFamily: fonts.bold,
+              fontSize: 22,
+              marginTop: 14,
+            }}
+          >
             {trimmed || 'Category name'}
           </Text>
           {editingId != null ? (
             <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 4 }}>
-              {usage === 0 ? 'Not used yet' : `Used by ${formatCount(usage)} ${usage === 1 ? 'transaction' : 'transactions'}`}
+              {usage === 0
+                ? 'Not used yet'
+                : `Used by ${formatCount(usage)} ${usage === 1 ? 'transaction' : 'transactions'}`}
             </Text>
           ) : null}
         </Animated.View>
@@ -263,14 +278,18 @@ export function CategoryEditor() {
               />
             ) : (
               <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 }}>
-                Built-in categories can be renamed and recoloured, and other categories can be merged into them — but they can't be deleted.
+                Built-in categories can be renamed and recoloured, and other categories can be merged into them — but
+                they can't be deleted.
               </Text>
             )}
           </View>
         ) : null}
       </ScrollView>
 
-      <View className="px-5 pt-3" style={{ paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.border }}>
+      <View
+        className="px-5 pt-3"
+        style={{ paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.border }}
+      >
         <PressableScale
           accessibilityRole="button"
           disabled={!trimmed}

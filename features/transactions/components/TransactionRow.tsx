@@ -41,22 +41,13 @@ function RightAction({ onPress }: { onPress: () => void }) {
         style={{ backgroundColor: colors.expense }}
       >
         <Trash2 size={19} color={colors.onAccent} strokeWidth={2.3} />
-        <Text style={{ color: colors.onAccent, fontFamily: fonts.semibold, fontSize: 10, marginTop: 2 }}>
-          Delete
-        </Text>
+        <Text style={{ color: colors.onAccent, fontFamily: fonts.semibold, fontSize: 10, marginTop: 2 }}>Delete</Text>
       </PressableScale>
     </View>
   );
 }
 
-function TransactionRowBase({
-  row,
-  onPress,
-  onDelete,
-  selected = false,
-  selectionMode = false,
-  onLongPress,
-}: Props) {
+function TransactionRowBase({ row, onPress, onDelete, selected = false, selectionMode = false, onLongPress }: Props) {
   const colors = useColors();
   const body = (
     <PressableScale

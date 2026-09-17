@@ -41,7 +41,11 @@ export const SubscriptionCard = memo(function SubscriptionCard({
   const soon = sub.urgency === 'soon';
 
   const countdown =
-    sub.status === 'cancelled' ? 'Cancelled' : sub.status === 'paused' ? 'Paused' : renewalCountdown(sub.daysUntilRenewal);
+    sub.status === 'cancelled'
+      ? 'Cancelled'
+      : sub.status === 'paused'
+        ? 'Paused'
+        : renewalCountdown(sub.daysUntilRenewal);
 
   return (
     <>
@@ -98,12 +102,7 @@ export const SubscriptionCard = memo(function SubscriptionCard({
         </View>
       </PressableScale>
 
-      <ActionSheet
-        visible={menu}
-        sub={sub}
-        onClose={() => setMenu(false)}
-        actions={actions}
-      />
+      <ActionSheet visible={menu} sub={sub} onClose={() => setMenu(false)} actions={actions} />
     </>
   );
 });
@@ -141,7 +140,11 @@ function ActionSheet({
           >
             <View className="mb-2 items-center py-2">
               <View className="h-1 w-10 rounded-full" style={{ backgroundColor: colors.borderStrong }} />
-              <Text numberOfLines={1} className="mt-3" style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
+              <Text
+                numberOfLines={1}
+                className="mt-3"
+                style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}
+              >
                 {sub.name}
               </Text>
             </View>

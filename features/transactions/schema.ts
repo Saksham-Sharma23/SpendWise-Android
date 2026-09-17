@@ -37,7 +37,6 @@ export const transactionFormSchema = z.object({
   categoryId: z.number().int().positive().nullable(),
 
   note: z.string().trim().max(MAX_NOTE, `Keep it under ${MAX_NOTE} characters`).optional(),
-
 });
 
 export type TransactionFormValues = z.infer<typeof transactionFormSchema>;

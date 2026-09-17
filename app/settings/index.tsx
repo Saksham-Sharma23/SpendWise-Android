@@ -14,7 +14,13 @@ function SectionLabel({ children }: { children: string }) {
   const colors = useColors();
   return (
     <Text
-      style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 0.8, textTransform: 'uppercase' }}
+      style={{
+        color: colors.muted,
+        fontFamily: fonts.semibold,
+        fontSize: 12,
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
+      }}
     >
       {children}
     </Text>
@@ -48,7 +54,9 @@ export default function SettingsScreen() {
                 <Trash2 size={18} color={colors.expense} />
               </View>
               <View className="flex-1">
-                <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}>Recently deleted</Text>
+                <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}>
+                  Recently deleted
+                </Text>
                 <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
                   Restore a deleted transaction within {RETENTION_DAYS} days
                 </Text>
@@ -94,7 +102,10 @@ export default function SettingsScreen() {
             style={{ backgroundColor: colors.primarySoft, borderColor: colors.primaryBorder }}
           >
             <Info size={18} color={colors.primary} />
-            <Text className="flex-1" style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 }}>
+            <Text
+              className="flex-1"
+              style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 }}
+            >
               SpendWise has no servers and no internet permission. Everything here stays on this phone.
             </Text>
           </View>

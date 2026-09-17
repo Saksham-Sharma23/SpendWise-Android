@@ -179,7 +179,11 @@ export default function FiltersModal() {
                 >
                   <CategoryIcon icon={c.icon} color={color} size={26} />
                   <Text
-                    style={{ color: on ? colors.foreground : colors.muted, fontFamily: on ? fonts.semibold : fonts.medium, fontSize: 13 }}
+                    style={{
+                      color: on ? colors.foreground : colors.muted,
+                      fontFamily: on ? fonts.semibold : fonts.medium,
+                      fontSize: 13,
+                    }}
                   >
                     {c.name}
                   </Text>
@@ -193,7 +197,10 @@ export default function FiltersModal() {
         </Section>
       </ScrollView>
 
-      <View className="px-5 pt-3" style={{ paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.border }}>
+      <View
+        className="px-5 pt-3"
+        style={{ paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.border }}
+      >
         <PressableScale
           accessibilityRole="button"
           onPress={() => router.back()}

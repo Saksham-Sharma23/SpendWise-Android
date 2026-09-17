@@ -21,7 +21,7 @@ import {
 } from '../../features/budgets/queries';
 import { budgetFormSchema, emptyBudgetForm, toBudgetInput, type BudgetFormValues } from '../../features/budgets/schema';
 import { colorForName } from '../../lib/categoryColor';
-import { getCycleWindow , formatDayMonth } from '../../lib/dates';
+import { getCycleWindow, formatDayMonth } from '../../lib/dates';
 import { paiseToDecimalString } from '../../lib/money';
 import { useToday } from '../../lib/today';
 import { fonts, useColors, withAlpha } from '../../lib/theme';
@@ -284,7 +284,8 @@ export default function BudgetModal() {
 }
 
 function ordinal(n: number): string {
-  const suffix = n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th';
+  const suffix =
+    n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th';
   return `${n}${suffix}`;
 }
 
@@ -308,7 +309,9 @@ function Label({ children }: { children: string }) {
 
 function ErrorText({ children }: { children: string }) {
   const colors = useColors();
-  return <Text style={{ color: colors.expense, fontFamily: fonts.medium, fontSize: 12, marginTop: 6 }}>{children}</Text>;
+  return (
+    <Text style={{ color: colors.expense, fontFamily: fonts.medium, fontSize: 12, marginTop: 6 }}>{children}</Text>
+  );
 }
 
 function RoundButton({

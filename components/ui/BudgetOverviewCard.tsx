@@ -39,7 +39,10 @@ export function BudgetOverviewCard({ items, overCount, onOpen }: Props) {
         className="flex-row items-center gap-3 rounded-3xl border p-4"
         style={{ backgroundColor: colors.card, borderColor: colors.border }}
       >
-        <View className="h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: colors.primarySoft }}>
+        <View
+          className="h-11 w-11 items-center justify-center rounded-2xl"
+          style={{ backgroundColor: colors.primarySoft }}
+        >
           <PiggyBank size={21} color={colors.primary} />
         </View>
         <View className="flex-1">
@@ -60,11 +63,12 @@ export function BudgetOverviewCard({ items, overCount, onOpen }: Props) {
           Budgets
         </Text>
         {overCount > 0 ? (
-          <View className="mr-2 flex-row items-center gap-1 rounded-full px-2 py-0.5" style={{ backgroundColor: colors.expenseSoft }}>
+          <View
+            className="mr-2 flex-row items-center gap-1 rounded-full px-2 py-0.5"
+            style={{ backgroundColor: colors.expenseSoft }}
+          >
             <TriangleAlert size={11} color={colors.expense} />
-            <Text style={{ color: colors.expense, fontFamily: fonts.semibold, fontSize: 10 }}>
-              {overCount} over
-            </Text>
+            <Text style={{ color: colors.expense, fontFamily: fonts.semibold, fontSize: 10 }}>{overCount} over</Text>
           </View>
         ) : null}
         <ChevronRight size={18} color={colors.muted} />
@@ -95,7 +99,12 @@ export function BudgetOverviewCard({ items, overCount, onOpen }: Props) {
             <View className="mt-1 rounded-full px-1.5 py-0.5" style={{ backgroundColor: softToneFor(b.state) }}>
               <Text
                 numberOfLines={1}
-                style={{ color: toneFor(b.state), fontFamily: fonts.medium, fontSize: 9, fontVariant: ['tabular-nums'] }}
+                style={{
+                  color: toneFor(b.state),
+                  fontFamily: fonts.medium,
+                  fontSize: 9,
+                  fontVariant: ['tabular-nums'],
+                }}
               >
                 {formatINRCompact(b.spentPaise)}
               </Text>

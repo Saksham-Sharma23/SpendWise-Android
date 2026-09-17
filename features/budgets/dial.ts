@@ -113,7 +113,12 @@ export function turnToPaise(turn: Angle, scale: DialScale): number {
  * value on release. Keeping rotation as the single source of truth is what
  * makes the dial track the finger exactly.
  */
-export function advance(fromTurn: Angle, previous: Angle, next: Angle, scale: DialScale): { turn: Angle; paise: number } {
+export function advance(
+  fromTurn: Angle,
+  previous: Angle,
+  next: Angle,
+  scale: DialScale,
+): { turn: Angle; paise: number } {
   const turn = Math.max(0, fromTurn + shortestDelta(previous, next));
   return { turn, paise: turnToPaise(turn, scale) };
 }

@@ -98,7 +98,13 @@ function Figure({ label, color, paise }: { label: string; color: string; paise: 
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit
-        style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 16, marginTop: 3, fontVariant: ['tabular-nums'] }}
+        style={{
+          color: colors.foreground,
+          fontFamily: fonts.bold,
+          fontSize: 16,
+          marginTop: 3,
+          fontVariant: ['tabular-nums'],
+        }}
       >
         {/* Crore-scale month totals switch to the compact form so they fit. */}
         {paise >= 1_00_00_000 * 100 ? formatINRCompact(paise) : formatINR(paise, { whole: true })}

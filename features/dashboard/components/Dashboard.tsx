@@ -11,13 +11,7 @@ import {
 } from 'lucide-react-native';
 import { useEffect, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
-import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { Screen } from '../../../components/layout/Screen';
 import { Welcome } from '../../../components/layout/Welcome';
@@ -91,8 +85,7 @@ export function Dashboard() {
   // ('ok') — while either is pending, show neither, so nothing flashes.
   const hasTx = useHasTransactions();
   const dismissed = useOnboardingDismissed();
-  const showWelcome =
-    hasTx.status === 'ok' && dismissed.status === 'ok' && !hasTx.data && !dismissed.data;
+  const showWelcome = hasTx.status === 'ok' && dismissed.status === 'ok' && !hasTx.data && !dismissed.data;
 
   return (
     <Screen
@@ -337,15 +330,18 @@ function TopCategories({ today, expensePaise }: { today: ISODate; expensePaise: 
 
   return (
     <Card className="p-5">
-      <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>
-        Where it went
-      </Text>
+      <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>Where it went</Text>
       <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
         Top categories this month
       </Text>
       <View className="mt-4 gap-4">
         {top.map((c, i) => (
-          <CategoryBar key={c.id ?? 'none'} item={c} share={expensePaise > 0 ? c.totalPaise / expensePaise : 0} index={i} />
+          <CategoryBar
+            key={c.id ?? 'none'}
+            item={c}
+            share={expensePaise > 0 ? c.totalPaise / expensePaise : 0}
+            index={i}
+          />
         ))}
       </View>
     </Card>
@@ -366,10 +362,20 @@ function CategoryBar({ item, share, index }: { item: CategorySpend; share: numbe
       <CategoryIcon icon={item.icon} color={item.color} size={38} />
       <View className="flex-1">
         <View className="flex-row items-baseline justify-between">
-          <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14, flexShrink: 1 }}>
+          <Text
+            numberOfLines={1}
+            style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14, flexShrink: 1 }}
+          >
             {item.name ?? 'Uncategorised'}
           </Text>
-          <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14, fontVariant: ['tabular-nums'] }}>
+          <Text
+            style={{
+              color: colors.foreground,
+              fontFamily: fonts.semibold,
+              fontSize: 14,
+              fontVariant: ['tabular-nums'],
+            }}
+          >
             {formatINR(item.totalPaise, { whole: true })}
           </Text>
         </View>
@@ -394,11 +400,13 @@ function RecentTransactions() {
   return (
     <Card className="px-5 pb-2 pt-5">
       <View className="flex-row items-center justify-between">
-        <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>
-          Recent transactions
-        </Text>
+        <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>Recent transactions</Text>
         {rows.length > 0 ? (
-          <PressableScale accessibilityRole="button" onPress={() => router.push('/(tabs)/transactions')} className="py-1 pl-3">
+          <PressableScale
+            accessibilityRole="button"
+            onPress={() => router.push('/(tabs)/transactions')}
+            className="py-1 pl-3"
+          >
             <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 13 }}>View all</Text>
           </PressableScale>
         ) : null}
@@ -409,9 +417,7 @@ function RecentTransactions() {
         <View style={{ height: 120 }} />
       ) : rows.length === 0 ? (
         <View className="items-center py-8">
-          <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13 }}>
-            Nothing here yet.
-          </Text>
+          <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13 }}>Nothing here yet.</Text>
           <PressableScale
             accessibilityRole="button"
             onPress={() => router.push('/(modals)/transaction')}

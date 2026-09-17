@@ -34,12 +34,21 @@ export function FriendDetail({ personId }: { personId: number }) {
   const direct = [...hub.groupsById.values()].find((g) => g.directPersonId === personId);
   const activity = useGroupActivity(direct?.id ?? -1, hub.selfId, limit);
 
-  if (status === 'pending') return <Screen back title="">{null}</Screen>;
+  if (status === 'pending')
+    return (
+      <Screen back title="">
+        {null}
+      </Screen>
+    );
   if (!person || person.deletedAt != null || !entry) {
     return (
       <Screen back title="Friend">
         <View className="px-5">
-          <EmptyState icon={UserX} title="This friend is gone" description="They may have been removed. Undo from the toast, or go back." />
+          <EmptyState
+            icon={UserX}
+            title="This friend is gone"
+            description="They may have been removed. Undo from the toast, or go back."
+          />
         </View>
       </Screen>
     );
@@ -56,9 +65,14 @@ export function FriendDetail({ personId }: { personId: number }) {
     <Screen
       back
       title={person.name}
-      subtitle={shared.length > 0 ? `In ${shared.length} ${shared.length === 1 ? 'group' : 'groups'} with you` : 'Friend'}
+      subtitle={
+        shared.length > 0 ? `In ${shared.length} ${shared.length === 1 ? 'group' : 'groups'} with you` : 'Friend'
+      }
       right={
-        <RoundButton label="Edit friend" onPress={() => router.push({ pathname: '/(modals)/friend', params: { id: String(personId) } })}>
+        <RoundButton
+          label="Edit friend"
+          onPress={() => router.push({ pathname: '/(modals)/friend', params: { id: String(personId) } })}
+        >
           <Pencil size={17} color={colors.foreground} />
         </RoundButton>
       }
@@ -68,10 +82,21 @@ export function FriendDetail({ personId }: { personId: number }) {
           <Card variant="accent" className="flex-row items-center gap-4 p-5">
             <Avatar name={person.name} size={56} />
             <View className="flex-1">
-              <Text style={{ color: toneColor(headline.tone, colors), fontFamily: fonts.bold, fontSize: 20, letterSpacing: -0.4 }}>
-                {headline.tone === 'none' ? 'All settled up' : headline.text.charAt(0).toUpperCase() + headline.text.slice(1)}
+              <Text
+                style={{
+                  color: toneColor(headline.tone, colors),
+                  fontFamily: fonts.bold,
+                  fontSize: 20,
+                  letterSpacing: -0.4,
+                }}
+              >
+                {headline.tone === 'none'
+                  ? 'All settled up'
+                  : headline.text.charAt(0).toUpperCase() + headline.text.slice(1)}
               </Text>
-              <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>Across everything you share</Text>
+              <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
+                Across everything you share
+              </Text>
             </View>
           </Card>
         </Animated.View>
@@ -101,12 +126,28 @@ export function FriendDetail({ personId }: { personId: number }) {
                     className="flex-row items-center gap-3 px-4 py-3"
                     style={i === 0 ? undefined : { borderTopWidth: 1, borderTopColor: colors.border }}
                   >
-                    <CategoryIcon icon={g.icon ?? deterministicIcon(g.name)} color={deterministicColor(g.name)} size={38} />
+                    <CategoryIcon
+                      icon={g.icon ?? deterministicIcon(g.name)}
+                      color={deterministicColor(g.name)}
+                      size={38}
+                    />
                     <View className="flex-1">
-                      <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}>
+                      <Text
+                        numberOfLines={1}
+                        style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}
+                      >
                         {g.name}
                       </Text>
-                      <Text style={{ color: toneColor(line.tone, colors), fontFamily: fonts.medium, fontSize: 12, marginTop: 1 }}>{line.text}</Text>
+                      <Text
+                        style={{
+                          color: toneColor(line.tone, colors),
+                          fontFamily: fonts.medium,
+                          fontSize: 12,
+                          marginTop: 1,
+                        }}
+                      >
+                        {line.text}
+                      </Text>
                     </View>
                     <ChevronRight size={17} color={colors.subtle} />
                   </PressableScale>

@@ -118,7 +118,7 @@ describe('getCycleWindow — budget cycles', () => {
     expect(w.end).toBe('2026-04-14');
   });
 
-  it('uses last month\'s start when today precedes the reset day', () => {
+  it("uses last month's start when today precedes the reset day", () => {
     const w = getCycleWindow(15, '2026-03-10');
     expect(w.start).toBe('2026-02-15');
     expect(w.end).toBe('2026-03-14');

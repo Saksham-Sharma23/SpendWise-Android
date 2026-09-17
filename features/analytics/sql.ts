@@ -19,7 +19,6 @@ import type * as schema from '../../db/schema';
  * partial, and a query that omits the predicate cannot use it.
  */
 
- 
 export type AnalyticsDb = BaseSQLiteDatabase<'sync' | 'async', any, typeof schema>;
 
 const live = isNull(transactions.deletedAt);
@@ -116,12 +115,7 @@ export function categoryTotalsQuery(db: AnalyticsDb, fromMonth: string, toMonth:
     .from(transactions)
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
     .where(
-      and(
-        live,
-        eq(transactions.type, 'expense'),
-        gte(transactions.month, fromMonth),
-        lte(transactions.month, toMonth),
-      ),
+      and(live, eq(transactions.type, 'expense'), gte(transactions.month, fromMonth), lte(transactions.month, toMonth)),
     )
     .groupBy(transactions.categoryId)
     .orderBy(desc(total), asc(categories.name));

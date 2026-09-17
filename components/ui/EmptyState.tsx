@@ -34,10 +34,7 @@ export function EmptyState({ icon: Icon, title, description, action, secondary, 
       >
         <Icon size={28} color={colors.primary} strokeWidth={1.8} />
       </View>
-      <Text
-        className="text-center text-lg"
-        style={{ color: colors.foreground, fontFamily: fonts.semibold }}
-      >
+      <Text className="text-center text-lg" style={{ color: colors.foreground, fontFamily: fonts.semibold }}>
         {title}
       </Text>
       <Text

@@ -73,7 +73,10 @@ export const SNAPSHOT_PREFIX = 'pre-migration-';
 
 /** Snapshot file name for a migration run: `pre-migration-0005-20260914T101112.db`. */
 export function snapshotName(latestIdx: number, at: Date): string {
-  const stamp = at.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, '');
+  const stamp = at
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}Z$/, '');
   return `${SNAPSHOT_PREFIX}${String(latestIdx).padStart(4, '0')}-${stamp}.db`;
 }
 

@@ -47,7 +47,13 @@ export function friendShort(netPaise: number): Phrase {
 }
 
 /** A who-owes-whom line between any two members, from your point of view where you are one of them. */
-export function transferLine(fromName: string, toName: string, paise: number, fromIsYou: boolean, toIsYou: boolean): Phrase {
+export function transferLine(
+  fromName: string,
+  toName: string,
+  paise: number,
+  fromIsYou: boolean,
+  toIsYou: boolean,
+): Phrase {
   if (fromIsYou) return { text: `You owe ${toName} ${money(paise)}`, tone: 'bad' };
   if (toIsYou) return { text: `${fromName} owes you ${money(paise)}`, tone: 'good' };
   return { text: `${fromName} owes ${toName} ${money(paise)}`, tone: 'none' };
@@ -70,7 +76,13 @@ export function paidLine(leadName: string | null, leadIsYou: boolean, payerCount
 }
 
 /** A settlement row: "Chirag paid you ₹1,000". */
-export function settlementLine(fromName: string, toName: string, paise: number, fromIsYou: boolean, toIsYou: boolean): string {
+export function settlementLine(
+  fromName: string,
+  toName: string,
+  paise: number,
+  fromIsYou: boolean,
+  toIsYou: boolean,
+): string {
   const from = fromIsYou ? 'You' : fromName;
   const to = toIsYou ? 'you' : toName;
   return `${from} paid ${to} ${money(paise)}`;

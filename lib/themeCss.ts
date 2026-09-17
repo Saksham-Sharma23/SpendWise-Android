@@ -110,13 +110,7 @@ function block(selector: string, palette: Palette, label: string): string {
     const comment = note ? `    /* ${note} */\n` : '';
     return `${comment}    ${css}: ${hexToHslTriple(String(value))};`;
   });
-  return [
-    `  /* ${label} */`,
-    `  ${selector} {`,
-    ...lines,
-    `    --radius: ${RADIUS};`,
-    '  }',
-  ].join('\n');
+  return [`  /* ${label} */`, `  ${selector} {`, ...lines, `    --radius: ${RADIUS};`, '  }'].join('\n');
 }
 
 export function buildThemeCss(palettes: Record<ThemeName, Palette>): string {

@@ -1,12 +1,6 @@
 import { freshDb } from '../../../db/__tests__/support';
 import { UserFacingError } from '../../../lib/db/errors';
-import {
-  buildGroupBalances,
-  friendBalances,
-  planFriendSettlement,
-  yourView,
-  type GroupRef,
-} from '../balances';
+import { buildGroupBalances, friendBalances, planFriendSettlement, yourView, type GroupRef } from '../balances';
 import { expenseNets, netsFromEdges, type Contribution } from '../debts';
 import { splitEqual } from '../split';
 import {
@@ -51,7 +45,13 @@ async function setup() {
   return { ...fresh, w, r, me };
 }
 
-function equalExpense(groupId: number, payer: number, paise: number, among: number[], description = 'Expense'): ExpenseInput {
+function equalExpense(
+  groupId: number,
+  payer: number,
+  paise: number,
+  among: number[],
+  description = 'Expense',
+): ExpenseInput {
   const parts = splitEqual(paise, among.length);
   return {
     groupId,
@@ -129,7 +129,13 @@ describe('the Goa trip, written and read back', () => {
     const rows = await activityQuery(ctx.r, goa, ctx.me, 50);
     expect(rows).toHaveLength(3);
     const hotel = rows.find((x) => x.title === 'Hotel')!;
-    expect(hotel).toMatchObject({ kind: 'expense', youPaidPaise: 6_000_00, youOwePaise: 2_000_00, leadPayerId: ctx.me, payerCount: 1 });
+    expect(hotel).toMatchObject({
+      kind: 'expense',
+      youPaidPaise: 6_000_00,
+      youOwePaise: 2_000_00,
+      leadPayerId: ctx.me,
+      payerCount: 1,
+    });
     const cab = rows.find((x) => x.title === 'Cab')!;
     expect(cab).toMatchObject({ youPaidPaise: 0, youOwePaise: 1_000_00, leadPayerId: bhavna });
   });
@@ -144,7 +150,14 @@ describe('the Goa trip, written and read back', () => {
   });
 
   it('a partial settlement moves the nets and the suggestion', async () => {
-    recordSettlement(ctx.w, { groupId: goa, from: chirag, to: ctx.me, amountPaise: 1_000_00, date: '2026-09-12', note: null });
+    recordSettlement(ctx.w, {
+      groupId: goa,
+      from: chirag,
+      to: ctx.me,
+      amountPaise: 1_000_00,
+      date: '2026-09-12',
+      note: null,
+    });
     const b = await balancesOf(ctx.r, goa, true);
     expect(b.edges).toEqual([{ from: chirag, to: ctx.me, paise: 1_250_00 }]);
     const activity = await activityQuery(ctx.r, goa, ctx.me, 50);
@@ -164,7 +177,11 @@ describe('the Goa trip, written and read back', () => {
     const members = await membersQuery(ctx.r, goa);
     expect(members.map((m) => m.name)).toEqual(['You', 'Chirag']);
     const groups = await groupsQuery(ctx.r);
-    expect(groups.find((g) => g.id === goa)).toMatchObject({ name: 'Goa 2026', memberCount: 2, lastActivity: '2026-09-12' });
+    expect(groups.find((g) => g.id === goa)).toMatchObject({
+      name: 'Goa 2026',
+      memberCount: 2,
+      lastActivity: '2026-09-12',
+    });
   });
 
   it('delete and undo an expense', async () => {
@@ -205,7 +222,9 @@ describe('expense validation', () => {
   });
 
   it('rejects someone who is not in the group', () => {
-    expect(() => saveExpense(ctx.w, equalExpense(group, ctx.me, 1_000, [ctx.me, outsider]))).toThrow(/must be in the group/);
+    expect(() => saveExpense(ctx.w, equalExpense(group, ctx.me, 1_000, [ctx.me, outsider]))).toThrow(
+      /must be in the group/,
+    );
   });
 
   it('rejects zero, fractional and missing values', () => {
@@ -227,7 +246,11 @@ describe('expense validation', () => {
     // Now Rahul paid it all and it was only for you.
     saveExpense(
       ctx.w,
-      { ...equalExpense(group, rahul, 1_000, [ctx.me]), splitMethod: 'exact', shares: [{ personId: ctx.me, paise: 1_000, input: 1_000 }] },
+      {
+        ...equalExpense(group, rahul, 1_000, [ctx.me]),
+        splitMethod: 'exact',
+        shares: [{ personId: ctx.me, paise: 1_000, input: 1_000 }],
+      },
       id,
     );
     const nets = await netsQuery(ctx.r, group);
@@ -318,7 +341,14 @@ describe('friends across groups', () => {
     const soloDirect = getOrCreateDirectGroup(ctx.w, solo);
     saveExpense(ctx.w, equalExpense(soloDirect, ctx.me, 200, [ctx.me, solo]));
     expect(() => deletePerson(ctx.w, solo)).toThrow(/Settle up with Solo/);
-    recordSettlement(ctx.w, { groupId: soloDirect, from: solo, to: ctx.me, amountPaise: 100, date: '2026-09-15', note: null });
+    recordSettlement(ctx.w, {
+      groupId: soloDirect,
+      from: solo,
+      to: ctx.me,
+      amountPaise: 100,
+      date: '2026-09-15',
+      note: null,
+    });
     deletePerson(ctx.w, solo);
     expect((await groupsQuery(ctx.r)).some((g) => g.id === soloDirect)).toBe(false);
   });

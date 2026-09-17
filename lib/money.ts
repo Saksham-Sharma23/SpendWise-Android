@@ -233,7 +233,10 @@ export function parseAmountToPaise(raw: unknown): number | null {
   s = s.replace(/(DR|CR)(?![A-Z])/gi, '');
 
   // Currency symbols, words, and spaces.
-  s = s.replace(/[₹$€£]/g, '').replace(/\b(INR|RS\.?)\b/gi, '').replace(/\s/g, '');
+  s = s
+    .replace(/[₹$€£]/g, '')
+    .replace(/\b(INR|RS\.?)\b/gi, '')
+    .replace(/\s/g, '');
 
   if (s.startsWith('-')) {
     negative = true;

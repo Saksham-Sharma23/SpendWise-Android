@@ -47,7 +47,9 @@ export function RenewalsCard({ renewals, onOpenTracker }: Props) {
             <CalendarClock size={19} color={accent('violet')} />
           </View>
           <View className="flex-1">
-            <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}>No subscriptions yet</Text>
+            <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}>
+              No subscriptions yet
+            </Text>
             <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
               Track Netflix, rent or the gym and see what renews next
             </Text>
@@ -65,7 +67,10 @@ export function RenewalsCard({ renewals, onOpenTracker }: Props) {
               >
                 <CategoryIcon icon={r.categoryIcon ?? 'repeat'} color={r.categoryColor ?? accent('violet')} size={40} />
                 <View className="flex-1 pr-2">
-                  <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}
+                  >
                     {r.name}
                   </Text>
                   <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
@@ -73,14 +78,23 @@ export function RenewalsCard({ renewals, onOpenTracker }: Props) {
                   </Text>
                 </View>
                 <View className="items-end">
-                  <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 14, fontVariant: ['tabular-nums'] }}>
+                  <Text
+                    style={{
+                      color: colors.foreground,
+                      fontFamily: fonts.bold,
+                      fontSize: 14,
+                      fontVariant: ['tabular-nums'],
+                    }}
+                  >
                     {formatINR(r.amountPaise, { whole: true })}
                   </Text>
                   <View
                     className="mt-1 rounded-full px-2 py-0.5"
                     style={{ backgroundColor: withAlpha(soon ? colors.warning : colors.muted, 0.14) }}
                   >
-                    <Text style={{ color: soon ? colors.warning : colors.muted, fontFamily: fonts.semibold, fontSize: 10 }}>
+                    <Text
+                      style={{ color: soon ? colors.warning : colors.muted, fontFamily: fonts.semibold, fontSize: 10 }}
+                    >
                       {renewalCountdown(r.daysUntil)}
                     </Text>
                   </View>

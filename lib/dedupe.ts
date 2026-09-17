@@ -53,11 +53,7 @@ function fnv1a(input: string, seed = 0x811c9dc5): number {
  * Two hashes are combined so that near-collisions in one do not produce a
  * false duplicate on their own.
  */
-export function makeDedupeHash(
-  date: string,
-  amountPaise: number,
-  note: string | null | undefined,
-): string {
+export function makeDedupeHash(date: string, amountPaise: number, note: string | null | undefined): string {
   const base = `${date}|${amountPaise}|${normalizeNote(note)}`;
   // Two independent seeds give a 64-bit key from a 32-bit hash. Using the
   // same seed twice would only repeat the first value and halve the space.

@@ -52,7 +52,9 @@ export const categories = sqliteTable(
      * Which form offers this category. 'both' is the default so a category the
      * user creates is never hidden from either type.
      */
-    kind: text('kind', { enum: ['expense', 'income', 'both'] }).notNull().default('both'),
+    kind: text('kind', { enum: ['expense', 'income', 'both'] })
+      .notNull()
+      .default('both'),
     /** Seeded on first launch; system rows are protected from deletion. */
     isSystem: integer('is_system', { mode: 'boolean' }).notNull().default(false),
     createdAt: text('created_at').notNull().default(nowDefault),
@@ -139,12 +141,16 @@ export const transactions = sqliteTable(
     // makes it exactly `ORDER BY date DESC, id DESC`, so keyset pages
     // `(date, id) < (?, ?)` are a range scan with no sort step. Queries must
     // include `deleted_at IS NULL` for SQLite to pick a partial index.
-    index('tx_ledger_idx').on(t.date).where(sql`deleted_at IS NULL`),
+    index('tx_ledger_idx')
+      .on(t.date)
+      .where(sql`deleted_at IS NULL`),
     // Month aggregates (trend, summaries). Ordered by month, so `GROUP BY month`
     // needs no temporary B-tree (200k rows: 146 ms → 33 ms in Node). SQLite does
     // not treat an index on a VIRTUAL column as covering, so rows are still read.
     // Queries must filter and group on `month` (not substr(date,…)) to use it.
-    index('tx_month_idx').on(t.month, t.type, t.amountPaise).where(sql`deleted_at IS NULL`),
+    index('tx_month_idx')
+      .on(t.month, t.type, t.amountPaise)
+      .where(sql`deleted_at IS NULL`),
     index('tx_cat_idx').on(t.categoryId, t.date),
     index('tx_batch_idx').on(t.importBatchId),
     index('tx_dedupe_idx').on(t.dedupeHash),
@@ -178,7 +184,9 @@ export const budgets = sqliteTable(
   (t) => [
     uniqueIndex('budget_uid_unique').on(t.uid),
     // One LIVE budget per category; a deleted budget never blocks a new one.
-    uniqueIndex('budget_cat_unique').on(t.categoryId).where(sql`deleted_at IS NULL`),
+    uniqueIndex('budget_cat_unique')
+      .on(t.categoryId)
+      .where(sql`deleted_at IS NULL`),
   ],
 );
 
@@ -212,10 +220,7 @@ export const subscriptions = sqliteTable(
     createdAt: text('created_at').notNull().default(nowDefault),
     deletedAt: text('deleted_at'),
   },
-  (t) => [
-    uniqueIndex('sub_uid_unique').on(t.uid),
-    index('sub_status_idx').on(t.status, t.deletedAt),
-  ],
+  (t) => [uniqueIndex('sub_uid_unique').on(t.uid), index('sub_status_idx').on(t.status, t.deletedAt)],
 );
 
 // ---------------------------------------------------------------------------
@@ -247,7 +252,9 @@ export const people = sqliteTable(
   (t) => [
     uniqueIndex('people_uid_unique').on(t.uid),
     // Exactly one "you".
-    uniqueIndex('people_self_unique').on(t.isSelf).where(sql`is_self = 1`),
+    uniqueIndex('people_self_unique')
+      .on(t.isSelf)
+      .where(sql`is_self = 1`),
   ],
 );
 
@@ -273,7 +280,9 @@ export const splitGroups = sqliteTable(
   (t) => [
     uniqueIndex('split_group_uid_unique').on(t.uid),
     // One live direct group per friend.
-    uniqueIndex('split_group_direct_unique').on(t.directPersonId).where(sql`deleted_at IS NULL AND direct_person_id IS NOT NULL`),
+    uniqueIndex('split_group_direct_unique')
+      .on(t.directPersonId)
+      .where(sql`deleted_at IS NULL AND direct_person_id IS NOT NULL`),
   ],
 );
 
@@ -292,7 +301,9 @@ export const groupMembers = sqliteTable(
     deletedAt: text('deleted_at'),
   },
   (t) => [
-    uniqueIndex('group_member_unique').on(t.groupId, t.personId).where(sql`deleted_at IS NULL`),
+    uniqueIndex('group_member_unique')
+      .on(t.groupId, t.personId)
+      .where(sql`deleted_at IS NULL`),
     index('group_member_person_idx').on(t.personId),
   ],
 );
@@ -320,7 +331,9 @@ export const splitExpenses = sqliteTable(
   },
   (t) => [
     uniqueIndex('split_expense_uid_unique').on(t.uid),
-    index('split_expense_group_idx').on(t.groupId, t.date).where(sql`deleted_at IS NULL`),
+    index('split_expense_group_idx')
+      .on(t.groupId, t.date)
+      .where(sql`deleted_at IS NULL`),
   ],
 );
 
@@ -407,7 +420,9 @@ export const settlements = sqliteTable(
   },
   (t) => [
     uniqueIndex('settlement_uid_unique').on(t.uid),
-    index('settlement_group_idx').on(t.groupId, t.date).where(sql`deleted_at IS NULL`),
+    index('settlement_group_idx')
+      .on(t.groupId, t.date)
+      .where(sql`deleted_at IS NULL`),
   ],
 );
 

@@ -23,7 +23,10 @@ describe('Groups wording', () => {
   it('who owes whom, from your point of view', () => {
     expect(transferLine('You', 'Aarav', 500_00, true, false)).toEqual({ text: 'You owe Aarav ₹500', tone: 'bad' });
     expect(transferLine('Chirag', 'You', 500_00, false, true)).toEqual({ text: 'Chirag owes you ₹500', tone: 'good' });
-    expect(transferLine('Chirag', 'Aarav', 500_00, false, false)).toEqual({ text: 'Chirag owes Aarav ₹500', tone: 'none' });
+    expect(transferLine('Chirag', 'Aarav', 500_00, false, false)).toEqual({
+      text: 'Chirag owes Aarav ₹500',
+      tone: 'none',
+    });
   });
 
   it('what an expense did to your balance', () => {

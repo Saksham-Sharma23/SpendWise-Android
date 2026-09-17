@@ -34,7 +34,9 @@ export function SectionLabel({ children }: { children: string }) {
 
 export function ErrorText({ children }: { children: string }) {
   const colors = useColors();
-  return <Text style={{ color: colors.expense, fontFamily: fonts.medium, fontSize: 12, marginTop: 6 }}>{children}</Text>;
+  return (
+    <Text style={{ color: colors.expense, fontFamily: fonts.medium, fontSize: 12, marginTop: 6 }}>{children}</Text>
+  );
 }
 
 export function RoundButton({
@@ -74,7 +76,17 @@ export function RoundButton({
 }
 
 /** A pill action under a header: "Settle up", "Balances", "Totals". */
-export function ActionPill({ icon: Icon, label, onPress, primary = false }: { icon: LucideIcon; label: string; onPress: () => void; primary?: boolean }) {
+export function ActionPill({
+  icon: Icon,
+  label,
+  onPress,
+  primary = false,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onPress: () => void;
+  primary?: boolean;
+}) {
   const colors = useColors();
   return (
     <PressableScale
@@ -89,23 +101,42 @@ export function ActionPill({ icon: Icon, label, onPress, primary = false }: { ic
       }
     >
       <Icon size={15} color={primary ? colors.onPrimary : colors.foreground} strokeWidth={2.3} />
-      <Text style={{ color: primary ? colors.onPrimary : colors.foreground, fontFamily: fonts.semibold, fontSize: 13 }}>{label}</Text>
+      <Text style={{ color: primary ? colors.onPrimary : colors.foreground, fontFamily: fonts.semibold, fontSize: 13 }}>
+        {label}
+      </Text>
     </PressableScale>
   );
 }
 
 /** The big floating "Add expense" button at the bottom of a Groups screen. */
-export function FloatingAction({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+export function FloatingAction({
+  icon: Icon,
+  label,
+  onPress,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onPress: () => void;
+}) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   return (
-    <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: insets.bottom + 18, alignItems: 'center' }}>
+    <View
+      pointerEvents="box-none"
+      style={{ position: 'absolute', left: 0, right: 0, bottom: insets.bottom + 18, alignItems: 'center' }}
+    >
       <PressableScale
         accessibilityRole="button"
         onPress={onPress}
         scaleTo={0.94}
         className="flex-row items-center gap-2 rounded-full px-6 py-4"
-        style={{ backgroundColor: colors.primary, shadowColor: colors.shadow, shadowOpacity: colors.shadowOpacity, shadowRadius: 12, elevation: 6 }}
+        style={{
+          backgroundColor: colors.primary,
+          shadowColor: colors.shadow,
+          shadowOpacity: colors.shadowOpacity,
+          shadowRadius: 12,
+          elevation: 6,
+        }}
       >
         <Icon size={19} color={colors.onPrimary} strokeWidth={2.5} />
         <Text style={{ color: colors.onPrimary, fontFamily: fonts.bold, fontSize: 15 }}>{label}</Text>
@@ -148,7 +179,11 @@ export function FormSheet({
   if (!visible) return null;
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-      <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(160)} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+      <Animated.View
+        entering={FadeIn.duration(180)}
+        exiting={FadeOut.duration(160)}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close"
@@ -173,11 +208,19 @@ export function FormSheet({
           </View>
           <View className="flex-row items-center justify-between px-5 pb-2 pt-3">
             <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 18 }}>{title}</Text>
-            <PressableScale accessibilityRole="button" onPress={onClose} className="rounded-full px-4 py-2" style={{ backgroundColor: colors.primary }}>
+            <PressableScale
+              accessibilityRole="button"
+              onPress={onClose}
+              className="rounded-full px-4 py-2"
+              style={{ backgroundColor: colors.primary }}
+            >
               <Text style={{ color: colors.onPrimary, fontFamily: fonts.semibold, fontSize: 14 }}>Done</Text>
             </PressableScale>
           </View>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}
+          >
             {children}
           </ScrollView>
           {footer ? <View className="px-5 pt-2">{footer}</View> : null}

@@ -15,21 +15,39 @@ describe('buildInsight', () => {
   });
 
   it('warns first when spending exceeds income', () => {
-    const i = buildInsight({ ...base, count: 5, incomePaise: r(10000), expensePaise: r(12500), lastExpenseToDatePaise: r(20000) });
+    const i = buildInsight({
+      ...base,
+      count: 5,
+      incomePaise: r(10000),
+      expensePaise: r(12500),
+      lastExpenseToDatePaise: r(20000),
+    });
     expect(i.tone).toBe('warn');
     expect(i.title).toBe('Spending more than you earned');
     expect(i.body).toContain('₹2,500');
   });
 
   it('praises a slower pace than last month, month-to-date', () => {
-    const i = buildInsight({ ...base, count: 5, incomePaise: r(50000), expensePaise: r(8000), lastExpenseToDatePaise: r(10000) });
+    const i = buildInsight({
+      ...base,
+      count: 5,
+      incomePaise: r(50000),
+      expensePaise: r(8000),
+      lastExpenseToDatePaise: r(10000),
+    });
     expect(i).toMatchObject({ tone: 'good', title: '20% less than last month' });
     expect(i.body).toContain('₹8,000');
     expect(i.body).toContain('₹10,000');
   });
 
   it('warns about a faster pace', () => {
-    const i = buildInsight({ ...base, count: 5, incomePaise: r(50000), expensePaise: r(12000), lastExpenseToDatePaise: r(10000) });
+    const i = buildInsight({
+      ...base,
+      count: 5,
+      incomePaise: r(50000),
+      expensePaise: r(12000),
+      lastExpenseToDatePaise: r(10000),
+    });
     expect(i).toMatchObject({ tone: 'warn', title: '20% more than last month' });
   });
 

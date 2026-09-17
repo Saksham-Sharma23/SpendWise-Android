@@ -30,13 +30,7 @@ import { idsNotInPages, keyOf, stalePages, type OlderPage } from './pages';
  * it stays testable in Node.
  */
 
-export {
-  EMPTY_FILTERS,
-  buildWhere,
-  currentMonthFilters,
-  hasActiveFilters,
-  type TransactionFilters,
-} from './filters';
+export { EMPTY_FILTERS, buildWhere, currentMonthFilters, hasActiveFilters, type TransactionFilters } from './filters';
 
 // ---------------------------------------------------------------------------
 // Reads
@@ -298,11 +292,7 @@ export function useTransactionSummary(filters: TransactionFilters) {
  * they are going into a file, not into a sum. Paging keeps a 50k-row export
  * from materialising every row in memory at once.
  */
-export function getTransactionsPage(
-  filters: TransactionFilters,
-  limit: number,
-  offset: number,
-): TransactionRow[] {
+export function getTransactionsPage(filters: TransactionFilters, limit: number, offset: number): TransactionRow[] {
   return db
     .select(listColumns)
     .from(transactions)

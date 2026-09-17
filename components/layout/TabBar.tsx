@@ -43,7 +43,6 @@ const PILL_HEIGHT = BAR_HEIGHT - PAD * 2;
  */
 const MAX_STRETCH = 0.5;
 
-
 /** The droplet's two springs: a quick leading edge and a lazy trailing one. */
 const LEAD = { damping: 22, stiffness: 420, mass: 0.8 };
 const TRAIL = { damping: 20, stiffness: 150, mass: 1 };
@@ -160,9 +159,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
    * corners. Half a slot keeps ~50px of flat edge at the extreme — visibly
    * stretched, still unmistakably a droplet.
    */
-  const stretch = useDerivedValue(() =>
-    Math.min(Math.abs(lead.value - trail.value), slotWidth * MAX_STRETCH),
-  );
+  const stretch = useDerivedValue(() => Math.min(Math.abs(lead.value - trail.value), slotWidth * MAX_STRETCH));
 
   const droplet = useAnimatedStyle(() => {
     const left = Math.min(lead.value, trail.value) - pillWidth / 2;
@@ -238,11 +235,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                 be drawn at that size and the parent's overflow:hidden clips it
                 to whatever the current width is. Always full-bleed, no seam.
               */}
-              <Svg
-                width={maxDropletWidth}
-                height={PILL_HEIGHT}
-                style={{ position: 'absolute', left: 0, top: 0 }}
-              >
+              <Svg width={maxDropletWidth} height={PILL_HEIGHT} style={{ position: 'absolute', left: 0, top: 0 }}>
                 <Defs>
                   <LinearGradient id="dropGloss" x1="0" y1="0" x2="0" y2="1">
                     <Stop offset="0" stopColor="#fff" stopOpacity={0.2} />
@@ -510,13 +503,7 @@ function Tab({
           numberOfLines={1}
           style={{
             color: focused ? colors.primary : colors.foreground,
-            fontFamily: isLight
-              ? focused
-                ? fonts.bold
-                : fonts.semibold
-              : focused
-                ? fonts.semibold
-                : fonts.medium,
+            fontFamily: isLight ? (focused ? fonts.bold : fonts.semibold) : focused ? fonts.semibold : fonts.medium,
             fontSize: 10,
             marginTop: 3,
           }}

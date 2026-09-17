@@ -29,15 +29,7 @@ export const TAB_BAR_CLEARANCE = 120;
  * The standard screen shell: safe-area padding, a large title block and a
  * consistent 20pt gutter. Every screen uses it so spacing is set in one place.
  */
-export function Screen({
-  title,
-  subtitle,
-  eyebrow,
-  children,
-  scroll = true,
-  right,
-  back = false,
-}: ScreenProps) {
+export function Screen({ title, subtitle, eyebrow, children, scroll = true, right, back = false }: ScreenProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();

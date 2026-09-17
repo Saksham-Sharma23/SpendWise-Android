@@ -27,7 +27,7 @@ import {
   type SubscriptionFormValues,
 } from '../../features/tracker/schema';
 import { colorForName } from '../../lib/categoryColor';
-import { addDays, addMonthsClamped, formatDayMonth, getNextRenewal , toMonthlyPaise } from '../../lib/dates';
+import { addDays, addMonthsClamped, formatDayMonth, getNextRenewal, toMonthlyPaise } from '../../lib/dates';
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '../../lib/money';
 import { useToday } from '../../lib/today';
 import { fonts, useColors, withAlpha } from '../../lib/theme';
@@ -186,7 +186,9 @@ export default function SubscriptionModal() {
             name="amount"
             render={({ field }) => (
               <View className="mt-2 flex-row items-center justify-center">
-                <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 34, marginRight: 4 }}>₹</Text>
+                <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 34, marginRight: 4 }}>
+                  ₹
+                </Text>
                 <TextInput
                   value={field.value}
                   onChangeText={field.onChange}
@@ -244,7 +246,11 @@ export default function SubscriptionModal() {
             className="flex-row items-center rounded-2xl border p-1.5"
             style={{ backgroundColor: colors.card, borderColor: colors.border }}
           >
-            <RoundButton label="Previous day" onPress={() => setValue('anchorDate', addDays(anchorDate, -1), { shouldValidate: true })} plain>
+            <RoundButton
+              label="Previous day"
+              onPress={() => setValue('anchorDate', addDays(anchorDate, -1), { shouldValidate: true })}
+              plain
+            >
               <ChevronLeft size={18} color={colors.foreground} />
             </RoundButton>
             <View className="flex-1 flex-row items-center justify-center gap-2">
@@ -253,7 +259,11 @@ export default function SubscriptionModal() {
                 {formatDayMonth(anchorDate)} {anchorDate.slice(0, 4)}
               </Text>
             </View>
-            <RoundButton label="Next day" onPress={() => setValue('anchorDate', addDays(anchorDate, 1), { shouldValidate: true })} plain>
+            <RoundButton
+              label="Next day"
+              onPress={() => setValue('anchorDate', addDays(anchorDate, 1), { shouldValidate: true })}
+              plain
+            >
               <ChevronRight size={18} color={colors.foreground} />
             </RoundButton>
           </View>
@@ -285,7 +295,8 @@ export default function SubscriptionModal() {
           </View>
           {/* Any occurrence will do — show what it works out to, so that is obvious. */}
           <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12, marginTop: 10 }}>
-            Next charge {formatDayMonth(nextRenewal)} {nextRenewal.slice(0, 4)} · past dates are fine, the next one is worked out for you
+            Next charge {formatDayMonth(nextRenewal)} {nextRenewal.slice(0, 4)} · past dates are fine, the next one is
+            worked out for you
           </Text>
           {errors.anchorDate?.message ? <ErrorText>{errors.anchorDate.message}</ErrorText> : null}
         </Animated.View>
@@ -410,7 +421,9 @@ function Label({ children }: { children: string }) {
 
 function ErrorText({ children }: { children: string }) {
   const colors = useColors();
-  return <Text style={{ color: colors.expense, fontFamily: fonts.medium, fontSize: 12, marginTop: 6 }}>{children}</Text>;
+  return (
+    <Text style={{ color: colors.expense, fontFamily: fonts.medium, fontSize: 12, marginTop: 6 }}>{children}</Text>
+  );
 }
 
 function RoundButton({

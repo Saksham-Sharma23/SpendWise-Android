@@ -30,7 +30,15 @@ export function Welcome({ onAdd, onImport, onRestore, onSkip }: Props) {
           >
             <ShieldCheck size={28} color={colors.primary} />
           </View>
-          <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 24, letterSpacing: -0.5, marginTop: 16 }}>
+          <Text
+            style={{
+              color: colors.foreground,
+              fontFamily: fonts.bold,
+              fontSize: 24,
+              letterSpacing: -0.5,
+              marginTop: 16,
+            }}
+          >
             Welcome to SpendWise
           </Text>
           <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, marginTop: 6 }}>
@@ -39,9 +47,31 @@ export function Welcome({ onAdd, onImport, onRestore, onSkip }: Props) {
         </Card>
       </Animated.View>
 
-      <Door index={1} icon={Plus} tint={colors.primary} title="Add your first transaction" hint="Takes about five seconds" onPress={onAdd} primary />
-      <Door index={2} icon={FileSpreadsheet} tint={colors.income} title="Import a spreadsheet" hint="Bring in an Excel or CSV file you already keep" onPress={onImport} />
-      <Door index={3} icon={DatabaseBackup} tint={colors.warning} title="Restore a backup" hint="Moving from another phone" onPress={onRestore} />
+      <Door
+        index={1}
+        icon={Plus}
+        tint={colors.primary}
+        title="Add your first transaction"
+        hint="Takes about five seconds"
+        onPress={onAdd}
+        primary
+      />
+      <Door
+        index={2}
+        icon={FileSpreadsheet}
+        tint={colors.income}
+        title="Import a spreadsheet"
+        hint="Bring in an Excel or CSV file you already keep"
+        onPress={onImport}
+      />
+      <Door
+        index={3}
+        icon={DatabaseBackup}
+        tint={colors.warning}
+        title="Restore a backup"
+        hint="Moving from another phone"
+        onPress={onRestore}
+      />
 
       <Animated.View entering={FadeInDown.delay(320).duration(400)} className="items-center">
         <PressableScale accessibilityRole="button" onPress={onSkip} className="px-4 py-3">
@@ -88,7 +118,9 @@ function Door({
           <Icon size={22} color={primary ? colors.onPrimary : tint} strokeWidth={2.3} />
         </View>
         <View className="flex-1">
-          <Text style={{ color: primary ? colors.onPrimary : colors.foreground, fontFamily: fonts.bold, fontSize: 16 }}>{title}</Text>
+          <Text style={{ color: primary ? colors.onPrimary : colors.foreground, fontFamily: fonts.bold, fontSize: 16 }}>
+            {title}
+          </Text>
           <Text
             style={{
               color: primary ? withAlpha(colors.onPrimary, 0.7) : colors.muted,

@@ -59,7 +59,9 @@ export function BootFailure({ outcome, onRetry }: { outcome: Failure; onRetry: (
       <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, gap: 12 }}>
         <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 22 }}>{TITLES[outcome.kind]}</Text>
-        <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 }}>{outcome.message}</Text>
+        <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 }}>
+          {outcome.message}
+        </Text>
         <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, marginBottom: 8 }}>
           Nothing has been deleted. Save a copy first, then try again.
           {snapshot ? ' A copy of your data from just before the update is also kept on this phone.' : ''}
@@ -82,10 +84,22 @@ export function BootFailure({ outcome, onRetry }: { outcome: Failure; onRetry: (
         <Action label="Try again" busy={false} onPress={onRetry} />
 
         {confirming ? (
-          <View style={{ gap: 8, marginTop: 12, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.expense }}>
-            <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}>Start with an empty app?</Text>
+          <View
+            style={{
+              gap: 8,
+              marginTop: 12,
+              padding: 16,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: colors.expense,
+            }}
+          >
+            <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}>
+              Start with an empty app?
+            </Text>
             <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 }}>
-              Your current data file is moved aside, not deleted, but SpendWise will open empty. Type {CONFIRM_WORD} to confirm.
+              Your current data file is moved aside, not deleted, but SpendWise will open empty. Type {CONFIRM_WORD} to
+              confirm.
             </Text>
             <TextInput
               value={typed}

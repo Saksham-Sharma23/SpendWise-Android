@@ -69,7 +69,10 @@ export function allocate(total: number, weights: readonly number[]): number[] {
 /** Equal shares for `n` people: they differ by at most one paisa, extras to the first listed. */
 export function splitEqual(total: number, n: number): number[] {
   if (!Number.isSafeInteger(n) || n <= 0) throw new Error('An equal split needs at least one person');
-  return allocate(total, Array.from({ length: n }, () => 1));
+  return allocate(
+    total,
+    Array.from({ length: n }, () => 1),
+  );
 }
 
 export type SplitCheck =

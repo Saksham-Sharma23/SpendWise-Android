@@ -47,7 +47,9 @@ describe('reconcileSystemCategories', () => {
     reconcileSystemCategories(db, V1, 1, '1', NOW);
     sqlite.prepare("INSERT INTO categories (name) VALUES ('pets')").run();
     expect(reconcileSystemCategories(db, V2, 2, '1', NOW)).toEqual({ inserted: 0, skipped: false });
-    const pets = sqlite.prepare("SELECT count(*) AS n FROM categories WHERE lower(name) = 'pets'").get() as { n: number };
+    const pets = sqlite.prepare("SELECT count(*) AS n FROM categories WHERE lower(name) = 'pets'").get() as {
+      n: number;
+    };
     expect(pets.n).toBe(1);
   });
 });

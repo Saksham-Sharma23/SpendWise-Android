@@ -13,7 +13,9 @@ import { atOrNewerThan, buildWhere, olderThan, type LedgerKey, type TransactionF
 
 async function makeDb() {
   const { sqlite, db } = await freshDb();
-  db.insert(categories).values([{ id: 1, name: 'Food', uid: 'c1', kind: 'expense' }]).run();
+  db.insert(categories)
+    .values([{ id: 1, name: 'Food', uid: 'c1', kind: 'expense' }])
+    .run();
   // 97 rows over a handful of dates, so many share a date and the id
   // tiebreak is genuinely exercised.
   const rows = Array.from({ length: 97 }, (_, i) => ({

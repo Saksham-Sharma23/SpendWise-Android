@@ -38,12 +38,21 @@ export function GroupDetail({ groupId }: { groupId: number }) {
     }
   }, [group?.directPersonId, router]);
 
-  if (status === 'pending') return <Screen back title="">{null}</Screen>;
+  if (status === 'pending')
+    return (
+      <Screen back title="">
+        {null}
+      </Screen>
+    );
   if (!group) {
     return (
       <Screen back title="Group">
         <View className="px-5">
-          <EmptyState icon={Users} title="This group is gone" description="It may have been deleted. Undo from the toast, or go back to your groups." />
+          <EmptyState
+            icon={Users}
+            title="This group is gone"
+            description="It may have been deleted. Undo from the toast, or go back to your groups."
+          />
         </View>
       </Screen>
     );
@@ -65,7 +74,10 @@ export function GroupDetail({ groupId }: { groupId: number }) {
         title={group.name}
         subtitle={`${group.memberCount} ${group.memberCount === 1 ? 'person' : 'people'}${group.simplifyDebts ? ' · debts simplified' : ''}`}
         right={
-          <RoundButton label="Edit group" onPress={() => router.push({ pathname: '/(modals)/group', params: { id: String(groupId) } })}>
+          <RoundButton
+            label="Edit group"
+            onPress={() => router.push({ pathname: '/(modals)/group', params: { id: String(groupId) } })}
+          >
             <Settings2 size={19} color={colors.foreground} />
           </RoundButton>
         }
@@ -74,13 +86,26 @@ export function GroupDetail({ groupId }: { groupId: number }) {
           <Animated.View entering={FadeInDown.duration(340)}>
             <Card variant="accent" className="p-5">
               <View className="flex-row items-center gap-3">
-                <CategoryIcon icon={group.icon ?? deterministicIcon(group.name)} color={deterministicColor(group.name)} size={48} />
+                <CategoryIcon
+                  icon={group.icon ?? deterministicIcon(group.name)}
+                  color={deterministicColor(group.name)}
+                  size={48}
+                />
                 <View className="flex-1">
-                  <Text style={{ color: toneColor(you.tone, colors), fontFamily: fonts.bold, fontSize: 20, letterSpacing: -0.4 }}>
+                  <Text
+                    style={{
+                      color: toneColor(you.tone, colors),
+                      fontFamily: fonts.bold,
+                      fontSize: 20,
+                      letterSpacing: -0.4,
+                    }}
+                  >
                     {you.text.charAt(0).toUpperCase() + you.text.slice(1)}
                   </Text>
                   {settled && !empty ? (
-                    <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>Everyone is square</Text>
+                    <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
+                      Everyone is square
+                    </Text>
                   ) : null}
                 </View>
                 <AvatarStack people={data.members} />
@@ -93,7 +118,9 @@ export function GroupDetail({ groupId }: { groupId: number }) {
                     </Text>
                   ))}
                   {lines.length > 3 ? (
-                    <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12 }}>and {lines.length - 3} more in Balances</Text>
+                    <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12 }}>
+                      and {lines.length - 3} more in Balances
+                    </Text>
                   ) : null}
                 </View>
               ) : null}
@@ -108,8 +135,16 @@ export function GroupDetail({ groupId }: { groupId: number }) {
                 primary={!settled}
                 onPress={() => router.push({ pathname: '/(modals)/settle-up', params: { groupId: String(groupId) } })}
               />
-              <ActionPill icon={Scale} label="Balances" onPress={() => router.push({ pathname: '/(modals)/balances', params: { groupId: String(groupId) } })} />
-              <ActionPill icon={ChartPie} label="Totals" onPress={() => router.push({ pathname: '/groups/[id]/totals', params: { id: String(groupId) } })} />
+              <ActionPill
+                icon={Scale}
+                label="Balances"
+                onPress={() => router.push({ pathname: '/(modals)/balances', params: { groupId: String(groupId) } })}
+              />
+              <ActionPill
+                icon={ChartPie}
+                label="Totals"
+                onPress={() => router.push({ pathname: '/groups/[id]/totals', params: { id: String(groupId) } })}
+              />
             </ScrollView>
           </Animated.View>
 
@@ -119,7 +154,11 @@ export function GroupDetail({ groupId }: { groupId: number }) {
                 icon={Receipt}
                 title="No expenses yet"
                 description="Add the first one — who paid, and who it was for. Balances update as you go."
-                action={{ label: 'Add an expense', onPress: () => router.push({ pathname: '/(modals)/split-expense', params: { groupId: String(groupId) } }) }}
+                action={{
+                  label: 'Add an expense',
+                  onPress: () =>
+                    router.push({ pathname: '/(modals)/split-expense', params: { groupId: String(groupId) } }),
+                }}
               />
             ) : (
               <ActivityList

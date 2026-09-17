@@ -241,14 +241,7 @@ export function AmountDial({
               ))}
             </G>
 
-            <Circle
-              cx={radius}
-              cy={radius}
-              r={trackRadius}
-              stroke={colors.elevated}
-              strokeWidth={10}
-              fill="none"
-            />
+            <Circle cx={radius} cy={radius} r={trackRadius} stroke={colors.elevated} strokeWidth={10} fill="none" />
             <AnimatedCircle
               cx={radius}
               cy={radius}
@@ -283,7 +276,18 @@ export function AmountDial({
             ]}
           />
 
-          <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            pointerEvents="box-none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              right: 0,
+              bottom: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <PressableScale
               accessibilityRole="button"
               accessibilityLabel={`${label}. Tap to type a figure`}

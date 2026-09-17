@@ -67,14 +67,10 @@ export function Swap({ swapKey, direction = 0, distance = 14, children }: Props)
       return;
     }
     opacity.value = withTiming(0, { duration: half, easing: Easing.in(Easing.quad) });
-    shift.value = withTiming(
-      -direction * distance,
-      { duration: half, easing: Easing.in(Easing.quad) },
-      (finished) => {
-        'worklet';
-        if (finished) scheduleOnRN(commit);
-      },
-    );
+    shift.value = withTiming(-direction * distance, { duration: half, easing: Easing.in(Easing.quad) }, (finished) => {
+      'worklet';
+      if (finished) scheduleOnRN(commit);
+    });
     // `shown.key` is read, not depended on: re-running mid-flight would
     // restart the exit from wherever it had got to.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -41,7 +41,15 @@ export function Avatar({ name, size = 40, isSelf = false, ringed = false }: Prop
 }
 
 /** Overlapping avatars for a group header, capped with a "+3". */
-export function AvatarStack({ people, max = 4, size = 30 }: { people: { name: string; isSelf: boolean }[]; max?: number; size?: number }) {
+export function AvatarStack({
+  people,
+  max = 4,
+  size = 30,
+}: {
+  people: { name: string; isSelf: boolean }[];
+  max?: number;
+  size?: number;
+}) {
   const colors = useColors();
   const shown = people.slice(0, max);
   const extra = people.length - shown.length;
@@ -55,9 +63,18 @@ export function AvatarStack({ people, max = 4, size = 30 }: { people: { name: st
       {extra > 0 ? (
         <View
           className="items-center justify-center rounded-full"
-          style={{ width: size, height: size, marginLeft: -size * 0.3, backgroundColor: colors.elevated, borderWidth: 2, borderColor: colors.card }}
+          style={{
+            width: size,
+            height: size,
+            marginLeft: -size * 0.3,
+            backgroundColor: colors.elevated,
+            borderWidth: 2,
+            borderColor: colors.card,
+          }}
         >
-          <Text style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: Math.round(size * 0.34) }}>+{extra}</Text>
+          <Text style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: Math.round(size * 0.34) }}>
+            +{extra}
+          </Text>
         </View>
       ) : null}
     </View>

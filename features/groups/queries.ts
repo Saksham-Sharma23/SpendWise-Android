@@ -222,11 +222,24 @@ export interface GroupStats {
   count: number;
   yourSharePaise: number;
   youPaidPaise: number;
-  categories: { id: number | null; name: string | null; icon: string | null; color: string | null; totalPaise: number }[];
+  categories: {
+    id: number | null;
+    name: string | null;
+    icon: string | null;
+    color: string | null;
+    totalPaise: number;
+  }[];
   members: { personId: number; owedPaise: number }[];
 }
 
-const EMPTY_STATS: GroupStats = { totalPaise: 0, count: 0, yourSharePaise: 0, youPaidPaise: 0, categories: [], members: [] };
+const EMPTY_STATS: GroupStats = {
+  totalPaise: 0,
+  count: 0,
+  yourSharePaise: 0,
+  youPaidPaise: 0,
+  categories: [],
+  members: [],
+};
 
 export function useGroupStats(groupId: number, selfId: number): DbQueryResult<GroupStats> {
   return useDbQuery(
@@ -280,7 +293,11 @@ export interface ExpenseForEdit {
 }
 
 export function getExpenseForEdit(expenseId: number): ExpenseForEdit | undefined {
-  const [row] = (expenseQuery(w, expenseId) as unknown as { all(): (Omit<ExpenseForEdit, 'payers' | 'shares'> & { deletedAt: string | null })[] }).all();
+  const [row] = (
+    expenseQuery(w, expenseId) as unknown as {
+      all(): (Omit<ExpenseForEdit, 'payers' | 'shares'> & { deletedAt: string | null })[];
+    }
+  ).all();
   if (!row || row.deletedAt != null) return undefined;
   const payers = (expensePayersQuery(w, expenseId) as unknown as { all(): ExpenseForEdit['payers'] }).all();
   const shares = (expenseSharesQuery(w, expenseId) as unknown as { all(): ExpenseForEdit['shares'] }).all();

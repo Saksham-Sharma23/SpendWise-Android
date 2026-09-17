@@ -25,9 +25,7 @@ export function PeriodSummary({ months, stats }: { months: number; stats: DbQuer
 
   return (
     <Card variant="accent" className="p-5">
-      <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>
-        Net · last {months} months
-      </Text>
+      <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>Net · last {months} months</Text>
       <AnimatedAmount
         paise={s.netPaise}
         options={{ whole: true }}
@@ -171,7 +169,10 @@ function Stat({
       <View className="flex-row items-center justify-between">
         <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 12 }}>{label}</Text>
         {leading ?? (
-          <View className="h-8 w-8 items-center justify-center rounded-full" style={{ backgroundColor: withAlpha(tone, 0.14) }}>
+          <View
+            className="h-8 w-8 items-center justify-center rounded-full"
+            style={{ backgroundColor: withAlpha(tone, 0.14) }}
+          >
             <Icon size={15} color={tone} strokeWidth={2.4} />
           </View>
         )}
@@ -182,7 +183,14 @@ function Stat({
         <Text
           numberOfLines={1}
           adjustsFontSizeToFit
-          style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 20, letterSpacing: -0.4, marginTop: 10, fontVariant: ['tabular-nums'] }}
+          style={{
+            color: colors.foreground,
+            fontFamily: fonts.bold,
+            fontSize: 20,
+            letterSpacing: -0.4,
+            marginTop: 10,
+            fontVariant: ['tabular-nums'],
+          }}
         >
           {value}
         </Text>
@@ -197,7 +205,12 @@ function Stat({
 
   if (!onPress) return <View className="flex-1">{body}</View>;
   return (
-    <PressableScale accessibilityRole="button" accessibilityHint="Opens this transaction" onPress={onPress} className="flex-1">
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityHint="Opens this transaction"
+      onPress={onPress}
+      className="flex-1"
+    >
       {body}
     </PressableScale>
   );

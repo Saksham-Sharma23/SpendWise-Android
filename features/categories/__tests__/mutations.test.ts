@@ -26,7 +26,9 @@ const MIGRATIONS_DIR = join(__dirname, '..', '..', '..', 'db', 'migrations');
 function freshDb() {
   const sqlite = new Database(':memory:');
   sqlite.pragma('foreign_keys = ON');
-  for (const f of readdirSync(MIGRATIONS_DIR).filter((x) => x.endsWith('.sql')).sort()) {
+  for (const f of readdirSync(MIGRATIONS_DIR)
+    .filter((x) => x.endsWith('.sql'))
+    .sort()) {
     for (const stmt of readFileSync(join(MIGRATIONS_DIR, f), 'utf8').split('--> statement-breakpoint')) {
       if (stmt.trim()) sqlite.exec(stmt);
     }
@@ -38,7 +40,9 @@ function freshDb() {
 function addSystem(sqlite: Database.Database, name: string): number {
   return Number(
     sqlite
-      .prepare("INSERT INTO categories (name, icon, color, is_system, created_at) VALUES (?, 'tag', '#888888', 1, '2026-01-01')")
+      .prepare(
+        "INSERT INTO categories (name, icon, color, is_system, created_at) VALUES (?, 'tag', '#888888', 1, '2026-01-01')",
+      )
       .run(name).lastInsertRowid,
   );
 }
@@ -57,7 +61,9 @@ function addTx(sqlite: Database.Database, categoryId: number | null, deleted = f
 function addBudget(sqlite: Database.Database, categoryId: number, deleted = false): number {
   return Number(
     sqlite
-      .prepare("INSERT INTO budgets (category_id, limit_paise, reset_day, is_active, created_at, deleted_at) VALUES (?, 500000, 1, 1, 'now', ?)")
+      .prepare(
+        "INSERT INTO budgets (category_id, limit_paise, reset_day, is_active, created_at, deleted_at) VALUES (?, 500000, 1, 1, 'now', ?)",
+      )
       .run(categoryId, deleted ? '2026-09-02' : null).lastInsertRowid,
   );
 }
@@ -137,10 +143,16 @@ describe('mergeCategory', () => {
 
     expect(mergeCategory(db, source, target)).toEqual({ moved: 1 });
 
-    const cat = sqlite.prepare('SELECT category_id AS c FROM transactions WHERE id = ?').get(deletedTx) as { c: number };
+    const cat = sqlite.prepare('SELECT category_id AS c FROM transactions WHERE id = ?').get(deletedTx) as {
+      c: number;
+    };
     expect(cat.c).toBe(target);
-    expect(sqlite.prepare('SELECT count(*) AS n FROM transactions WHERE category_id = ?').get(target)).toEqual({ n: 2 });
-    expect(sqlite.prepare('SELECT deleted_at IS NOT NULL AS d FROM categories WHERE id = ?').get(source)).toEqual({ d: 1 });
+    expect(sqlite.prepare('SELECT count(*) AS n FROM transactions WHERE category_id = ?').get(target)).toEqual({
+      n: 2,
+    });
+    expect(sqlite.prepare('SELECT deleted_at IS NOT NULL AS d FROM categories WHERE id = ?').get(source)).toEqual({
+      d: 1,
+    });
   });
 
   it("keeps the target's own budget and retires the source's", () => {
@@ -152,8 +164,12 @@ describe('mergeCategory', () => {
 
     mergeCategory(db, source, target);
 
-    expect(sqlite.prepare('SELECT deleted_at IS NULL AS live FROM budgets WHERE id = ?').get(targetBudget)).toEqual({ live: 1 });
-    expect(sqlite.prepare('SELECT deleted_at IS NULL AS live FROM budgets WHERE id = ?').get(sourceBudget)).toEqual({ live: 0 });
+    expect(sqlite.prepare('SELECT deleted_at IS NULL AS live FROM budgets WHERE id = ?').get(targetBudget)).toEqual({
+      live: 1,
+    });
+    expect(sqlite.prepare('SELECT deleted_at IS NULL AS live FROM budgets WHERE id = ?').get(sourceBudget)).toEqual({
+      live: 0,
+    });
   });
 
   it("moves the source's budget when the target only has a deleted one (unique index)", () => {
@@ -164,7 +180,9 @@ describe('mergeCategory', () => {
     const sourceBudget = addBudget(sqlite, source);
 
     expect(() => mergeCategory(db, source, target)).not.toThrow();
-    expect(sqlite.prepare('SELECT category_id AS c, deleted_at IS NULL AS live FROM budgets WHERE id = ?').get(sourceBudget)).toEqual({
+    expect(
+      sqlite.prepare('SELECT category_id AS c, deleted_at IS NULL AS live FROM budgets WHERE id = ?').get(sourceBudget),
+    ).toEqual({
       c: target,
       live: 1,
     });
@@ -187,7 +205,9 @@ describe('mergeCategory', () => {
     sqlite.exec(`CREATE TRIGGER no_retire BEFORE UPDATE OF deleted_at ON categories
                  BEGIN SELECT RAISE(ABORT, 'boom'); END;`);
     expect(() => mergeCategory(db, source, target)).toThrow();
-    expect(sqlite.prepare('SELECT count(*) AS n FROM transactions WHERE category_id = ?').get(source)).toEqual({ n: 1 });
+    expect(sqlite.prepare('SELECT count(*) AS n FROM transactions WHERE category_id = ?').get(source)).toEqual({
+      n: 1,
+    });
   });
 });
 
@@ -198,7 +218,9 @@ describe('mergeCategory', () => {
 function addGroupExpense(sqlite: Database.Database, categoryId: number | null): number {
   // The self person is seeded by custom migration 0008, so it already exists.
   sqlite
-    .prepare("INSERT INTO split_groups (uid, name, icon, simplify_debts, created_at) VALUES ('g1', 'Goa', 'plane', 1, 'now')")
+    .prepare(
+      "INSERT INTO split_groups (uid, name, icon, simplify_debts, created_at) VALUES ('g1', 'Goa', 'plane', 1, 'now')",
+    )
     .run();
   return Number(
     sqlite
@@ -277,9 +299,11 @@ describe('merge keeps soft-deleted budgets (B15)', () => {
 
     // The history survives: budget_cat_unique is partial (live rows only), so
     // it never held the slot the old hard delete was clearing.
-    const rows = sqlite
-      .prepare('SELECT id, category_id AS c, deleted_at AS d FROM budgets ORDER BY id')
-      .all() as { id: number; c: number; d: string | null }[];
+    const rows = sqlite.prepare('SELECT id, category_id AS c, deleted_at AS d FROM budgets ORDER BY id').all() as {
+      id: number;
+      c: number;
+      d: string | null;
+    }[];
     expect(rows).toHaveLength(2);
 
     const kept = rows.find((r) => r.id === oldTargetBudget)!;

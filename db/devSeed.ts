@@ -19,10 +19,26 @@ import { categories, transactions } from './schema';
  */
 
 const NOTES = [
-  'Chai', 'Auto fare', 'Groceries', 'Metro card', 'Lunch', 'Coffee',
-  'Electricity bill', 'Mobile recharge', 'Medicines', 'Books',
-  'Movie tickets', 'Petrol', 'Rent', 'Gym', 'Haircut', 'Swiggy',
-  'Amazon order', 'Gift', 'Laundry', 'Stationery',
+  'Chai',
+  'Auto fare',
+  'Groceries',
+  'Metro card',
+  'Lunch',
+  'Coffee',
+  'Electricity bill',
+  'Mobile recharge',
+  'Medicines',
+  'Books',
+  'Movie tickets',
+  'Petrol',
+  'Rent',
+  'Gym',
+  'Haircut',
+  'Swiggy',
+  'Amazon order',
+  'Gift',
+  'Laundry',
+  'Stationery',
 ];
 
 function assertDev(name: string): void {
@@ -110,7 +126,11 @@ export function devSeedTransactions(count = 50_000, years = 4, seed = 20260911):
 /** Remove every transaction (hard delete). Leaves categories and app_meta intact. */
 export function devClearTransactions(): number {
   assertDev('devClearTransactions');
-  const before = db.select({ n: sql<number>`count(*)` }).from(transactions).all()[0]?.n ?? 0;
+  const before =
+    db
+      .select({ n: sql<number>`count(*)` })
+      .from(transactions)
+      .all()[0]?.n ?? 0;
   writeTx((tx) => {
     tx.delete(transactions).run();
   });

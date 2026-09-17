@@ -31,7 +31,13 @@ async function small() {
     ])
     .run();
   let n = 0;
-  const tx = (type: 'expense' | 'income', amountPaise: number, date: string, categoryId: number | null, extra: { note?: string; deleted?: boolean } = {}) => {
+  const tx = (
+    type: 'expense' | 'income',
+    amountPaise: number,
+    date: string,
+    categoryId: number | null,
+    extra: { note?: string; deleted?: boolean } = {},
+  ) => {
     n += 1;
     db.insert(transactions)
       .values({
@@ -243,8 +249,19 @@ describe('analytics SQL — plans at 50k rows', () => {
 });
 
 function seed(sqlite: Database.Database, count: number): void {
-  const cats = ['Food & Dining', 'Groceries', 'Transport', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Health', 'Salary'];
-  const insertCat = sqlite.prepare("INSERT INTO categories (name, icon, color, is_system) VALUES (?, 'circle', '#888888', 1)");
+  const cats = [
+    'Food & Dining',
+    'Groceries',
+    'Transport',
+    'Shopping',
+    'Entertainment',
+    'Bills & Utilities',
+    'Health',
+    'Salary',
+  ];
+  const insertCat = sqlite.prepare(
+    "INSERT INTO categories (name, icon, color, is_system) VALUES (?, 'circle', '#888888', 1)",
+  );
   for (const c of cats) insertCat.run(c);
   const insertTx = sqlite.prepare(
     'INSERT INTO transactions (type, amount_paise, date, category_id, created_at, updated_at) VALUES (?,?,?,?,?,?)',

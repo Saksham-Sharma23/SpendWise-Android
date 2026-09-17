@@ -2,14 +2,7 @@ import { readDb } from '../../db/read';
 import type { TrendPoint } from '../../components/charts/TrendChart';
 import { useDbQuery, type DbQueryResult } from '../../lib/db/useDbQuery';
 import type { ISODate } from '../../lib/dates';
-import {
-  activeDays,
-  monthKeys,
-  perDayPaise,
-  periodWindow,
-  savingsRate,
-  type CategoryTotal,
-} from './period';
+import { activeDays, monthKeys, perDayPaise, periodWindow, savingsRate, type CategoryTotal } from './period';
 import {
   biggestExpenseQuery,
   categoryTotalsQuery,

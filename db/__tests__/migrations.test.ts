@@ -14,9 +14,23 @@ import { connectionOf, journal, migrateSafely, migrateWithForeignKeysOn } from '
  */
 
 const SYSTEM = [
-  'Food & Dining', 'Groceries', 'Transport', 'Shopping', 'Entertainment', 'Bills & Utilities',
-  'Health', 'Education', 'Rent', 'Travel', 'Subscriptions', 'Personal Care', 'Gifts & Donations',
-  'Investments', 'Salary', 'Other Income', 'Miscellaneous',
+  'Food & Dining',
+  'Groceries',
+  'Transport',
+  'Shopping',
+  'Entertainment',
+  'Bills & Utilities',
+  'Health',
+  'Education',
+  'Rent',
+  'Travel',
+  'Subscriptions',
+  'Personal Care',
+  'Gifts & Donations',
+  'Investments',
+  'Salary',
+  'Other Income',
+  'Miscellaneous',
 ];
 
 const TX_COUNT = 50_000;
@@ -26,19 +40,31 @@ async function legacyDatabase(): Promise<Database.Database> {
   await migrateSafely(sqlite, 0);
   sqlite.pragma('foreign_keys = ON');
 
-  const insertSystem = sqlite.prepare("INSERT INTO categories (name, icon, color, is_system) VALUES (?, 'tag', '#888888', 1)");
+  const insertSystem = sqlite.prepare(
+    "INSERT INTO categories (name, icon, color, is_system) VALUES (?, 'tag', '#888888', 1)",
+  );
   for (const name of SYSTEM) insertSystem.run(name); // created_at via the OLD default: 'YYYY-MM-DD HH:MM:SS'
-  sqlite.prepare("INSERT INTO categories (name, is_system, created_at) VALUES ('Coffee', 0, '2026-03-01T10:00:00.000Z')").run();
   sqlite
-    .prepare("INSERT INTO categories (name, is_system, created_at, deleted_at) VALUES ('Old ⟨deleted #99⟩', 0, '2026-01-01 09:00:00', '2026-02-01')")
+    .prepare("INSERT INTO categories (name, is_system, created_at) VALUES ('Coffee', 0, '2026-03-01T10:00:00.000Z')")
+    .run();
+  sqlite
+    .prepare(
+      "INSERT INTO categories (name, is_system, created_at, deleted_at) VALUES ('Old ⟨deleted #99⟩', 0, '2026-01-01 09:00:00', '2026-02-01')",
+    )
     .run();
 
   const rent = (sqlite.prepare("SELECT id FROM categories WHERE name = 'Rent'").get() as { id: number }).id;
   const groceries = (sqlite.prepare("SELECT id FROM categories WHERE name = 'Groceries'").get() as { id: number }).id;
   sqlite.prepare('INSERT INTO budgets (category_id, limit_paise) VALUES (?, 2500000)').run(rent);
-  sqlite.prepare("INSERT INTO budgets (category_id, limit_paise, deleted_at) VALUES (?, 900000, '2026-05-01T00:00:00.000Z')").run(groceries);
   sqlite
-    .prepare("INSERT INTO subscriptions (name, amount_paise, billing_cycle, anchor_date, category_id) VALUES ('Netflix', 64900, 'monthly', '2026-01-05', ?)")
+    .prepare(
+      "INSERT INTO budgets (category_id, limit_paise, deleted_at) VALUES (?, 900000, '2026-05-01T00:00:00.000Z')",
+    )
+    .run(groceries);
+  sqlite
+    .prepare(
+      "INSERT INTO subscriptions (name, amount_paise, billing_cycle, anchor_date, category_id) VALUES ('Netflix', 64900, 'monthly', '2026-01-05', ?)",
+    )
     .run(rent);
   sqlite.prepare("INSERT INTO import_batches (source_name, rows_imported) VALUES ('hdfc.xls', 10)").run();
   sqlite.prepare("INSERT INTO app_meta (key, value) VALUES ('seeded_at', '2026-09-10T08:00:00.000Z')").run();
@@ -139,7 +165,7 @@ describe('migrations 0001–0008 on a populated 0000 database', () => {
   });
 
   it('gives system categories fixed sys: uids and the agreed kind', () => {
-    const rows = sqlite.prepare("SELECT name, uid, kind FROM categories WHERE is_system = 1 ORDER BY name").all() as {
+    const rows = sqlite.prepare('SELECT name, uid, kind FROM categories WHERE is_system = 1 ORDER BY name').all() as {
       name: string;
       uid: string;
       kind: string;
@@ -151,7 +177,10 @@ describe('migrations 0001–0008 on a populated 0000 database', () => {
     expect(byName['Other Income']!.kind).toBe('income');
     expect(byName.Investments!.kind).toBe('both');
     expect(byName.Miscellaneous!.kind).toBe('both');
-    const coffee = sqlite.prepare("SELECT kind, uid FROM categories WHERE name = 'Coffee'").get() as { kind: string; uid: string };
+    const coffee = sqlite.prepare("SELECT kind, uid FROM categories WHERE name = 'Coffee'").get() as {
+      kind: string;
+      uid: string;
+    };
     expect(coffee.kind).toBe('both');
     expect(coffee.uid).toMatch(/^[0-9a-f]{32}$/);
   });
@@ -168,7 +197,9 @@ describe('migrations 0001–0008 on a populated 0000 database', () => {
     const iso = "'[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9].[0-9][0-9][0-9]Z'";
     for (const [table, cols] of Object.entries(columns)) {
       for (const c of cols) {
-        const bad = sqlite.prepare(`SELECT count(*) AS n FROM ${table} WHERE ${c} IS NOT NULL AND ${c} NOT GLOB ${iso}`).get() as { n: number };
+        const bad = sqlite
+          .prepare(`SELECT count(*) AS n FROM ${table} WHERE ${c} IS NOT NULL AND ${c} NOT GLOB ${iso}`)
+          .get() as { n: number };
         expect({ table, c, bad: bad.n }).toEqual({ table, c, bad: 0 });
       }
     }
@@ -176,43 +207,75 @@ describe('migrations 0001–0008 on a populated 0000 database', () => {
 
   it('writes the new default in the same format', () => {
     sqlite.prepare("INSERT INTO categories (name) VALUES ('Fresh default')").run();
-    const r = sqlite.prepare("SELECT created_at FROM categories WHERE name = 'Fresh default'").get() as { created_at: string };
+    const r = sqlite.prepare("SELECT created_at FROM categories WHERE name = 'Fresh default'").get() as {
+      created_at: string;
+    };
     expect(r.created_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
 
   it('drops is_recurring and derives month from date', () => {
-    const cols = (sqlite.prepare("SELECT name FROM pragma_table_xinfo('transactions')").all() as { name: string }[]).map((c) => c.name);
+    const cols = (
+      sqlite.prepare("SELECT name FROM pragma_table_xinfo('transactions')").all() as { name: string }[]
+    ).map((c) => c.name);
     expect(cols).not.toContain('is_recurring');
     expect(cols).toContain('month');
-    const mismatched = sqlite.prepare('SELECT count(*) AS n FROM transactions WHERE month IS NOT substr(date, 1, 7)').get() as { n: number };
+    const mismatched = sqlite
+      .prepare('SELECT count(*) AS n FROM transactions WHERE month IS NOT substr(date, 1, 7)')
+      .get() as { n: number };
     expect(mismatched.n).toBe(0);
   });
 
   it('creates every index, and drops the old tx_date_idx', () => {
-    const names = (sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all() as { name: string }[]).map((r) => r.name);
+    const names = (
+      sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all() as { name: string }[]
+    ).map((r) => r.name);
     expect(names).toEqual(
       expect.arrayContaining([
-        'tx_ledger_idx', 'tx_month_idx', 'tx_cat_idx', 'tx_batch_idx', 'tx_dedupe_idx', 'tx_uid_unique',
-        'cat_name_unique', 'cat_uid_unique', 'budget_cat_unique', 'budget_uid_unique', 'sub_status_idx',
-        'sub_uid_unique', 'batch_uid_unique',
+        'tx_ledger_idx',
+        'tx_month_idx',
+        'tx_cat_idx',
+        'tx_batch_idx',
+        'tx_dedupe_idx',
+        'tx_uid_unique',
+        'cat_name_unique',
+        'cat_uid_unique',
+        'budget_cat_unique',
+        'budget_uid_unique',
+        'sub_status_idx',
+        'sub_uid_unique',
+        'batch_uid_unique',
       ]),
     );
     expect(names).not.toContain('tx_date_idx');
   });
 
   it('[0007] creates the Groups tables and their indexes', () => {
-    const tables = (sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name);
+    const tables = (
+      sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]
+    ).map((r) => r.name);
     expect(tables).toEqual(
       expect.arrayContaining([
-        'people', 'split_groups', 'group_members', 'split_expenses',
-        'split_expense_payers', 'split_expense_shares', 'split_debts', 'settlements',
+        'people',
+        'split_groups',
+        'group_members',
+        'split_expenses',
+        'split_expense_payers',
+        'split_expense_shares',
+        'split_debts',
+        'settlements',
       ]),
     );
-    const names = (sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all() as { name: string }[]).map((r) => r.name);
+    const names = (
+      sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all() as { name: string }[]
+    ).map((r) => r.name);
     expect(names).toEqual(
       expect.arrayContaining([
-        'people_self_unique', 'split_group_direct_unique', 'group_member_unique', 'split_expense_group_idx',
-        'split_debt_group_idx', 'settlement_group_idx',
+        'people_self_unique',
+        'split_group_direct_unique',
+        'group_member_unique',
+        'split_expense_group_idx',
+        'split_debt_group_idx',
+        'settlement_group_idx',
       ]),
     );
   });

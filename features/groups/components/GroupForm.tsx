@@ -15,7 +15,20 @@ import { addFriend, addGroup, editGroup, removeGroup } from '../mutations';
 import { getFriends, getGroupRow, getMembers } from '../queries';
 import { RoundButton, SectionLabel } from './kit';
 
-const GROUP_ICONS = ['plane', 'house', 'utensils', 'car', 'gift', 'sparkles', 'shopping-bag', 'beer', 'coffee', 'heart-pulse', 'graduation-cap', 'wallet'];
+const GROUP_ICONS = [
+  'plane',
+  'house',
+  'utensils',
+  'car',
+  'gift',
+  'sparkles',
+  'shopping-bag',
+  'beer',
+  'coffee',
+  'heart-pulse',
+  'graduation-cap',
+  'wallet',
+];
 
 /**
  * Create or edit a group: a name, an icon, who is in it, and whether to
@@ -34,7 +47,13 @@ export function GroupForm() {
   const [icon, setIcon] = useState<string | null>(initial?.icon ?? null);
   const [simplify, setSimplify] = useState(initial?.simplifyDebts ?? true);
   const [memberIds, setMemberIds] = useState<Set<number>>(() =>
-    editingId != null ? new Set(getMembers(editingId).filter((m) => !m.isSelf).map((m) => m.id)) : new Set(),
+    editingId != null
+      ? new Set(
+          getMembers(editingId)
+            .filter((m) => !m.isSelf)
+            .map((m) => m.id),
+        )
+      : new Set(),
   );
   const [newFriend, setNewFriend] = useState('');
   const submitting = useRef(false);
@@ -86,25 +105,35 @@ export function GroupForm() {
 
   const onDelete = () => {
     if (editingId == null) return;
-    Alert.alert(`Delete ${initial?.name ?? 'this group'}?`, 'Its expenses and balances disappear with it. You can undo straight after.', [
-      { text: 'Keep it', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          if (removeGroup(editingId, initial?.name ?? 'Group').ok) router.dismissTo('/groups');
+    Alert.alert(
+      `Delete ${initial?.name ?? 'this group'}?`,
+      'Its expenses and balances disappear with it. You can undo straight after.',
+      [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            if (removeGroup(editingId, initial?.name ?? 'Group').ok) router.dismissTo('/groups');
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   return (
-    <KeyboardAvoidingView behavior="padding" className="flex-1" style={{ paddingTop: insets.top, backgroundColor: colors.background }}>
+    <KeyboardAvoidingView
+      behavior="padding"
+      className="flex-1"
+      style={{ paddingTop: insets.top, backgroundColor: colors.background }}
+    >
       <View className="flex-row items-center justify-between px-5 py-3">
         <RoundButton label="Close" onPress={() => router.back()}>
           <X size={19} color={colors.foreground} />
         </RoundButton>
-        <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 16 }}>{editingId != null ? 'Edit group' : 'New group'}</Text>
+        <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 16 }}>
+          {editingId != null ? 'Edit group' : 'New group'}
+        </Text>
         {editingId != null ? (
           <RoundButton label="Delete group" onPress={onDelete} tint={colors.expense}>
             <Trash2 size={17} color={colors.expense} />
@@ -125,7 +154,13 @@ export function GroupForm() {
             placeholderTextColor={colors.subtle}
             selectionColor={colors.primary}
             className="flex-1 rounded-2xl border px-4 py-3.5"
-            style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 16, backgroundColor: colors.card, borderColor: colors.border }}
+            style={{
+              color: colors.foreground,
+              fontFamily: fonts.semibold,
+              fontSize: 16,
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+            }}
           />
         </Animated.View>
 
@@ -165,10 +200,21 @@ export function GroupForm() {
                   onPress={() => toggle(f.id)}
                   scaleTo={0.94}
                   className="flex-row items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3.5"
-                  style={{ borderColor: on ? colors.primaryBorder : colors.border, backgroundColor: on ? colors.primarySoft : colors.card }}
+                  style={{
+                    borderColor: on ? colors.primaryBorder : colors.border,
+                    backgroundColor: on ? colors.primarySoft : colors.card,
+                  }}
                 >
                   <Avatar name={f.name} size={26} />
-                  <Text style={{ color: on ? colors.foreground : colors.muted, fontFamily: on ? fonts.semibold : fonts.medium, fontSize: 13 }}>{f.name}</Text>
+                  <Text
+                    style={{
+                      color: on ? colors.foreground : colors.muted,
+                      fontFamily: on ? fonts.semibold : fonts.medium,
+                      fontSize: 13,
+                    }}
+                  >
+                    {f.name}
+                  </Text>
                   {on ? <Check size={14} color={colors.primary} strokeWidth={2.6} /> : null}
                 </PressableScale>
               );
@@ -184,7 +230,13 @@ export function GroupForm() {
               placeholderTextColor={colors.subtle}
               selectionColor={colors.primary}
               className="flex-1 rounded-2xl border px-4 py-3"
-              style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 14, backgroundColor: colors.card, borderColor: colors.border }}
+              style={{
+                color: colors.foreground,
+                fontFamily: fonts.medium,
+                fontSize: 14,
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              }}
             />
             <RoundButton label="Add friend" onPress={onAddFriend} filled>
               <Plus size={20} color={colors.onPrimary} strokeWidth={2.6} />
@@ -196,11 +248,19 @@ export function GroupForm() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(180).duration(320)} className="mt-6">
-          <View className="flex-row items-center gap-3 rounded-2xl border p-4" style={{ backgroundColor: colors.card, borderColor: colors.border }}>
+          <View
+            className="flex-row items-center gap-3 rounded-2xl border p-4"
+            style={{ backgroundColor: colors.card, borderColor: colors.border }}
+          >
             <View className="flex-1">
-              <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>Simplify group debts</Text>
-              <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 3, lineHeight: 17 }}>
-                Settle up in the fewest payments. You might pay someone you didn't borrow from directly — what everyone owes overall never changes.
+              <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
+                Simplify group debts
+              </Text>
+              <Text
+                style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 3, lineHeight: 17 }}
+              >
+                Settle up in the fewest payments. You might pay someone you didn't borrow from directly — what everyone
+                owes overall never changes.
               </Text>
             </View>
             <Switch
@@ -214,9 +274,19 @@ export function GroupForm() {
         </Animated.View>
       </ScrollView>
 
-      <View className="px-5 pt-3" style={{ paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.border }}>
-        <PressableScale accessibilityRole="button" onPress={onSave} className="items-center rounded-full py-4" style={{ backgroundColor: colors.primary }}>
-          <Text style={{ color: colors.onPrimary, fontFamily: fonts.bold, fontSize: 16 }}>{editingId != null ? 'Save group' : 'Create group'}</Text>
+      <View
+        className="px-5 pt-3"
+        style={{ paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.border }}
+      >
+        <PressableScale
+          accessibilityRole="button"
+          onPress={onSave}
+          className="items-center rounded-full py-4"
+          style={{ backgroundColor: colors.primary }}
+        >
+          <Text style={{ color: colors.onPrimary, fontFamily: fonts.bold, fontSize: 16 }}>
+            {editingId != null ? 'Save group' : 'Create group'}
+          </Text>
         </PressableScale>
       </View>
     </KeyboardAvoidingView>

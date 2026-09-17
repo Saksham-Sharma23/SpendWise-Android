@@ -101,16 +101,7 @@ const KNOWN: [needle: string, icon: string][] = [
 ];
 
 /** Icons used when nothing matches — varied enough that a list is not monotonous. */
-const FALLBACK_ICONS = [
-  'repeat',
-  'credit-card',
-  'receipt',
-  'sparkles',
-  'wallet',
-  'tag',
-  'ticket',
-  'coins',
-] as const;
+const FALLBACK_ICONS = ['repeat', 'credit-card', 'receipt', 'sparkles', 'wallet', 'tag', 'ticket', 'coins'] as const;
 
 /** Stable 32-bit hash of a name. Same function the category colour uses. */
 function hash(s: string): number {

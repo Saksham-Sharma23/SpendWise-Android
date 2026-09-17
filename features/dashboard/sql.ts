@@ -53,7 +53,13 @@ export function topCategoriesQuery(db: DashboardDb, today: ISODate, limit: numbe
   const thisStart = startOfMonth(today);
   const nextStart = addMonthsClamped(thisStart, 1);
   return db
-    .select({ id: categories.id, name: categories.name, color: categories.color, icon: categories.icon, totalPaise: total })
+    .select({
+      id: categories.id,
+      name: categories.name,
+      color: categories.color,
+      icon: categories.icon,
+      totalPaise: total,
+    })
     .from(transactions)
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
     .where(

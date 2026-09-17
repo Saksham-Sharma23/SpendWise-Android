@@ -48,7 +48,11 @@ export function GroupsHub() {
             filled
             onPress={() => router.push(tab === 'groups' ? '/(modals)/group' : '/(modals)/friend')}
           >
-            {tab === 'groups' ? <Plus size={21} color={colors.onPrimary} strokeWidth={2.6} /> : <UserPlus size={19} color={colors.onPrimary} strokeWidth={2.4} />}
+            {tab === 'groups' ? (
+              <Plus size={21} color={colors.onPrimary} strokeWidth={2.6} />
+            ) : (
+              <UserPlus size={19} color={colors.onPrimary} strokeWidth={2.4} />
+            )}
           </RoundButton>
         }
       >
@@ -67,7 +71,15 @@ export function GroupsHub() {
             <Animated.View entering={FadeInDown.duration(360)}>
               <Card variant="accent" className="p-5">
                 <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>Overall</Text>
-                <Text style={{ color: toneColor(overall.tone, colors), fontFamily: fonts.bold, fontSize: 26, letterSpacing: -0.6, marginTop: 4 }}>
+                <Text
+                  style={{
+                    color: toneColor(overall.tone, colors),
+                    fontFamily: fonts.bold,
+                    fontSize: 26,
+                    letterSpacing: -0.6,
+                    marginTop: 4,
+                  }}
+                >
                   {overall.text.charAt(0).toUpperCase() + overall.text.slice(1)}
                 </Text>
                 <View className="mt-4 flex-row gap-3">
@@ -109,7 +121,11 @@ function Figure({ label, paise, color }: { label: string; paise: number; color: 
   return (
     <View className="flex-1 rounded-2xl px-3 py-2.5" style={{ backgroundColor: colors.elevated }}>
       <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>{label}</Text>
-      <Text numberOfLines={1} adjustsFontSizeToFit style={{ color, fontFamily: fonts.bold, fontSize: 17, marginTop: 2, fontVariant: ['tabular-nums'] }}>
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        style={{ color, fontFamily: fonts.bold, fontSize: 17, marginTop: 2, fontVariant: ['tabular-nums'] }}
+      >
         {formatINR(paise, { whole: true })}
       </Text>
     </View>
@@ -121,8 +137,15 @@ function GroupList({ hub }: { hub: Hub }) {
   const router = useRouter();
   if (hub.groups.length === 0) {
     return (
-      <PressableScale accessibilityRole="button" onPress={() => router.push('/(modals)/group')} className="items-center rounded-3xl border border-dashed py-8" style={{ borderColor: colors.borderStrong }}>
-        <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14 }}>No groups yet — tap to create one</Text>
+      <PressableScale
+        accessibilityRole="button"
+        onPress={() => router.push('/(modals)/group')}
+        className="items-center rounded-3xl border border-dashed py-8"
+        style={{ borderColor: colors.borderStrong }}
+      >
+        <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14 }}>
+          No groups yet — tap to create one
+        </Text>
       </PressableScale>
     );
   }
@@ -161,9 +184,15 @@ function GroupRow({ group, hub, first }: { group: HubGroup; hub: Hub; first: boo
         <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
           {group.name}
         </Text>
-        <Text style={{ color: toneColor(status.tone, colors), fontFamily: fonts.medium, fontSize: 13, marginTop: 1 }}>{status.text}</Text>
+        <Text style={{ color: toneColor(status.tone, colors), fontFamily: fonts.medium, fontSize: 13, marginTop: 1 }}>
+          {status.text}
+        </Text>
         {lines.map((l, i) => (
-          <Text key={i} numberOfLines={1} style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
+          <Text
+            key={i}
+            numberOfLines={1}
+            style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}
+          >
             {l.text}
           </Text>
         ))}
@@ -178,8 +207,15 @@ function FriendList({ hub }: { hub: Hub }) {
   const router = useRouter();
   if (hub.friends.length === 0) {
     return (
-      <PressableScale accessibilityRole="button" onPress={() => router.push('/(modals)/friend')} className="items-center rounded-3xl border border-dashed py-8" style={{ borderColor: colors.borderStrong }}>
-        <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14 }}>No friends yet — tap to add one</Text>
+      <PressableScale
+        accessibilityRole="button"
+        onPress={() => router.push('/(modals)/friend')}
+        className="items-center rounded-3xl border border-dashed py-8"
+        style={{ borderColor: colors.borderStrong }}
+      >
+        <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14 }}>
+          No friends yet — tap to add one
+        </Text>
       </PressableScale>
     );
   }
@@ -203,11 +239,15 @@ function FriendList({ hub }: { hub: Hub }) {
               <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
                 {person.name}
               </Text>
-              <Text style={{ color: toneColor(status.tone, colors), fontFamily: fonts.medium, fontSize: 13, marginTop: 1 }}>
+              <Text
+                style={{ color: toneColor(status.tone, colors), fontFamily: fonts.medium, fontSize: 13, marginTop: 1 }}
+              >
                 {status.text}
               </Text>
               {groupCount > 1 ? (
-                <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>across {groupCount} groups</Text>
+                <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
+                  across {groupCount} groups
+                </Text>
               ) : null}
             </View>
             <ChevronRight size={18} color={colors.subtle} />

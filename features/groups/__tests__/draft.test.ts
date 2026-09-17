@@ -35,7 +35,12 @@ describe('evaluate', () => {
   });
 
   it('multiple payers must add up, and says by how much they do not', () => {
-    const d = { ...emptyDraft(members, ME), amount: '1200', paidMode: 'multiple' as const, paid: { [ME]: '800', [RAHUL]: '300' } };
+    const d = {
+      ...emptyDraft(members, ME),
+      amount: '1200',
+      paidMode: 'multiple' as const,
+      paid: { [ME]: '800', [RAHUL]: '300' },
+    };
     const short = evaluate(d, members);
     expect(short.paidRemaining).toBe(100_00);
     expect(short.problem).toBe('Paid amounts are short of the total');
@@ -50,7 +55,12 @@ describe('evaluate', () => {
   });
 
   it('exact amounts: remaining shown, zero people dropped, typed values kept', () => {
-    const d = { ...emptyDraft(members, ME), amount: '1000', method: 'exact' as const, exact: { [ME]: '600', [RAHUL]: '280' } };
+    const d = {
+      ...emptyDraft(members, ME),
+      amount: '1000',
+      method: 'exact' as const,
+      exact: { [ME]: '600', [RAHUL]: '280' },
+    };
     expect(evaluate(d, members).splitRemaining).toBe(120_00);
     const ok = evaluate({ ...d, exact: { [ME]: '600', [RAHUL]: '400' } }, members);
     expect(ok.problem).toBeNull();
@@ -61,7 +71,12 @@ describe('evaluate', () => {
   });
 
   it('percentages must reach exactly 100%, and are split exactly', () => {
-    const d = { ...emptyDraft(members, ME), amount: '100', method: 'percent' as const, percent: { [ME]: '50', [RAHUL]: '33.33' } };
+    const d = {
+      ...emptyDraft(members, ME),
+      amount: '100',
+      method: 'percent' as const,
+      percent: { [ME]: '50', [RAHUL]: '33.33' },
+    };
     const short = evaluate(d, members);
     expect(short.splitRemaining).toBe(1667);
     expect(short.problem).toBe('Percentages must add up to 100%');
@@ -71,13 +86,22 @@ describe('evaluate', () => {
     expect(ok.shares!.reduce((a, s) => a + s.paise, 0)).toBe(10_000);
     expect(ok.shares!.map((s) => s.input)).toEqual([5000, 3333, 1667]);
 
-    expect(evaluate({ ...d, percent: { [ME]: '33.333' } }, members).problem).toBe('Percentages can have up to two decimals');
+    expect(evaluate({ ...d, percent: { [ME]: '33.333' } }, members).problem).toBe(
+      'Percentages can have up to two decimals',
+    );
   });
 
   it('shares like 2:1:1', () => {
-    const d = { ...emptyDraft(members, ME), amount: '1000', method: 'shares' as const, shares: { [ME]: '2', [RAHUL]: '1', [PRIYA]: '1' } };
+    const d = {
+      ...emptyDraft(members, ME),
+      amount: '1000',
+      method: 'shares' as const,
+      shares: { [ME]: '2', [RAHUL]: '1', [PRIYA]: '1' },
+    };
     expect(evaluate(d, members).shares!.map((s) => s.paise)).toEqual([500_00, 250_00, 250_00]);
-    expect(evaluate({ ...d, shares: { [ME]: '0', [RAHUL]: '0', [PRIYA]: '0' } }, members).problem).toBe('Give at least one person a share');
+    expect(evaluate({ ...d, shares: { [ME]: '0', [RAHUL]: '0', [PRIYA]: '0' } }, members).problem).toBe(
+      'Give at least one person a share',
+    );
     expect(evaluate({ ...d, shares: { [ME]: '1.5' } }, members).problem).toBe('Shares must be whole numbers');
   });
 });

@@ -124,10 +124,7 @@ export function BudgetList() {
 function Figure({ label, value, tint, last }: { label: string; value: string; tint?: string; last?: boolean }) {
   const colors = useColors();
   return (
-    <View
-      className="flex-1 px-1"
-      style={last ? undefined : { borderRightWidth: 1, borderRightColor: colors.border }}
-    >
+    <View className="flex-1 px-1" style={last ? undefined : { borderRightWidth: 1, borderRightColor: colors.border }}>
       <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>{label}</Text>
       <Text
         numberOfLines={1}
@@ -200,7 +197,13 @@ function BudgetCard({
               <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11 }}>
                 {daysLeftLabel(budget.daysLeft)} · resets {formatDayMonth(budget.cycleEnd)}
               </Text>
-              <Text style={{ color: budget.remainingPaise < 0 ? colors.expense : colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>
+              <Text
+                style={{
+                  color: budget.remainingPaise < 0 ? colors.expense : colors.muted,
+                  fontFamily: fonts.medium,
+                  fontSize: 11,
+                }}
+              >
                 {budget.remainingPaise < 0
                   ? `${formatINR(Math.abs(budget.remainingPaise), { whole: true })} over`
                   : `${formatINR(budget.perDayLeftPaise, { whole: true })}/day left`}

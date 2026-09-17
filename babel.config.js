@@ -1,10 +1,7 @@
 module.exports = function (api) {
   api.cache(true);
   return {
-    presets: [
-      ['babel-preset-expo', { jsxImportSource: 'nativewind' }],
-      'nativewind/babel',
-    ],
+    presets: [['babel-preset-expo', { jsxImportSource: 'nativewind' }], 'nativewind/babel'],
     plugins: [
       // Lets us `import migrations from "./migrations/migrations"` and, more
       // importantly, inline the generated .sql migration files into the JS

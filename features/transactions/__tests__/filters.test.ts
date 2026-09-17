@@ -48,11 +48,57 @@ function seed(db: Db) {
 
   db.insert(transactions)
     .values([
-      { id: 1, type: 'expense', amountPaise: 25000, date: '2026-01-15', note: 'Lunch at Zomato', categoryId: 1, createdAt: 'x', updatedAt: 'x' },
-      { id: 2, type: 'expense', amountPaise: 8000, date: '2026-02-03', note: 'Auto fare', categoryId: 2, createdAt: 'x', updatedAt: 'x' },
-      { id: 3, type: 'income', amountPaise: 5000000, date: '2026-02-01', note: 'Salary', categoryId: null, createdAt: 'x', updatedAt: 'x' },
-      { id: 4, type: 'expense', amountPaise: 120000, date: '2026-03-20', note: '50% off sale', categoryId: 3, createdAt: 'x', updatedAt: 'x' },
-      { id: 5, type: 'expense', amountPaise: 9900, date: '2026-03-21', note: 'deleted row', categoryId: 1, createdAt: 'x', updatedAt: 'x', deletedAt: '2026-03-22' },
+      {
+        id: 1,
+        type: 'expense',
+        amountPaise: 25000,
+        date: '2026-01-15',
+        note: 'Lunch at Zomato',
+        categoryId: 1,
+        createdAt: 'x',
+        updatedAt: 'x',
+      },
+      {
+        id: 2,
+        type: 'expense',
+        amountPaise: 8000,
+        date: '2026-02-03',
+        note: 'Auto fare',
+        categoryId: 2,
+        createdAt: 'x',
+        updatedAt: 'x',
+      },
+      {
+        id: 3,
+        type: 'income',
+        amountPaise: 5000000,
+        date: '2026-02-01',
+        note: 'Salary',
+        categoryId: null,
+        createdAt: 'x',
+        updatedAt: 'x',
+      },
+      {
+        id: 4,
+        type: 'expense',
+        amountPaise: 120000,
+        date: '2026-03-20',
+        note: '50% off sale',
+        categoryId: 3,
+        createdAt: 'x',
+        updatedAt: 'x',
+      },
+      {
+        id: 5,
+        type: 'expense',
+        amountPaise: 9900,
+        date: '2026-03-21',
+        note: 'deleted row',
+        categoryId: 1,
+        createdAt: 'x',
+        updatedAt: 'x',
+        deletedAt: '2026-03-22',
+      },
     ])
     .run();
 }
@@ -156,7 +202,15 @@ describe('date presets resolve against today, not against when they were tapped'
     // Which is what keeps a transaction added after midnight inside the filter
     // it was added under. Storing the resolved dates made it vanish instead.
     db.insert(transactions)
-      .values({ id: 6, type: 'expense', amountPaise: 100, date: '2026-03-21', categoryId: 1, createdAt: 'x', updatedAt: 'x' })
+      .values({
+        id: 6,
+        type: 'expense',
+        amountPaise: 100,
+        date: '2026-03-21',
+        categoryId: 1,
+        createdAt: 'x',
+        updatedAt: 'x',
+      })
       .run();
     expect(run(db, filters, '2026-03-20')).not.toContain(6);
     expect(run(db, filters, '2026-03-21')).toContain(6);

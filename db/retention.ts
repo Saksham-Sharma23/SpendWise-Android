@@ -18,7 +18,6 @@ import type * as schema from './schema';
  * Node rather than a copy of it.
  */
 
- 
 export type RetentionDb = BaseSQLiteDatabase<'sync', any, typeof schema>;
 
 export const RETENTION_DAYS = 30;
@@ -51,11 +50,7 @@ export function daysLeft(deletedAt: string, today: ISODate = todayISO(), days: n
  * long as that batch exists.
  */
 export function purgeWhere(cutoff: ISODate) {
-  return and(
-    isNotNull(transactions.deletedAt),
-    lt(transactions.deletedAt, cutoff),
-    isNull(transactions.importBatchId),
-  );
+  return and(isNotNull(transactions.deletedAt), lt(transactions.deletedAt, cutoff), isNull(transactions.importBatchId));
 }
 
 /**
@@ -65,6 +60,9 @@ export function purgeWhere(cutoff: ISODate) {
  * Returns how many rows went, for the dev log.
  */
 export function purgeExpired(db: RetentionDb, today: ISODate = todayISO(), days: number = RETENTION_DAYS): number {
-  const result = db.delete(transactions).where(purgeWhere(purgeCutoff(today, days))).run();
+  const result = db
+    .delete(transactions)
+    .where(purgeWhere(purgeCutoff(today, days)))
+    .run();
   return Number((result as { changes?: number }).changes ?? 0);
 }

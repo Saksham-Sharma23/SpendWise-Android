@@ -82,7 +82,14 @@ export function Donut({ slices, selectedKey, onSelect, size = 188, thickness = 2
       <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
         <Animated.View style={[{ position: 'absolute', width: size, height: size }, ring]}>
           <Svg width={size} height={size}>
-            <Circle cx={size / 2} cy={size / 2} r={radius} stroke={colors.elevated} strokeWidth={thickness} fill="none" />
+            <Circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke={colors.elevated}
+              strokeWidth={thickness}
+              fill="none"
+            />
             {slices.map((s, i) => (
               <Segment
                 key={s.key}

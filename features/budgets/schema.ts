@@ -12,10 +12,7 @@ import type { BudgetInput } from './queries';
  */
 
 export const budgetFormSchema = z.object({
-  categoryId: z
-    .number({ message: 'Pick a category' })
-    .int()
-    .positive('Pick a category'),
+  categoryId: z.number({ message: 'Pick a category' }).int().positive('Pick a category'),
 
   limit: z
     .string()

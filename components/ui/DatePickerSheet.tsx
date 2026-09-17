@@ -3,14 +3,7 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {
-  WEEKDAY_INITIALS,
-  clampDate,
-  inMonth,
-  monthGrid,
-  monthRange,
-  openingMonth,
-} from '../../lib/calendar';
+import { WEEKDAY_INITIALS, clampDate, inMonth, monthGrid, monthRange, openingMonth } from '../../lib/calendar';
 import { MONTHS_SHORT, formatDayMonth, type ISODate } from '../../lib/dates';
 import { useMotion } from '../../lib/motion';
 import { fonts, useColors, withAlpha } from '../../lib/theme';
@@ -77,7 +70,11 @@ export function DatePickerSheet({ visible, value, today, min, max, title = 'Pick
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <Animated.View entering={FadeIn.duration(motion.base)} exiting={FadeOut.duration(motion.quick)} style={{ flex: 1 }}>
+      <Animated.View
+        entering={FadeIn.duration(motion.base)}
+        exiting={FadeOut.duration(motion.quick)}
+        style={{ flex: 1 }}
+      >
         {/* Tapping the scrim dismisses, like every other sheet in the app. */}
         <Pressable
           accessibilityRole="button"
@@ -135,7 +132,9 @@ export function DatePickerSheet({ visible, value, today, min, max, title = 'Pick
                     backgroundColor: on ? colors.primarySoft : colors.elevated,
                   }}
                 >
-                  <Text style={{ color: on ? colors.primary : colors.foreground, fontFamily: fonts.semibold, fontSize: 13 }}>
+                  <Text
+                    style={{ color: on ? colors.primary : colors.foreground, fontFamily: fonts.semibold, fontSize: 13 }}
+                  >
                     {MONTHS_SHORT[Number(m.slice(5, 7)) - 1]}
                   </Text>
                   <Text style={{ color: on ? colors.primary : colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>
@@ -171,10 +170,7 @@ export function DatePickerSheet({ visible, value, today, min, max, title = 'Pick
             ))}
           </View>
 
-          <Text
-            className="px-5 pt-3"
-            style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12 }}
-          >
+          <Text className="px-5 pt-3" style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12 }}>
             {value === today ? 'Today' : formatDayMonth(value)} {value === today ? '' : value.slice(0, 4)}
           </Text>
         </Animated.View>

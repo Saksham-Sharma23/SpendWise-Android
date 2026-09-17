@@ -72,11 +72,11 @@ export function resolveDateRange(f: TransactionFilters, today: ISODate = todayIS
 export function hasActiveFilters(f: TransactionFilters): boolean {
   return Boolean(
     (f.type && f.type !== 'all') ||
-      (f.categoryIds && f.categoryIds.length > 0) ||
-      f.datePreset ||
-      f.dateFrom ||
-      f.dateTo ||
-      (f.search && f.search.trim().length > 0),
+    (f.categoryIds && f.categoryIds.length > 0) ||
+    f.datePreset ||
+    f.dateFrom ||
+    f.dateTo ||
+    (f.search && f.search.trim().length > 0),
   );
 }
 

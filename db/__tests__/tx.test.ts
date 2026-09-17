@@ -12,7 +12,10 @@ import { freshDb } from './support';
  */
 
 const count = (d: Awaited<ReturnType<typeof freshDb>>['db']) =>
-  d.select({ n: sql<number>`count(*)` }).from(transactions).all()[0]!.n;
+  d
+    .select({ n: sql<number>`count(*)` })
+    .from(transactions)
+    .all()[0]!.n;
 
 const row = (i: number) => ({ type: 'expense' as const, amountPaise: 100 + i, date: '2026-09-14' });
 
@@ -27,7 +30,10 @@ describe('runWriteTx', () => {
 
   it('returns the callback value', async () => {
     const { db } = await freshDb();
-    const id = runWriteTx(db, (tx) => tx.insert(categories).values({ name: 'Coffee' }).returning({ id: categories.id }).all()[0]!.id);
+    const id = runWriteTx(
+      db,
+      (tx) => tx.insert(categories).values({ name: 'Coffee' }).returning({ id: categories.id }).all()[0]!.id,
+    );
     expect(id).toBeGreaterThan(0);
   });
 
@@ -41,7 +47,6 @@ describe('runWriteTx', () => {
     ).toThrow('boom');
     expect(count(db)).toBe(0);
   });
-
 });
 
 /**
@@ -88,7 +93,11 @@ describe('[D2] async callbacks under the expo driver semantics', () => {
     await new Promise((r) => setTimeout(r, 10)); // let the orphaned continuation run and fail
     // The continuation's insert ran in autocommit after the rollback; the first one did not survive.
     expect(count(db)).toBeLessThanOrEqual(1);
-    const survivors = db.select({ amount: transactions.amountPaise }).from(transactions).all().map((r) => r.amount);
+    const survivors = db
+      .select({ amount: transactions.amountPaise })
+      .from(transactions)
+      .all()
+      .map((r) => r.amount);
     expect(survivors).not.toContain(101);
   });
 });

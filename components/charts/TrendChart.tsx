@@ -52,18 +52,12 @@ interface Props {
 export function TrendChart({ points, mode, selectedIndex, onSelect, height = 150 }: Props) {
   const colors = useColors();
   const [width, setWidth] = useState(0);
-  const max = useMemo(
-    () => Math.max(1, ...points.map((p) => Math.max(p.incomePaise, p.expensePaise))),
-    [points],
-  );
+  const max = useMemo(() => Math.max(1, ...points.map((p) => Math.max(p.incomePaise, p.expensePaise))), [points]);
   const compact = points.length > 6;
 
   return (
     <View>
-      <View
-        style={{ height }}
-        onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
-      >
+      <View style={{ height }} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
         {/* Re-keyed on mode so switching cross-fades instead of snapping. */}
         <Animated.View key={mode} entering={FadeIn.duration(260)} style={{ flex: 1 }}>
           {mode === 'bar' ? (
@@ -144,8 +138,22 @@ function MonthBars({
       className="h-full flex-1 flex-row items-end justify-center"
       style={{ gap: compact ? 2 : 4 }}
     >
-      <Bar value={point.incomePaise / max} height={height} color={colors.income} width={barWidth} delay={index * 45} dimmed={dimmed} />
-      <Bar value={point.expensePaise / max} height={height} color={colors.expense} width={barWidth} delay={index * 45 + 30} dimmed={dimmed} />
+      <Bar
+        value={point.incomePaise / max}
+        height={height}
+        color={colors.income}
+        width={barWidth}
+        delay={index * 45}
+        dimmed={dimmed}
+      />
+      <Bar
+        value={point.expensePaise / max}
+        height={height}
+        color={colors.expense}
+        width={barWidth}
+        delay={index * 45 + 30}
+        dimmed={dimmed}
+      />
     </Pressable>
   );
 }
@@ -214,8 +222,7 @@ function LineMode({
   const incomeLine = smoothPath(income);
   const expenseLine = smoothPath(expense);
   const baseline = height - PAD_BOTTOM;
-  const area = (line: string) =>
-    n > 0 ? `${line} L${x(n - 1)},${baseline} L${x(0)},${baseline} Z` : '';
+  const area = (line: string) => (n > 0 ? `${line} L${x(n - 1)},${baseline} L${x(0)},${baseline} Z` : '');
 
   const sel = points[selectedIndex];
 
@@ -253,8 +260,22 @@ function LineMode({
 
         {sel ? (
           <>
-            <Circle cx={x(selectedIndex)} cy={y(sel.incomePaise)} r={5} fill={colors.card} stroke={colors.income} strokeWidth={2.5} />
-            <Circle cx={x(selectedIndex)} cy={y(sel.expensePaise)} r={5} fill={colors.card} stroke={colors.expense} strokeWidth={2.5} />
+            <Circle
+              cx={x(selectedIndex)}
+              cy={y(sel.incomePaise)}
+              r={5}
+              fill={colors.card}
+              stroke={colors.income}
+              strokeWidth={2.5}
+            />
+            <Circle
+              cx={x(selectedIndex)}
+              cy={y(sel.expensePaise)}
+              r={5}
+              fill={colors.card}
+              stroke={colors.expense}
+              strokeWidth={2.5}
+            />
           </>
         ) : null}
       </Svg>

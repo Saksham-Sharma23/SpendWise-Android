@@ -66,16 +66,16 @@ function overviewQuery(today: ISODate) {
   const lastToDate = addMonthsClamped(today, -1);
   const inThis = sql`${transactions.date} >= ${thisStart}`;
   return readDb
-        .select({
-          incomePaise: sql<number>`coalesce(sum(case when ${inThis} and ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
-          expensePaise: sql<number>`coalesce(sum(case when ${inThis} and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
-          lastIncomePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
-          lastExpensePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
-          lastExpenseToDatePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.date} <= ${lastToDate} and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
-          count: sql<number>`coalesce(sum(case when ${inThis} then 1 else 0 end), 0)`,
-        })
-        .from(transactions)
-        .where(and(isNull(transactions.deletedAt), gte(transactions.date, lastStart), lt(transactions.date, nextStart)));
+    .select({
+      incomePaise: sql<number>`coalesce(sum(case when ${inThis} and ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
+      expensePaise: sql<number>`coalesce(sum(case when ${inThis} and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
+      lastIncomePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
+      lastExpensePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
+      lastExpenseToDatePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.date} <= ${lastToDate} and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
+      count: sql<number>`coalesce(sum(case when ${inThis} then 1 else 0 end), 0)`,
+    })
+    .from(transactions)
+    .where(and(isNull(transactions.deletedAt), gte(transactions.date, lastStart), lt(transactions.date, nextStart)));
 }
 
 export interface TrendPoint {
@@ -99,12 +99,7 @@ export function useMonthlyTrend(months: number, today: ISODate): DbQueryResult<T
   const firstMonth = addMonthsClamped(startOfMonth(today), -(months - 1));
   const firstKey = firstMonth.slice(0, 7);
 
-  const result = useDbQuery(
-    () => dashboardQueries.trend(months, today),
-    ['transactions'],
-    [firstKey],
-    EMPTY_TREND,
-  );
+  const result = useDbQuery(() => dashboardQueries.trend(months, today), ['transactions'], [firstKey], EMPTY_TREND);
 
   const byMonth = new Map(result.data.map((r) => [r.month, r]));
   const points: TrendPoint[] = [];
@@ -288,7 +283,6 @@ export function dismissOnboarding(): void {
   setMeta(META_KEYS.ONBOARDING_DISMISSED, '1');
 }
 
-
 // ---------------------------------------------------------------------------
 // Budgets on Home
 // ---------------------------------------------------------------------------
@@ -344,33 +338,31 @@ export function useDashboardBudgets(today: ISODate, limit = 4): DbQueryResult<Da
         })
         .from(transactions)
         .where(
-          and(
-            isNull(transactions.deletedAt),
-            eq(transactions.type, 'expense'),
-            sql`(${sql.join(clauses, sql` or `)})`,
-          ),
+          and(isNull(transactions.deletedAt), eq(transactions.type, 'expense'), sql`(${sql.join(clauses, sql` or `)})`),
         )
         .groupBy(transactions.categoryId);
 
       const byCategory = new Map(spend.map((s) => [s.categoryId, s.spentPaise]));
 
-      return rows
-        .map((b): DashboardBudget => {
-          const spentPaise = byCategory.get(b.categoryId) ?? 0;
-          const ratio = b.limitPaise > 0 ? spentPaise / b.limitPaise : spentPaise > 0 ? 1 : 0;
-          return {
-            id: b.id,
-            categoryName: b.categoryName,
-            limitPaise: b.limitPaise,
-            spentPaise,
-            ratio,
-            fill: Math.max(0, Math.min(1, ratio)),
-            state: !b.isActive ? 'paused' : ratio >= 1 ? 'over' : ratio >= 0.75 ? 'warning' : 'under',
-          };
-        })
-        // Closest to the limit first: that is the one worth a glance.
-        .sort((a, b) => b.ratio - a.ratio)
-        .slice(0, limit);
+      return (
+        rows
+          .map((b): DashboardBudget => {
+            const spentPaise = byCategory.get(b.categoryId) ?? 0;
+            const ratio = b.limitPaise > 0 ? spentPaise / b.limitPaise : spentPaise > 0 ? 1 : 0;
+            return {
+              id: b.id,
+              categoryName: b.categoryName,
+              limitPaise: b.limitPaise,
+              spentPaise,
+              ratio,
+              fill: Math.max(0, Math.min(1, ratio)),
+              state: !b.isActive ? 'paused' : ratio >= 1 ? 'over' : ratio >= 0.75 ? 'warning' : 'under',
+            };
+          })
+          // Closest to the limit first: that is the one worth a glance.
+          .sort((a, b) => b.ratio - a.ratio)
+          .slice(0, limit)
+      );
     },
     ['budgets', 'transactions', 'categories'],
     [today, limit],

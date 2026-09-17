@@ -31,10 +31,7 @@ export function LedgerRow({ row, selected = false, hideDate = false }: Props) {
   const colors = useColors();
   const isIncome = row.type === 'income';
   const title = row.note?.trim() || row.categoryName || 'Untitled';
-  const subtitle = [
-    row.categoryName ?? 'Uncategorised',
-    hideDate ? null : formatDayMonth(row.date),
-  ]
+  const subtitle = [row.categoryName ?? 'Uncategorised', hideDate ? null : formatDayMonth(row.date)]
     .filter(Boolean)
     .join(' · ');
 
@@ -42,16 +39,10 @@ export function LedgerRow({ row, selected = false, hideDate = false }: Props) {
     <View className="flex-row items-center gap-3">
       <CategoryIcon icon={row.categoryIcon} color={row.categoryColor} selected={selected} />
       <View className="flex-1 pr-2">
-        <Text
-          numberOfLines={1}
-          style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}
-        >
+        <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
           {title}
         </Text>
-        <Text
-          numberOfLines={1}
-          style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}
-        >
+        <Text numberOfLines={1} style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
           {subtitle}
         </Text>
       </View>

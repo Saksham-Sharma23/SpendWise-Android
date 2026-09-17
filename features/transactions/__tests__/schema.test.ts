@@ -1,9 +1,4 @@
-import {
-  transactionFormSchema,
-  toTransactionInput,
-  emptyTransactionForm,
-  type TransactionFormValues,
-} from '../schema';
+import { transactionFormSchema, toTransactionInput, emptyTransactionForm, type TransactionFormValues } from '../schema';
 
 const base: TransactionFormValues = {
   type: 'expense',

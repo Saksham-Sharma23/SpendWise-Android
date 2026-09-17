@@ -49,7 +49,10 @@ export function quoteSql(value: string): string {
 }
 
 export function timestampForFile(at = new Date()): string {
-  return at.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, '');
+  return at
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}Z$/, '');
 }
 
 /** Move a file if it exists. Returns whether it did. */

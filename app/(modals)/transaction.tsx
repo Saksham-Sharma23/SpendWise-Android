@@ -106,10 +106,7 @@ export default function TransactionModal() {
 
   // Only categories that make sense for the chosen type: "Salary" has no
   // business on an expense (TASKS2 [U3]). `kind` comes from migration 0001.
-  const choices = useMemo(
-    () => categories.filter((c) => c.kind === 'both' || c.kind === type),
-    [categories, type],
-  );
+  const choices = useMemo(() => categories.filter((c) => c.kind === 'both' || c.kind === type), [categories, type]);
 
   /** Switching type drops a selection the new type cannot hold. */
   const onTypeChange = (next: TransactionFormValues['type'], apply: (v: string) => void) => {
@@ -247,7 +244,11 @@ export default function TransactionModal() {
         <Animated.View entering={FadeInDown.delay(120).duration(350)}>
           <View className="flex-row items-center justify-between">
             <Label>Category</Label>
-            <PressableScale accessibilityRole="button" onPress={() => router.push('/categories' as never)} className="mb-2.5 pl-3">
+            <PressableScale
+              accessibilityRole="button"
+              onPress={() => router.push('/categories' as never)}
+              className="mb-2.5 pl-3"
+            >
               <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 12 }}>Manage</Text>
             </PressableScale>
           </View>
@@ -297,7 +298,11 @@ export default function TransactionModal() {
             className="flex-row items-center rounded-2xl border p-1.5"
             style={{ backgroundColor: colors.card, borderColor: colors.border }}
           >
-            <RoundButton label="Previous day" onPress={() => setValue('date', addDays(date, -1), { shouldValidate: true })} plain>
+            <RoundButton
+              label="Previous day"
+              onPress={() => setValue('date', addDays(date, -1), { shouldValidate: true })}
+              plain
+            >
               <ChevronLeft size={18} color={colors.foreground} />
             </RoundButton>
             {/* The label is the way into the calendar: the arrows are for
@@ -310,9 +315,15 @@ export default function TransactionModal() {
               className="flex-1 flex-row items-center justify-center gap-2 py-2"
             >
               <CalendarDays size={16} color={colors.primary} />
-              <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>{dateLabel(date, today)}</Text>
+              <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
+                {dateLabel(date, today)}
+              </Text>
             </PressableScale>
-            <RoundButton label="Next day" onPress={() => setValue('date', addDays(date, 1), { shouldValidate: true })} plain>
+            <RoundButton
+              label="Next day"
+              onPress={() => setValue('date', addDays(date, 1), { shouldValidate: true })}
+              plain
+            >
               <ChevronRight size={18} color={colors.foreground} />
             </RoundButton>
           </View>
@@ -380,11 +391,13 @@ export default function TransactionModal() {
             )}
           />
           {errors.note?.message ? <ErrorText>{errors.note.message}</ErrorText> : null}
-
         </Animated.View>
       </ScrollView>
 
-      <View className="px-5 pt-3" style={{ paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.border }}>
+      <View
+        className="px-5 pt-3"
+        style={{ paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.border }}
+      >
         <PressableScale
           accessibilityRole="button"
           disabled={saving}

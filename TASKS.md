@@ -4,42 +4,43 @@
 > [`plan.md`](plan.md).** Context: [`CLAUDE.md`](CLAUDE.md) · Evidence for the R-phases:
 > [`docs/architecture-review-2026-09-17.md`](docs/architecture-review-2026-09-17.md) (IDs like `B4`, `A2`, `T6` refer to it; `R0`–`R6` are phases in this file).
 > History (read-only): [`docs/history/`](docs/history/). The old Phase 0–5 and Groups tracker and the
-> TASKS2 fix tracker live there with all their ticks and *Discovered* notes.
+> TASKS2 fix tracker live there with all their ticks and _Discovered_ notes.
 
 **How to use this file**
+
 - Work **top to bottom in the recommended order**. One batch = one sitting = one PR.
-- Tick `[x]` when the *Done when* line is true, not before. Code complete and verified on the phone are
+- Tick `[x]` when the _Done when_ line is true, not before. Code complete and verified on the phone are
   separate ticks. Device checks live in one list (§ Device verification) so they can be run in one session.
-- New problems found mid-task go in that phase's *Discovered* list.
+- New problems found mid-task go in that phase's _Discovered_ list.
 - Every task says **why**. If the why no longer holds, re-check the task before doing it.
 
 ---
 
 ## Status — 2026-09-17
 
-| # | Phase | Est. | Status |
-|---|---|---|---|
-| 0–5 | Foundations → Analytics | — | ✅ Code complete · 🟡 device checks open |
-| G | Groups — split expenses | — | ✅ Code complete · 🟡 device checks open |
-| F0–F3, F5 | Fix phases (TASKS2) | — | ✅ Code complete · 🟡 device checks open |
-| **R0** | Stabilise the repo | ½ d | 🟡 R0-1/2/5/6/7 done; README + unused deps left |
-| **R1** | Correctness bugs | 1½ d | ✅ done 2026-09-17 (550 tests) |
-| **R2** | Guard rails: lint, format, CI | 1½ d | ⬜ |
-| **R3** | One data layer | 3 d | ⬜ |
-| **R4** | UI kit and thin routes | 3 d | ⬜ |
-| **7** | **Backup & restore** | 3–4 d | ⬜ ← **most important remaining product work** |
-| 8 | Native layer | 3–4 d | ⬜ |
-| R5 | Performance (was TASKS2 F4) | 2 d | 🟡 2 of 7 done |
-| R6 | Observability and release ops | 1 d | ⬜ |
-| 6A | Sheets: import and workspaces | 7–8 d | ⬜ gated on the Sheets readiness gate |
-| 6B | Linked sheets | 4–5 d | ⬜ |
-| 9 | Hardening & Play Store | 4–5 d | ⬜ |
+| #         | Phase                         | Est.  | Status                                          |
+| --------- | ----------------------------- | ----- | ----------------------------------------------- |
+| 0–5       | Foundations → Analytics       | —     | ✅ Code complete · 🟡 device checks open        |
+| G         | Groups — split expenses       | —     | ✅ Code complete · 🟡 device checks open        |
+| F0–F3, F5 | Fix phases (TASKS2)           | —     | ✅ Code complete · 🟡 device checks open        |
+| **R0**    | Stabilise the repo            | ½ d   | 🟡 R0-1/2/5/6/7 done; README + unused deps left |
+| **R1**    | Correctness bugs              | 1½ d  | ✅ done 2026-09-17 (550 tests)                  |
+| **R2**    | Guard rails: lint, format, CI | 1½ d  | ⬜                                              |
+| **R3**    | One data layer                | 3 d   | ⬜                                              |
+| **R4**    | UI kit and thin routes        | 3 d   | ⬜                                              |
+| **7**     | **Backup & restore**          | 3–4 d | ⬜ ← **most important remaining product work**  |
+| 8         | Native layer                  | 3–4 d | ⬜                                              |
+| R5        | Performance (was TASKS2 F4)   | 2 d   | 🟡 2 of 7 done                                  |
+| R6        | Observability and release ops | 1 d   | ⬜                                              |
+| 6A        | Sheets: import and workspaces | 7–8 d | ⬜ gated on the Sheets readiness gate           |
+| 6B        | Linked sheets                 | 4–5 d | ⬜                                              |
+| 9         | Hardening & Play Store        | 4–5 d | ⬜                                              |
 
 **Recommended order:** R0 → R1 → R2 → R3 → R4 → 7 → 8 → R5 → R6 → 6A → 6B → 9.
-*Why this order:* a factory reset currently loses everything, so Backup (7) comes before any new data
+_Why this order:_ a factory reset currently loses everything, so Backup (7) comes before any new data
 surface. The refactor (R3/R4) comes before Backup and Sheets so that the two biggest new features are
 written in the target layout, not ported into it afterwards. Guard rails (R2) come before the refactor so
-the boundaries are enforced *while* files move.
+the boundaries are enforced _while_ files move.
 
 **Remaining: ~34–40 working days.** About 12½ days of that is R0–R6. Every R-phase ships behind a green
 `npm test` and makes no schema change.
@@ -47,28 +48,29 @@ the boundaries are enforced *while* files move.
 ---
 
 ## R0 — Stabilise the repo
+
 **Goal:** a clean starting point that someone else can clone and understand. **Est:** ½ day.
 
-- [x] **Commit the F5 working tree; work on `main`** (T8) *(done 2026-09-17: `b29f79a` code, `173b303` docs,
-  `ead7d44` R0. `main` did not exist and there is no remote, so `master` was renamed rather than merged.)*
-  *Why:* 32 modified files (date picker, recently deleted, generated theme CSS) existed only on one disk.
-  **Still open: no remote.** The repo is local-only, so a disk failure still loses everything.
-- [x] **Add `.gitattributes` (`* text=auto eol=lf`), `.editorconfig`, `.nvmrc` (22)** (T2) *(done 2026-09-17)*
-  *Why:* every git command warned about LF→CRLF on 30 files. Line-ending churn hides real diffs in review.
-  *(No renormalise commit was needed: the files were already stored as LF.)*
+- [x] **Commit the F5 working tree; work on `main`** (T8) _(done 2026-09-17: `b29f79a` code, `173b303` docs,
+      `ead7d44` R0. `main` did not exist and there is no remote, so `master` was renamed rather than merged.)_
+      _Why:_ 32 modified files (date picker, recently deleted, generated theme CSS) existed only on one disk.
+      **Still open: no remote.** The repo is local-only, so a disk failure still loses everything.
+- [x] **Add `.gitattributes` (`* text=auto eol=lf`), `.editorconfig`, `.nvmrc` (22)** (T2) _(done 2026-09-17)_
+      _Why:_ every git command warned about LF→CRLF on 30 files. Line-ending churn hides real diffs in review.
+      _(No renormalise commit was needed: the files were already stored as LF.)_
 - [ ] **Write `README.md`**: what the app is (3 lines), prerequisites, `npm ci`, run on a phone, test,
-  build, where the docs are
-  *Why:* CLAUDE.md is an agent context file. A human needs a one-page entry point.
+      build, where the docs are
+      _Why:_ CLAUDE.md is an agent context file. A human needs a one-page entry point.
 - [ ] **Remove unused dependencies:** `date-fns`, `@gorhom/bottom-sheet`, `expo-crypto`, `expo-document-picker`,
-  `expo-local-authentication` (T6). Re-add each in the phase that uses it (6A: document picker; 8: local auth)
-  *Why:* native ones are autolinked into every APK and pull in manifest entries that must then be blocked.
-  **Rebuild and run `npm run verify:apk`** afterwards, because this is a native change.
-- [x] **Fix the misleading comments** (T4) *(done 2026-09-17, `ead7d44`)*: `lib/icons.ts:10` (the test it cites doesn't exist, see R2),
-  `drizzle.studio.config.ts` (the device DB is no longer encrypted), `lib/theme.ts:7` (global.css is generated),
-  the `dashboard/queries.ts` header (`features/devtools` doesn't exist), `categories/mutations.ts:163` (see B15)
-  *Why:* a wrong comment costs a newcomer more than a missing one.
-- [x] **Delete the empty folders** `features/backup/`, `features/import/`, `lib/notifications/` *(done 2026-09-17; they were untracked, so no commit shows them)*
-- [x] **Consolidate trackers and move designs out of CLAUDE.md** *(done 2026-09-17: this file; `docs/history/`, `docs/design/`)*
+      `expo-local-authentication` (T6). Re-add each in the phase that uses it (6A: document picker; 8: local auth)
+      _Why:_ native ones are autolinked into every APK and pull in manifest entries that must then be blocked.
+      **Rebuild and run `npm run verify:apk`** afterwards, because this is a native change.
+- [x] **Fix the misleading comments** (T4) _(done 2026-09-17, `ead7d44`)_: `lib/icons.ts:10` (the test it cites doesn't exist, see R2),
+      `drizzle.studio.config.ts` (the device DB is no longer encrypted), `lib/theme.ts:7` (global.css is generated),
+      the `dashboard/queries.ts` header (`features/devtools` doesn't exist), `categories/mutations.ts:163` (see B15)
+      _Why:_ a wrong comment costs a newcomer more than a missing one.
+- [x] **Delete the empty folders** `features/backup/`, `features/import/`, `lib/notifications/` _(done 2026-09-17; they were untracked, so no commit shows them)_
+- [x] **Consolidate trackers and move designs out of CLAUDE.md** _(done 2026-09-17: this file; `docs/history/`, `docs/design/`)_
 
 **Done when:** `git status` is clean on `main`, `npm ci && npx tsc --noEmit && npx jest` pass on a fresh clone,
 and the README gets a new person to a running dev build.
@@ -76,34 +78,38 @@ and the README gets a new person to a running dev build.
 ---
 
 ## R1 — Correctness bugs
+
 **Goal:** every figure on screen is right. **Est:** 1½ days. **No schema change.** Every fix adds a test that fails without it.
 
 ### Batch R1-A — Wrong numbers
+
 - [x] **[B1] Bound "top categories" to the month:** add `lt(date, nextMonthStart)` in `dashboard/queries.ts` `topCategoriesQuery`
-  *Why:* a future-dated expense counts in "Where it went" but not in the month total, so a share can exceed 100%.
+      _Why:_ a future-dated expense counts in "Where it went" but not in the month total, so a share can exceed 100%.
 - [x] **[B2] Bound analytics ranges at the current month:** `trendQuery`, `totalsQuery`, `biggestExpenseQuery` get `lte(month, currentMonth)`
-  *Why:* period cards count next month's rows while the chart drops them, so the screen disagrees with itself.
-  (R3 then removes the duplication that caused B1/B2.)
+      _Why:_ period cards count next month's rows while the chart drops them, so the screen disagrees with itself.
+      (R3 then removes the duplication that caused B1/B2.)
 - [x] **[B3] Yearly cost is exact:** compute `yearlyCostPaise` from the charge per cycle (`weekly ×52`, `monthly ×12`, `quarterly ×4`, `yearly ×1`), never `round(monthly) × 12`. Test that ₹1,499/yr → 149900
-  *Why:* a 4-paise drift on a plan's own price is exactly the class of bug integer paise exists to prevent.
+      _Why:_ a 4-paise drift on a plan's own price is exactly the class of bug integer paise exists to prevent.
 - [x] **[B4] Category merge/delete also moves `split_expenses.category_id`**, and add a test in `categories/__tests__/mutations.test.ts` that creates a group expense first
-  *Why:* deleting "Food" makes group totals show "Food ⟨deleted #7⟩". Every table with a `category_id` FK must be in both functions. Add a test that lists them from `sqlite_master` so the next table can't be forgotten.
+      _Why:_ deleting "Food" makes group totals show "Food ⟨deleted #7⟩". Every table with a `category_id` FK must be in both functions. Add a test that lists them from `sqlite_master` so the next table can't be forgotten.
 - [x] **[B5] One amount limit:** `MAX_AMOUNT_PAISE` in `lib/money.ts` (₹10 crore, as the comments say), used by all three form schemas and Groups
-  *Why:* the current value is ₹100 crore, 10× the documented guard, and features disagree.
+      _Why:_ the current value is ₹100 crore, 10× the documented guard, and features disagree.
 - [x] **[B6] `formatINRCompact` rounds before choosing the unit** (₹99,960 → ₹1.0L). Test both boundaries
 
 ### Batch R1-B — Interactions
+
 - [x] **[B7] Ledger "Try again" actually re-runs:** expose `refetch()` from `useDbQuery` (bump an internal counter) and call it from `useTransactionPages().retry`
-  *Why:* today the button is a no-op, because `reset()` doesn't change the query's deps.
-- [x] **[B8] An FK violation after migrating stays a hard failure:** record `integrity_failed` in `app_meta` inside the check and refuse `ready` while it is set, or run `foreign_key_check` *before* COMMIT by migrating through our own transaction wrapper. Test with a deliberately violating fixture
-  *Why:* today the failure screen appears once and the next launch silently accepts the broken state.
-- [x] **[B9][B10] Theme switches repaint everything:** add `colors` to `Ledger` `renderItem` deps; resolve the *uncategorised* colour at render (a stable token such as `subtle`), not at fetch
+      _Why:_ today the button is a no-op, because `reset()` doesn't change the query's deps.
+- [x] **[B8] An FK violation after migrating stays a hard failure:** record `integrity_failed` in `app_meta` inside the check and refuse `ready` while it is set, or run `foreign_key_check` _before_ COMMIT by migrating through our own transaction wrapper. Test with a deliberately violating fixture
+      _Why:_ today the failure screen appears once and the next launch silently accepts the broken state.
+- [x] **[B9][B10] Theme switches repaint everything:** add `colors` to `Ledger` `renderItem` deps; resolve the _uncategorised_ colour at render (a stable token such as `subtle`), not at fetch
 - [x] **[B11] `BootFailure` status bar follows the theme**
 - [x] **[B12] `keysFor` chunks instead of truncating at 500 ids**
 
 ### Batch R1-C — Data safety
-- [x] **[B13] Snapshot before migrating whenever *any* user table has rows** (transactions, budgets, subscriptions, people other than self, split_groups, categories that aren't system)
-  *Why:* a Groups-only user gets no safety copy today.
+
+- [x] **[B13] Snapshot before migrating whenever _any_ user table has rows** (transactions, budgets, subscriptions, people other than self, split_groups, categories that aren't system)
+      _Why:_ a Groups-only user gets no safety copy today.
 - [x] **[B14] `deleteGroup` refuses when any member's net ≠ 0** (same message style as member removal). `restoreExpense` refuses if a payer or sharer is no longer a live member
 - [x] **[B15] The merge no longer hard-deletes the target's soft-deleted budgets** (the index is partial since 0001)
 - [x] **[B19] `deterministicIcon` matches whole words**, not substrings. Test "Petrol", "LinkedIn Premium", "Daily", "Card", "Parent"
@@ -113,7 +119,8 @@ and the README gets a new person to a running dev build.
 verified in both directions: the test was run against the unfixed code and seen to fail. Five checks that
 only the phone can settle are in § Device verification (DV-9, DV-10, DV-17, DV-18, DV-27).
 
-**Discovered:** full notes in [`plan.md`](plan.md) → *R1 Discovered*. The two that change later work:
+**Discovered:** full notes in [`plan.md`](plan.md) → _R1 Discovered_. The two that change later work:
+
 - `features/dashboard` had no seam between its SQL and the runtime, so B1 was untestable until the builders
   moved to `features/dashboard/sql.ts` — a piece of R3 pulled forward, and a concrete measure of A1's cost.
 - `restorePerson` and `restoreGroup` may share the B14 shape that `restoreExpense` and `restoreSettlements`
@@ -122,6 +129,7 @@ only the phone can settle are in § Device verification (DV-9, DV-10, DV-17, DV-
 ---
 
 ## R2 — Guard rails
+
 **Goal:** CLAUDE.md's conventions are enforced by tools. **Est:** 1½ days. (Supersedes TASKS2 F6.)
 
 - [ ] **ESLint (flat config) with `eslint-config-expo`, `eslint-plugin-boundaries`, `react-hooks`**
@@ -130,13 +138,13 @@ only the phone can settle are in § Device verification (DV-9, DV-10, DV-17, DV-
   - `no-restricted-syntax`: `parseFloat` / `toLocaleString` outside `lib/money.ts`; async function passed to `writeTx`/`.transaction(`
   - `no-restricted-imports`: `drizzle-orm/expo-sqlite` `useLiveQuery`; `db/client` from any `components/`
   - `@typescript-eslint/no-unused-vars` (removes the 30 shadowed `colors` imports)
-  *Why:* `npm run lint` fails today because ESLint isn't installed, so every rule exists only in prose.
-  **Done when:** `npm run lint` passes and a deliberate violation of each rule fails.
+    _Why:_ `npm run lint` fails today because ESLint isn't installed, so every rule exists only in prose.
+    **Done when:** `npm run lint` passes and a deliberate violation of each rule fails.
 - [ ] **Prettier** (print width 120, the code's existing style) + `npm run format`; format once in a dedicated commit
 - [ ] **Type-check tests:** `npm run typecheck` runs `tsc --noEmit` **and** `tsc -p tsconfig.test.json --noEmit`; align `ts-jest` with Jest 30 (or move to `jest-expo`'s Node preset)
 - [ ] **Add the icon-mapping test that `lib/icons.ts` claims exists:** `ICON_NAMES` and `CategoryIcon`'s map are the same set. Extract the map to `components/ui/iconMap.ts` so Node can import it
 - [ ] **Adopt the `@/` import alias** (`tsconfig` already declares it; Metro supports it) and codemod relative imports (T7)
-  *Why:* `../../../lib/theme` breaks on every move, and R3/R4 move a lot of files.
+      _Why:_ `../../../lib/theme` breaks on every move, and R3/R4 move a lot of files.
 - [ ] **GitHub Actions CI** on every PR: `npm ci` → typecheck → lint → jest → `EAS_BUILD_PROFILE=production npx expo config --json` asserts `INTERNET` ∈ `blockedPermissions` and `allowBackup: true`
 - [ ] **`CONTRIBUTING.md`:** branch naming, one batch = one PR, the migration checklist (convention #7/#8), the device-verification rule
 
@@ -145,21 +153,25 @@ only the phone can settle are in § Device verification (DV-9, DV-10, DV-17, DV-
 ---
 
 ## R3 — One data layer
+
 **Goal:** every feature has the same shape, and no query exists twice. **Est:** 3 days. Target layout: review §4.
 Move files first, then change behaviour, in separate commits so review stays readable.
 
 ### Batch R3-A — Shared foundations
+
 - [ ] **`db/types.ts`: one `SyncDb` and one `AnyDb` type**; delete `AnalyticsDb`/`GroupsDb`/`SyncDb`/`RetentionDb`/`SeedDatabase` aliases and the `as unknown as { all() }` casts in `groups/queries.ts` (A6)
 - [ ] **`data/meta.ts`**: move `getMeta`/`setMeta` out of `db/seed.ts`; `dismissOnboarding` uses it (A7)
 - [ ] **`data/categories.ts`**: the live-category builder + `useCategories(kind?)`; delete the copy in `features/transactions/queries.ts`; update the subscription, filters and split-expense callers (A3)
 - [ ] **`data/ledger.ts`**: `incomeExpenseSums`, `monthTrend(db, from, to)` + `fillMonths`, `categoryTotals(db, from, to, limit?)`, `budgetSpend(db, windows)`. All take `db` and are **bounded on both ends** (locks in B1/B2)
-  *Why:* the dashboard, analytics and budgets each had their own copy, and two copies of "this month's expenses" already disagreed.
+      _Why:_ the dashboard, analytics and budgets each had their own copy, and two copies of "this month's expenses" already disagreed.
 - [ ] **Move dev tools to `db/dev/`** (`devSeed.ts`, `benchmark.ts`)
 
 ### Batch R3-B — Features onto the standard layout
+
 For each of `transactions`, `dashboard`, `analytics`, `budgets`, `tracker`, `categories`, `groups`:
 `data/sql.ts` (builders take `db`) · `data/writes.ts` (pure, throw `UserFacingError`) · `data/hooks.ts` · `data/actions.ts` (safeWrite-bound) · `domain/` (pure) · `index.ts`.
-- [ ] transactions *(also: export pages through `readDb` with keyset, not sync OFFSET [B17])*
+
+- [ ] transactions _(also: export pages through `readDb` with keyset, not sync OFFSET [B17])_
 - [ ] dashboard + analytics onto `data/ledger.ts` (one threshold constant from `budgets/domain/progress.ts` via `data/`)
 - [ ] budgets (`budgetProgressForCategory` uses `data/ledger.budgetSpend`; `spend.test.ts` runs the shipped builder, not its hand-written copy)
 - [ ] tracker
@@ -172,10 +184,11 @@ For each of `transactions`, `dashboard`, `analytics`, `budgets`, `tracker`, `cat
 ---
 
 ## R4 — UI kit and thin routes
+
 **Goal:** a screen is composed from primitives, and a route file is a one-liner. **Est:** 3 days.
 
 - [ ] **`components/ui/Text`** with variants (`display`, `title`, `heading`, `body`, `bodyStrong`, `caption`, `label` (uppercase section label), `amount`) + `tone` (`default`/`muted`/`subtle`/`primary`/`income`/`expense`)
-  *Why:* 332 inline `fontFamily` styles in 45 files; each screen re-derives the type scale.
+      _Why:_ 332 inline `fontFamily` styles in 45 files; each screen re-derives the type scale.
 - [ ] **`Button`, `IconButton` (the round header button), `Chip`, `Section`, `StatFigure`, `Field` (`Label` + `ErrorText` + input)**; delete the per-file copies (A5)
 - [ ] **`FormModal` + `useSubmitOnce`**: header (close · title · optional delete), keyboard handling, sticky primary button, the double-tap guard, the "no longer exists" redirect
 - [ ] **Move screens out of `app/`** into `features/*/screens/`: transaction, budget and subscription forms; the filters sheet; More; Settings; the dev harness (`features/devtools/`) (A4). Routes become ≤ 20 lines
@@ -188,29 +201,31 @@ For each of `transactions`, `dashboard`, `analytics`, `budgets`, `tracker`, `cat
 ---
 
 ## Phase 7 — Backup & restore
+
 **Goal:** the feature that makes a standalone app responsible rather than reckless. **Est:** 3–4 days.
 **Design:** [`docs/design/backup-and-native.md`](docs/design/backup-and-native.md). Already built: `db/encryptedCopy.ts`, `plugins/withBackupRules.js`, WAL checkpoint on background.
 
 > **The highest-stakes phase.** Every other failure is an annoyance. A backup failure permanently loses data someone typed in by hand.
 
 - [ ] **Export `.db`** via `VACUUM INTO` a temp file + `expo-sharing`; record `last_backup_at`
-  *Why:* a byte-exact, consistent single file (no WAL) is the most reliable restore.
+      _Why:_ a byte-exact, consistent single file (no WAL) is the most reliable restore.
 - [ ] **Optional passphrase** (`writeEncryptedCopy`) with an explicit "a forgotten passphrase means this backup is gone" warning
 - [ ] **Export `.json`** with `format_version`, `schema_migration_idx`, and every user table keyed by `uid` (Groups included; `split_debts` may be omitted and rebuilt)
-  *Why:* readable, and restorable across schema versions.
+      _Why:_ readable, and restorable across schema versions.
 - [ ] **Restore: validate first, change nothing on failure** — header/passphrase, `integrity_check`, migration index ≤ bundled, row counts
 - [ ] **Snapshot the current DB before swapping**; swap through `closeConnection` → move → reopen → `bootDatabase()` (the reopenable connection already supports it)
 - [ ] **Restore from the boot-failure screen too** (the recovery path D5 promised)
 - [ ] **Settings: database + WAL size, last backup date, warn near the 25 MB auto-backup quota**
 - [ ] **Backup history** (`app_meta` or a small table) — "did I ever back this up?"
 - [ ] **Tests:** JSON round-trip on the migrated 50k fixture (row counts and paise totals per table identical); restore refuses a newer migration index; a wrong passphrase changes nothing
-- [ ] *(Monthly reminder ships with Phase 8 channels)*
+- [ ] _(Monthly reminder ships with Phase 8 channels)_
 
 **Exit criterion (on the phone):** populate → export → **uninstall** → reinstall → restore → row counts and totals match exactly. Repeat with an encrypted export and with the JSON export.
 
 ---
 
 ## Phase 8 — Native layer
+
 **Goal:** reminders and quick add, the reasons to be a native app. **Est:** 3–4 days. Design in `docs/design/backup-and-native.md`.
 
 - [ ] Create the channels `Renewals`, `Budget alerts`, `Backup` at boot (Android drops posts to a missing channel silently)
@@ -229,10 +244,11 @@ For each of `transactions`, `dashboard`, `analytics`, `budgets`, `tracker`, `cat
 ---
 
 ## R5 — Performance (carried from TASKS2 F4)
+
 **Goal:** 50k rows scroll end to end; a save causes no dropped frames. **Est:** 2 days.
 
-- [x] Keyset ledger pages, page 1 live *(TASKS2 4A)*
-- [x] Row memo on drawn fields; sticky month headers *(TASKS2 4A)*
+- [x] Keyset ledger pages, page 1 live _(TASKS2 4A)_
+- [x] Row memo on drawn fields; sticky month headers _(TASKS2 4A)_
 - [ ] **[B16] `AnimatedAmount` off React state** — Reanimated shared value → animated `TextInput` text via a worklet formatter; skip while unfocused
 - [ ] **[B18] `formatINR` always uses manual Indian grouping** (make it worklet-safe for the task above); keep the ICU probe as a test only
 - [ ] **Search:** drop `lower()` (LIKE is already case-insensitive for ASCII; keep `ESCAPE`); measure FTS5 trigram only if realistic notes show a win
@@ -244,9 +260,11 @@ For each of `transactions`, `dashboard`, `analytics`, `budgets`, `tracker`, `cat
 ---
 
 ## R6 — Observability and release ops
+
 **Est:** 1 day.
+
 - [ ] **Local crash log** (`lib/crashlog.ts`): global error handler + unhandled rejections → rotating `files/logs/crash.log`, last 200 entries, **no amounts or notes**; Settings → "Share crash log" (T9)
-  *Why:* release builds have no crash reporting, and Sentry is ruled out by the no-`INTERNET` rule.
+      _Why:_ release builds have no crash reporting, and Sentry is ruled out by the no-`INTERNET` rule.
 - [ ] **`docs/runbooks/release.md`**: version bump, `rm -rf android` → prebuild → `build:release-apk` → `verify:apk` → backup drill → migration drill → tag
 - [ ] **`docs/runbooks/migrations.md`**: the drizzle-kit bug list, generate → read SQL → populated test → phone copy
 - [ ] **Remove `db/legacyEncryption.ts` and `expo-secure-store`** once no installed build can hold a keyed DB (all testers upgraded past 2026-09-14)
@@ -254,7 +272,9 @@ For each of `transactions`, `dashboard`, `analytics`, `budgets`, `tracker`, `cat
 ---
 
 ## Sheets readiness gate (before 6A)
+
 Carried from TASKS2 F7. All must be true before the first 6A task.
+
 - [ ] `writeTx` is lint-enforced (R2)
 - [ ] `money_rows` consumers list `transactions`, `sheets`, `sheet_rows` as base tables; `data/ledger.ts` reads the view so dashboard, analytics and budgets change once
 - [ ] `sheet_row_links` keys through `uid` or ids that JSON restore remaps (Phase 7 format)
@@ -263,11 +283,13 @@ Carried from TASKS2 F7. All must be true before the first 6A task.
 - [ ] SheetJS installed from the vendor tarball (npm `xlsx` is stuck at 0.18.5 with advisories); the ExcelJS spike criteria include JS-thread blocking time for a 5k-row styled workbook
 
 ## Phase 6A — Sheets: import and workspaces · Phase 6B — Linked sheets
+
 **Est:** 7–8 d + 4–5 d. **Design, tasks, risks and exit criteria:** [`docs/design/sheets.md`](docs/design/sheets.md).
 The task list is unchanged from the original tracker ([`docs/history/TASKS-phases-0-5-and-groups-2026-09.md`](docs/history/TASKS-phases-0-5-and-groups-2026-09.md) → Phase 6A/6B). Copy it here when the gate passes, rewritten for the R3 layout (`features/sheets/{data,domain,screens}`).
 First task, as before: **collect five genuinely different real spreadsheets, then the one-day ExcelJS spike (go/no-go).**
 
 ## Phase 9 — Hardening & Play Store
+
 - [ ] Full backup drill and migration drill on the phone (repeat before every schema-touching release)
 - [ ] Delete-all-data with a typed confirmation
 - [ ] Release APK/AAB has no `INTERNET` (`verify:apk` on the artifact)
@@ -281,11 +303,13 @@ First task, as before: **collect five genuinely different real spreadsheets, the
 ---
 
 ## Device verification
+
 Everything below is **code complete and tested in Node**, and still needs the real phone. Run them together
 with a fresh dev build (several need one: backup rules, splash colours). Tick here, with the date.
 
 **Data safety (highest priority)**
-- [ ] Auto-backup drill: `adb shell bmgr backupnow com.spendwise.android` → uninstall → reinstall → data present *(blocked 2026-09-15 by "Size quota exceeded"; dev bundle now excluded — needs rebuild)*
+
+- [ ] Auto-backup drill: `adb shell bmgr backupnow com.spendwise.android` → uninstall → reinstall → data present _(blocked 2026-09-15 by "Size quota exceeded"; dev bundle now excluded — needs rebuild)_
 - [ ] Dev harness → encrypted backup-file round trip: counts match, header is not `SQLite format 3`
 - [ ] Deliberately corrupted `spendwise.db` → "can't open your data" screen; Share and Start fresh both work
 - [ ] A pending migration leaves a `files/snapshots/pre-migration-*.db` that opens in Drizzle Studio
@@ -295,6 +319,7 @@ with a fresh dev build (several need one: backup rules, splash colours). Tick he
 - [ ] A row with `deleted_at` 31 days ago is purged at launch; one on its last day survives
 
 **Correctness**
+
 - [ ] Change the phone's date while backgrounded → Home and a "Last 7 days" filter update on resume
 - [ ] Rename a category → Home and ledger update; a 500-row bulk delete re-runs each mounted query once (`readQueryCount`)
 - [ ] Groups: the Goa example shows "Chirag owes Aarav ₹2,250" and "1 payment instead of 3"; "3 pairwise payments" with simplify off
@@ -303,6 +328,7 @@ with a fresh dev build (several need one: backup rules, splash colours). Tick he
 - [ ] Keyboard: note field and Save both visible while typing (edge-to-edge, gesture nav)
 
 **Performance** (50k seeded DB)
+
 - [ ] Dev harness benchmark: 24-month trend ≤ 50 ms; record every row in R5
 - [ ] A 500 ms artificial `SELECT` does not freeze the tab-bar droplet
 - [ ] Home paints in one frame; adding a transaction from Home causes no droplet stutter
@@ -312,38 +338,40 @@ with a fresh dev build (several need one: backup rules, splash colours). Tick he
 ---
 
 ## Backlog (v1.1+)
-| Item | Est. | Why deferred |
-|---|---|---|
-| Category `kind` editable in the category editor | ½ d | User categories are always `both` today, so they appear on both forms |
-| Import-batch undo UI | 1 d | Needs Phase 6 imports first; `import_batches` exists |
-| Groups: exact minimum-payments solver (≤ 12 members) | 1 d | Greedy + pairing is ≤ n − 1 and what Splitwise ships |
-| Groups: share a reminder via the share sheet | ½ d | No `INTERNET` needed |
-| Groups: recurring group expenses; copy your share into the ledger | 1–2 d each | Groups stay separate from the ledger by decision |
-| Component tests (`jest-expo` + Testing Library) for forms | 2 d | Logic is covered in Node; UI is verified on device |
-| Multi-device sync | weeks | No server by design; `uid` columns already exist |
-| Rollup tables | 2 d | Only if on-device timings exceed 50 ms at 50k |
-| Multi-currency | 3 d | The web app is INR-only |
-| Receipt photos | 3 d | Storage and the 25 MB backup quota |
-| Live Google Sheets sync · bank SMS capture | — | Need `INTERNET` / `READ_SMS`; break the privacy promise |
+
+| Item                                                              | Est.       | Why deferred                                                          |
+| ----------------------------------------------------------------- | ---------- | --------------------------------------------------------------------- |
+| Category `kind` editable in the category editor                   | ½ d        | User categories are always `both` today, so they appear on both forms |
+| Import-batch undo UI                                              | 1 d        | Needs Phase 6 imports first; `import_batches` exists                  |
+| Groups: exact minimum-payments solver (≤ 12 members)              | 1 d        | Greedy + pairing is ≤ n − 1 and what Splitwise ships                  |
+| Groups: share a reminder via the share sheet                      | ½ d        | No `INTERNET` needed                                                  |
+| Groups: recurring group expenses; copy your share into the ledger | 1–2 d each | Groups stay separate from the ledger by decision                      |
+| Component tests (`jest-expo` + Testing Library) for forms         | 2 d        | Logic is covered in Node; UI is verified on device                    |
+| Multi-device sync                                                 | weeks      | No server by design; `uid` columns already exist                      |
+| Rollup tables                                                     | 2 d        | Only if on-device timings exceed 50 ms at 50k                         |
+| Multi-currency                                                    | 3 d        | The web app is INR-only                                               |
+| Receipt photos                                                    | 3 d        | Storage and the 25 MB backup quota                                    |
+| Live Google Sheets sync · bank SMS capture                        | —          | Need `INTERNET` / `READ_SMS`; break the privacy promise               |
 
 ---
 
 ## Decisions log
+
 Newest first. Full reasoning for older rows: `docs/history/`.
 
-| Date | Decision | Reason |
-|---|---|---|
-| 2026-09-17 | **Refactor (R0–R4) before Backup and Sheets; Backup (7) before Sheets (6A)** | Durability is the top product risk; the two largest new features should be written once, in the target layout |
-| 2026-09-17 | **Shared `data/` layer below features** for queries 2+ features need | "No sibling imports" without a shared layer produced copied queries that drifted (B1/B2) |
-| 2026-09-17 | **One tracker**: TASKS.md; TASKS2.md and the Phase 0–5 detail archived to `docs/history/` | Open items were spread across four places |
-| 2026-09-17 | JS date picker (`lib/calendar.ts`), not a native module | Ships over the air; paints in the app's theme, not the system's |
-| 2026-09-17 | `global.css` generated from `lib/theme.ts` (`npm run theme:css`, test-enforced) | Two hand-synced palettes drift |
-| 2026-09-17 | Soft-deleted transactions purged after 30 days (import-batch rows exempt) | Deleted rows were kept forever |
-| 2026-09-15 | Light theme + System/Light/Dark toggle shipped; `userInterfaceStyle: 'automatic'` | Supersedes "dark-only v1" |
-| 2026-09-15 | Groups built, separate from the ledger; friends are typed names | No contacts permission |
-| 2026-09-15 | Charts stay on react-native-svg + Reanimated (no Skia) | ≤ 24 points; no native rebuild |
-| 2026-09-14 | Main DB unkeyed; SQLCipher only for passphrase-encrypted backup files | Keystore keys made auto-backup restores unopenable |
-| 2026-09-14 | `useDbQuery` + `readDb` replace `useLiveQuery` | Per-row re-runs, missed joins, races, swallowed errors |
-| 2026-09-14 | Keyset ledger pages; `categories.kind`; `is_recurring` dropped; `uid` on every user table; one ISO timestamp format | Migrations 0001–0006 |
-| 2026-09-14 | Imports become Sheets (separate workspaces); app edits its own copy; per-sheet "include in totals" via `money_rows` | User's model |
-| 2026-09-11 | Standalone, offline-only; SQLite + Drizzle; aggregation in SQL; three backup layers | The founding decisions |
+| Date       | Decision                                                                                                            | Reason                                                                                                        |
+| ---------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| 2026-09-17 | **Refactor (R0–R4) before Backup and Sheets; Backup (7) before Sheets (6A)**                                        | Durability is the top product risk; the two largest new features should be written once, in the target layout |
+| 2026-09-17 | **Shared `data/` layer below features** for queries 2+ features need                                                | "No sibling imports" without a shared layer produced copied queries that drifted (B1/B2)                      |
+| 2026-09-17 | **One tracker**: TASKS.md; TASKS2.md and the Phase 0–5 detail archived to `docs/history/`                           | Open items were spread across four places                                                                     |
+| 2026-09-17 | JS date picker (`lib/calendar.ts`), not a native module                                                             | Ships over the air; paints in the app's theme, not the system's                                               |
+| 2026-09-17 | `global.css` generated from `lib/theme.ts` (`npm run theme:css`, test-enforced)                                     | Two hand-synced palettes drift                                                                                |
+| 2026-09-17 | Soft-deleted transactions purged after 30 days (import-batch rows exempt)                                           | Deleted rows were kept forever                                                                                |
+| 2026-09-15 | Light theme + System/Light/Dark toggle shipped; `userInterfaceStyle: 'automatic'`                                   | Supersedes "dark-only v1"                                                                                     |
+| 2026-09-15 | Groups built, separate from the ledger; friends are typed names                                                     | No contacts permission                                                                                        |
+| 2026-09-15 | Charts stay on react-native-svg + Reanimated (no Skia)                                                              | ≤ 24 points; no native rebuild                                                                                |
+| 2026-09-14 | Main DB unkeyed; SQLCipher only for passphrase-encrypted backup files                                               | Keystore keys made auto-backup restores unopenable                                                            |
+| 2026-09-14 | `useDbQuery` + `readDb` replace `useLiveQuery`                                                                      | Per-row re-runs, missed joins, races, swallowed errors                                                        |
+| 2026-09-14 | Keyset ledger pages; `categories.kind`; `is_recurring` dropped; `uid` on every user table; one ISO timestamp format | Migrations 0001–0006                                                                                          |
+| 2026-09-14 | Imports become Sheets (separate workspaces); app edits its own copy; per-sheet "include in totals" via `money_rows` | User's model                                                                                                  |
+| 2026-09-11 | Standalone, offline-only; SQLite + Drizzle; aggregation in SQL; three backup layers                                 | The founding decisions                                                                                        |

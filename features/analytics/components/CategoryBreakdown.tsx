@@ -1,12 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
-import Animated, {
-  interpolateColor,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { Donut } from '../../../components/charts/Donut';
 import { Card } from '../../../components/ui/Card';
@@ -107,16 +102,19 @@ export function CategoryBreakdown({ today, earliest }: { today: ISODate; earlies
               onSelect={setSelectedKey}
             >
               <View pointerEvents="none" className="items-center px-8">
-                <Text
-                  numberOfLines={1}
-                  style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 12 }}
-                >
+                <Text numberOfLines={1} style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 12 }}>
                   {selected ? displayName(selected) : 'Spent'}
                 </Text>
                 <Text
                   numberOfLines={1}
                   adjustsFontSizeToFit
-                  style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 22, letterSpacing: -0.5, marginTop: 2 }}
+                  style={{
+                    color: colors.foreground,
+                    fontFamily: fonts.bold,
+                    fontSize: 22,
+                    letterSpacing: -0.5,
+                    marginTop: 2,
+                  }}
                 >
                   {formatINR(selected ? selected.totalPaise : total, { whole: true })}
                 </Text>
@@ -147,7 +145,15 @@ export function CategoryBreakdown({ today, earliest }: { today: ISODate; earlies
   );
 }
 
-function MonthStep({ direction, disabled, onPress }: { direction: 'back' | 'forward'; disabled: boolean; onPress: () => void }) {
+function MonthStep({
+  direction,
+  disabled,
+  onPress,
+}: {
+  direction: 'back' | 'forward';
+  disabled: boolean;
+  onPress: () => void;
+}) {
   const colors = useColors();
   const Icon = direction === 'back' ? ChevronLeft : ChevronRight;
   return (
@@ -211,40 +217,55 @@ function LegendRow({
 
   return (
     <Animated.View style={[{ borderRadius: 16 }, row]}>
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      accessibilityLabel={`${displayName(slice)}, ${formatINR(slice.totalPaise, { whole: true })}, ${percent(slice.share)}`}
-      onPress={onPress}
-      scaleTo={0.98}
-      className="flex-row items-center gap-3 rounded-2xl px-2 py-2"
-    >
-      {slice.key === 'other' ? (
-        <View className="items-center justify-center rounded-full" style={{ width: 34, height: 34, backgroundColor: colors.elevated }}>
-          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
-        </View>
-      ) : (
-        <CategoryIcon icon={slice.icon} color={color} size={34} />
-      )}
-      <View className="flex-1">
-        <View className="flex-row items-baseline justify-between">
-          <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14, flexShrink: 1 }}>
-            {displayName(slice)}
-          </Text>
-          <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14, fontVariant: ['tabular-nums'] }}>
-            {formatINR(slice.totalPaise, { whole: true })}
-          </Text>
-        </View>
-        <View className="mt-1.5 flex-row items-center gap-2">
-          <View className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: colors.elevated }}>
-            <Animated.View className="h-full rounded-full" style={[{ backgroundColor: color }, bar]} />
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        accessibilityLabel={`${displayName(slice)}, ${formatINR(slice.totalPaise, { whole: true })}, ${percent(slice.share)}`}
+        onPress={onPress}
+        scaleTo={0.98}
+        className="flex-row items-center gap-3 rounded-2xl px-2 py-2"
+      >
+        {slice.key === 'other' ? (
+          <View
+            className="items-center justify-center rounded-full"
+            style={{ width: 34, height: 34, backgroundColor: colors.elevated }}
+          >
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
           </View>
-          <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11, width: 34, textAlign: 'right' }}>
-            {percent(slice.share)}
-          </Text>
+        ) : (
+          <CategoryIcon icon={slice.icon} color={color} size={34} />
+        )}
+        <View className="flex-1">
+          <View className="flex-row items-baseline justify-between">
+            <Text
+              numberOfLines={1}
+              style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14, flexShrink: 1 }}
+            >
+              {displayName(slice)}
+            </Text>
+            <Text
+              style={{
+                color: colors.foreground,
+                fontFamily: fonts.semibold,
+                fontSize: 14,
+                fontVariant: ['tabular-nums'],
+              }}
+            >
+              {formatINR(slice.totalPaise, { whole: true })}
+            </Text>
+          </View>
+          <View className="mt-1.5 flex-row items-center gap-2">
+            <View className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: colors.elevated }}>
+              <Animated.View className="h-full rounded-full" style={[{ backgroundColor: color }, bar]} />
+            </View>
+            <Text
+              style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11, width: 34, textAlign: 'right' }}
+            >
+              {percent(slice.share)}
+            </Text>
+          </View>
         </View>
-      </View>
-    </PressableScale>
+      </PressableScale>
     </Animated.View>
   );
 }

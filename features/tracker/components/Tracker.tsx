@@ -15,12 +15,7 @@ import { formatINR } from '../../../lib/money';
 import { renewalCountdown } from '../../../lib/renewals';
 import { useToday } from '../../../lib/today';
 import { fonts, useColors, withAlpha } from '../../../lib/theme';
-import {
-  restoreSubscription,
-  setSubscriptionStatus,
-  softDeleteSubscription,
-  useSubscriptions,
-} from '../queries';
+import { restoreSubscription, setSubscriptionStatus, softDeleteSubscription, useSubscriptions } from '../queries';
 import { arrange, summarise, type EnrichedSubscription, type StatusFilter, type SubscriptionSort } from '../renewal';
 import { SubscriptionCard, type CardActions } from './SubscriptionCard';
 
@@ -134,8 +129,7 @@ export function Tracker() {
                 {formatINR(summary.monthlyTotalPaise, { whole: true })}
               </Text>
               <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
-                {formatINR(summary.yearlyTotalPaise, { whole: true })} a year ·{' '}
-                {summary.activeCount} active
+                {formatINR(summary.yearlyTotalPaise, { whole: true })} a year · {summary.activeCount} active
               </Text>
 
               {summary.next ? (
@@ -193,10 +187,7 @@ export function Tracker() {
           </Animated.View>
 
           {visible.length === 0 ? (
-            <Text
-              className="py-8 text-center"
-              style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13 }}
-            >
+            <Text className="py-8 text-center" style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13 }}>
               Nothing {status === 'all' ? 'here' : status} right now.
             </Text>
           ) : (

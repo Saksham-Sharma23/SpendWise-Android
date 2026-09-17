@@ -23,7 +23,6 @@ import { budgets, categories, splitExpenses, subscriptions, transactions } from 
  *     migration 0001, so a soft-deleted budget no longer blocks moving one in.
  */
 
- 
 export type SyncDb = BaseSQLiteDatabase<'sync', any, typeof schema>;
 
 export class CategoryError extends Error {}
@@ -100,11 +99,7 @@ export function updateCategory(database: SyncDb, id: number, input: CategoryInpu
   liveCategory(database, id);
   const name = validName(input.name);
   assertNameFree(database, name, id);
-  database
-    .update(categories)
-    .set({ name, color: input.color, icon: input.icon })
-    .where(eq(categories.id, id))
-    .run();
+  database.update(categories).set({ name, color: input.color, icon: input.icon }).where(eq(categories.id, id)).run();
 }
 
 /** Soft-delete a category row and release its name. Callers move its references first. */
@@ -192,7 +187,10 @@ export function deleteCategory(database: SyncDb, id: number): { uncategorised: n
     // Group expenses become uncategorised too (B4), rather than keeping a
     // reference to the row this function is about to retire and rename.
     tx.update(splitExpenses).set({ categoryId: null }).where(eq(splitExpenses.categoryId, id)).run();
-    tx.update(budgets).set({ deletedAt: now() }).where(and(eq(budgets.categoryId, id), isNull(budgets.deletedAt))).run();
+    tx.update(budgets)
+      .set({ deletedAt: now() })
+      .where(and(eq(budgets.categoryId, id), isNull(budgets.deletedAt)))
+      .run();
     retire(tx as SyncDb, id, cat.name);
     return { uncategorised };
   });

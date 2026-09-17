@@ -18,7 +18,6 @@ import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
  * db/client.ts binds it to the app's handle as `writeTx`.
  */
 
- 
 type SyncDatabase = BaseSQLiteDatabase<'sync', any, any>;
 type TxHandle<D extends SyncDatabase> = Parameters<Parameters<D['transaction']>[0]>[0];
 

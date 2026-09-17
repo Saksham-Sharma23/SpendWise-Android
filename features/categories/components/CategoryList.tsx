@@ -84,12 +84,17 @@ function Row({ item, index, onPress }: { item: CategoryWithUsage; index: number;
         <CategoryIcon icon={item.icon} color={item.color} />
         <View className="flex-1">
           <View className="flex-row items-center gap-2">
-            <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15, flexShrink: 1 }}>
+            <Text
+              numberOfLines={1}
+              style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15, flexShrink: 1 }}
+            >
               {item.name}
             </Text>
             {item.isSystem ? (
               <View className="rounded-full px-2 py-0.5" style={{ backgroundColor: colors.elevated }}>
-                <Text style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 9, letterSpacing: 0.5 }}>BUILT-IN</Text>
+                <Text style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 9, letterSpacing: 0.5 }}>
+                  BUILT-IN
+                </Text>
               </View>
             ) : null}
           </View>

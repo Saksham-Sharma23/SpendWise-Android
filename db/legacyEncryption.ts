@@ -69,7 +69,9 @@ function tableCounts(conn: ReturnType<typeof openConnection>, schemaName: 'main'
   );
   const counts = new Map<string, number>();
   for (const { name } of tables) {
-    const row = conn.getFirstSync<{ n: number }>(`SELECT count(*) AS n FROM ${schemaName}."${name.replace(/"/g, '""')}"`);
+    const row = conn.getFirstSync<{ n: number }>(
+      `SELECT count(*) AS n FROM ${schemaName}."${name.replace(/"/g, '""')}"`,
+    );
     counts.set(name, row?.n ?? 0);
   }
   return counts;
@@ -101,7 +103,9 @@ export async function convertLegacyEncryptionIfNeeded(): Promise<LegacyCheck> {
       const after = tableCounts(conn, 'plaintext');
       for (const [table, n] of before) {
         if (after.get(table) !== n) {
-          throw new LegacyConversionError(`Conversion check failed: ${table} has ${n} rows but the copy has ${after.get(table) ?? 0}`);
+          throw new LegacyConversionError(
+            `Conversion check failed: ${table} has ${n} rows but the copy has ${after.get(table) ?? 0}`,
+          );
         }
       }
     } finally {
@@ -110,7 +114,9 @@ export async function convertLegacyEncryptionIfNeeded(): Promise<LegacyCheck> {
   } catch (e) {
     closeConnection();
     deleteIfExists(plain);
-    throw e instanceof LegacyConversionError ? e : new LegacyConversionError(e instanceof Error ? e.message : String(e));
+    throw e instanceof LegacyConversionError
+      ? e
+      : new LegacyConversionError(e instanceof Error ? e.message : String(e));
   }
   closeConnection();
 
@@ -125,7 +131,9 @@ export async function convertLegacyEncryptionIfNeeded(): Promise<LegacyCheck> {
     plain.moveSync(databaseFile());
   } catch (e) {
     moveIfExists(kept, databaseFile());
-    throw new LegacyConversionError(`Could not put the converted database in place: ${e instanceof Error ? e.message : String(e)}`);
+    throw new LegacyConversionError(
+      `Could not put the converted database in place: ${e instanceof Error ? e.message : String(e)}`,
+    );
   }
 
   if (!readsAsSqlite()) {

@@ -143,9 +143,7 @@ export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Pro
     toExpense.value = series.expense;
     toTop.value = series.top;
     progress.value = 0;
-    progress.value = motion.reduced
-      ? 1
-      : withTiming(1, { duration: motion.morph, easing: Easing.inOut(Easing.cubic) });
+    progress.value = motion.reduced ? 1 : withTiming(1, { duration: motion.morph, easing: Easing.inOut(Easing.cubic) });
   }, [series, motion, progress, fromIncome, toIncome, fromExpense, toExpense, fromTop, toTop]);
 
   /** The blended ceiling, in paise. Read by the paths and the dots alike. */
@@ -289,7 +287,14 @@ export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Pro
                     strokeDasharray="4 5"
                   />
                 ))}
-                <Line x1={PAD_X} x2={width - PAD_X} y1={baseline} y2={baseline} stroke={colors.border} strokeWidth={1} />
+                <Line
+                  x1={PAD_X}
+                  x2={width - PAD_X}
+                  y1={baseline}
+                  y2={baseline}
+                  stroke={colors.border}
+                  strokeWidth={1}
+                />
 
                 <AnimatedPath animatedProps={incomeArea} fill="url(#areaIncome)" />
                 <AnimatedPath animatedProps={expenseArea} fill="url(#areaExpense)" />
@@ -318,8 +323,20 @@ export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Pro
                   strokeLinecap="round"
                 />
 
-                <AnimatedCircle animatedProps={incomeDot} r={5} fill={colors.card} stroke={colors.income} strokeWidth={2.5} />
-                <AnimatedCircle animatedProps={expenseDot} r={5} fill={colors.card} stroke={colors.expense} strokeWidth={2.5} />
+                <AnimatedCircle
+                  animatedProps={incomeDot}
+                  r={5}
+                  fill={colors.card}
+                  stroke={colors.income}
+                  strokeWidth={2.5}
+                />
+                <AnimatedCircle
+                  animatedProps={expenseDot}
+                  r={5}
+                  fill={colors.card}
+                  stroke={colors.expense}
+                  strokeWidth={2.5}
+                />
               </Svg>
 
               {/* The ceiling changes with the range; it cross-fades rather than
@@ -411,7 +428,9 @@ function TipRow({ color, label, paise }: { color: string; label: string; paise: 
         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color }} />
         <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>{label}</Text>
       </View>
-      <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 11, fontVariant: ['tabular-nums'] }}>
+      <Text
+        style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 11, fontVariant: ['tabular-nums'] }}
+      >
         {formatINR(paise, { whole: true })}
       </Text>
     </View>

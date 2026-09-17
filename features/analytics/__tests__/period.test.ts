@@ -85,7 +85,11 @@ describe('savingsRate', () => {
   });
 });
 
-const cat = (id: number | null, totalPaise: number, name: string | null = id == null ? null : `C${id}`): CategoryTotal => ({
+const cat = (
+  id: number | null,
+  totalPaise: number,
+  name: string | null = id == null ? null : `C${id}`,
+): CategoryTotal => ({
   id,
   name,
   color: null,

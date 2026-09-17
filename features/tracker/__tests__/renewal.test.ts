@@ -141,7 +141,10 @@ describe('arrange — status filter and sort', () => {
   const rows = [
     enrich(sub({ id: 1, name: 'Spotify', amountPaise: 119_00, anchorDate: '2026-09-20' }), today),
     enrich(sub({ id: 2, name: 'Netflix', amountPaise: 649_00, anchorDate: '2026-09-16' }), today),
-    enrich(sub({ id: 3, name: 'Gym', amountPaise: 12_000_00, billingCycle: 'yearly', anchorDate: '2026-10-01' }), today),
+    enrich(
+      sub({ id: 3, name: 'Gym', amountPaise: 12_000_00, billingCycle: 'yearly', anchorDate: '2026-10-01' }),
+      today,
+    ),
     enrich(sub({ id: 4, name: 'Old thing', status: 'cancelled', anchorDate: '2026-09-15' }), today),
     enrich(sub({ id: 5, name: 'Paused thing', status: 'paused', anchorDate: '2026-09-15' }), today),
   ];

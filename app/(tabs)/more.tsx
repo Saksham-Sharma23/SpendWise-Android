@@ -35,15 +35,33 @@ const GROUPS: { title: string; rows: Row[] }[] = [
     rows: [
       { icon: PiggyBank, tint: 'lime', label: 'Budgets', hint: 'Per-category limits and cycles', href: '/budgets' },
       { icon: Repeat, tint: 'violet', label: 'Tracker', hint: 'Subscriptions and renewals', href: '/tracker' },
-      { icon: Tags, tint: 'orange', label: 'Categories', hint: 'Create, rename, recolour and merge', href: '/categories' },
+      {
+        icon: Tags,
+        tint: 'orange',
+        label: 'Categories',
+        hint: 'Create, rename, recolour and merge',
+        href: '/categories',
+      },
       { icon: Users, tint: 'blue', label: 'Groups', hint: 'Split expenses with friends', href: '/groups' },
     ],
   },
   {
     title: 'Your data',
     rows: [
-      { icon: FileSpreadsheet, tint: 'mint', label: 'Sheets', hint: 'Import a sheet and keep it as its own workspace', href: '/sheets' },
-      { icon: DatabaseBackup, tint: 'amber', label: 'Backup & restore', hint: 'Export your data, or restore it', href: '/backup' },
+      {
+        icon: FileSpreadsheet,
+        tint: 'mint',
+        label: 'Sheets',
+        hint: 'Import a sheet and keep it as its own workspace',
+        href: '/sheets',
+      },
+      {
+        icon: DatabaseBackup,
+        tint: 'amber',
+        label: 'Backup & restore',
+        hint: 'Export your data, or restore it',
+        href: '/backup',
+      },
     ],
   },
   {
@@ -52,7 +70,15 @@ const GROUPS: { title: string; rows: Row[] }[] = [
       { icon: Settings, tint: 'grey', label: 'Settings', hint: 'Notifications, security, data', href: '/settings' },
       // Stripped from release bundles by the __DEV__ guard.
       ...(__DEV__
-        ? ([{ icon: FlaskConical, tint: 'red', label: 'Dev harness', hint: 'Seed 50k rows and benchmark queries', href: '/dev' }] as Row[])
+        ? ([
+            {
+              icon: FlaskConical,
+              tint: 'red',
+              label: 'Dev harness',
+              hint: 'Seed 50k rows and benchmark queries',
+              href: '/dev',
+            },
+          ] as Row[])
         : []),
     ],
   },
@@ -75,7 +101,9 @@ export default function MoreScreen() {
             </View>
             <View className="flex-1">
               <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 16 }}>Private by design</Text>
-              <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13, marginTop: 2, lineHeight: 18 }}>
+              <Text
+                style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13, marginTop: 2, lineHeight: 18 }}
+              >
                 Everything stays on this phone. SpendWise has no servers and sends nothing anywhere.
               </Text>
             </View>

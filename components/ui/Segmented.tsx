@@ -87,8 +87,7 @@ export function Segmented<T extends string>({ options, value, onChange, size = '
     const travel = Math.min(1, Math.abs(pos.value - target.value));
     return {
       transform: [{ translateX: pos.value * segment }, { scaleX: 1 + travel * STRETCH }],
-      backgroundColor:
-        tints.length > 1 ? interpolateColor(pos.value, stops, tints) : (tints[0] ?? colors.primary),
+      backgroundColor: tints.length > 1 ? interpolateColor(pos.value, stops, tints) : (tints[0] ?? colors.primary),
     };
   });
 
@@ -103,10 +102,7 @@ export function Segmented<T extends string>({ options, value, onChange, size = '
       {segment > 0 ? (
         <Animated.View
           pointerEvents="none"
-          style={[
-            { position: 'absolute', top: 4, bottom: 4, left: 4, width: segment, borderRadius: 999 },
-            pill,
-          ]}
+          style={[{ position: 'absolute', top: 4, bottom: 4, left: 4, width: segment, borderRadius: 999 }, pill]}
         />
       ) : null}
       {options.map((o, i) => (

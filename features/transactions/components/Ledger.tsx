@@ -323,7 +323,13 @@ export function Ledger() {
               style={{ color: colors.foreground, fontFamily: fonts.regular, fontSize: 14 }}
             />
             {searchInput ? (
-              <PressableScale accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setSearchInput('')} scaleTo={0.85} hitSlop={10}>
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+                onPress={() => setSearchInput('')}
+                scaleTo={0.85}
+                hitSlop={10}
+              >
                 <X size={17} color={colors.muted} />
               </PressableScale>
             ) : null}

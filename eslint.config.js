@@ -129,8 +129,7 @@ module.exports = defineConfig([
         },
         {
           selector: "CallExpression[callee.property.name='toLocaleString']",
-          message:
-            'toLocaleString falls back to US grouping without ICU. Use formatINR / formatCount (CLAUDE.md #2).',
+          message: 'toLocaleString falls back to US grouping without ICU. Use formatINR / formatCount (CLAUDE.md #2).',
         },
         // #8 — writeTx callbacks are SYNCHRONOUS. Drizzle's expo driver commits
         // when the callback RETURNS, and an async one returns at its first
@@ -138,11 +137,11 @@ module.exports = defineConfig([
         // dev seeder shipped this bug once; db/tx.ts now throws on it at
         // runtime, and this catches it before the code is ever run.
         {
-          selector: "CallExpression[callee.name=/^(writeTx|runWriteTx)$/] > ArrowFunctionExpression[async=true]",
+          selector: 'CallExpression[callee.name=/^(writeTx|runWriteTx)$/] > ArrowFunctionExpression[async=true]',
           message: 'A writeTx callback must be synchronous: the driver commits when it returns (CLAUDE.md #8).',
         },
         {
-          selector: "CallExpression[callee.name=/^(writeTx|runWriteTx)$/] > FunctionExpression[async=true]",
+          selector: 'CallExpression[callee.name=/^(writeTx|runWriteTx)$/] > FunctionExpression[async=true]',
           message: 'A writeTx callback must be synchronous: the driver commits when it returns (CLAUDE.md #8).',
         },
         {
@@ -317,7 +316,14 @@ module.exports = defineConfig([
     files: ['scripts/**/*.{ts,js}', 'plugins/**/*.js', '*.config.{js,ts}', 'eslint.config.js'],
     languageOptions: {
       sourceType: 'commonjs',
-      globals: { __dirname: 'readonly', __filename: 'readonly', module: 'writable', require: 'readonly', process: 'readonly', console: 'readonly' },
+      globals: {
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        module: 'writable',
+        require: 'readonly',
+        process: 'readonly',
+        console: 'readonly',
+      },
     },
     rules: {
       'boundaries/dependencies': 'off',

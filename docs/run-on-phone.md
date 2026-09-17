@@ -7,13 +7,13 @@ doesn't connect. There is no emulator in this project: the phone is the test dev
 
 ## Before you start (one-time checks)
 
-| Check | How |
-|---|---|
-| **Developer options enabled** | Settings → About phone → tap **Build number** 7 times |
-| **Phone and PC on the same network** | Same Wi-Fi/router. The phone's IP and the PC's IP should share the first three parts (e.g. `192.168.29.x`). PC: `ipconfig`. Phone: the Wireless debugging screen |
-| **`adb` available** | `adb version` prints a version. If not, install Android SDK Platform-Tools and add it to `PATH` |
+| Check                                | How                                                                                                                                                                     |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Developer options enabled**        | Settings → About phone → tap **Build number** 7 times                                                                                                                   |
+| **Phone and PC on the same network** | Same Wi-Fi/router. The phone's IP and the PC's IP should share the first three parts (e.g. `192.168.29.x`). PC: `ipconfig`. Phone: the Wireless debugging screen        |
+| **`adb` available**                  | `adb version` prints a version. If not, install Android SDK Platform-Tools and add it to `PATH`                                                                         |
 | **A development build is installed** | SpendWise is on the phone and opens to the Expo development launcher. If not, see [Install or rebuild the development build](#install-or-rebuild-the-development-build) |
-| **Dependencies installed** | `npm install` has been run in the project folder |
+| **Dependencies installed**           | `npm install` has been run in the project folder                                                                                                                        |
 
 ---
 
@@ -55,7 +55,7 @@ adb-10BE9F0PTA001BR-mNzDHI._adb-tls-connect._tcp    device
   The port changes every time wireless debugging is turned off and on, or the phone reboots.
 
 - **`failed to authenticate` / never paired on this PC?** Pair first (once per PC):
-  1. On the phone, tap **Pair device with pairing code**. It shows a 6-digit code and a *pairing*
+  1. On the phone, tap **Pair device with pairing code**. It shows a 6-digit code and a _pairing_
      IP:port.
   2. On the PC:
      ```powershell
@@ -103,7 +103,7 @@ Pick one:
 
 - **A.** Click into the Metro terminal and press **`a`**. It launches SpendWise on the phone connected to adb.
 - **B.** Open **SpendWise** on the phone. The development launcher lists the running server under
-  *Development servers*; tap it.
+  _Development servers_; tap it.
 - **C.** In the development launcher, tap **Enter URL manually** and type `http://localhost:8081`.
 
 The **first load** bundles all the JavaScript and can take 30–60 seconds, with a progress bar in the
@@ -113,12 +113,12 @@ terminal. After that, saving a file updates the phone within a second or two (Fa
 
 ## While Metro is running
 
-| Action | How |
-|---|---|
-| Reload the app | Press **`r`** in the Metro terminal |
-| Open the dev menu | Press **`m`** in the terminal, shake the phone, or `adb shell input keyevent 82` |
-| Open the dev harness | In the app: **More → Dev harness** |
-| Stop Metro | **Ctrl + C** in the Metro terminal |
+| Action               | How                                                                              |
+| -------------------- | -------------------------------------------------------------------------------- |
+| Reload the app       | Press **`r`** in the Metro terminal                                              |
+| Open the dev menu    | Press **`m`** in the terminal, shake the phone, or `adb shell input keyevent 82` |
+| Open the dev harness | In the app: **More → Dev harness**                                               |
+| Stop Metro           | **Ctrl + C** in the Metro terminal                                               |
 
 ## Daily quick start (once everything has worked before)
 
@@ -133,15 +133,15 @@ npm start                         # then press "a"
 
 ## Troubleshooting
 
-| Symptom | Fix |
-|---|---|
-| `adb devices` is empty | Wireless debugging is off, the phone is asleep/locked, or the port changed. Repeat [Step 3](#step-3-connect-the-phone-to-adb) |
-| Device shows as `offline` or `unauthorized` | `adb disconnect`, then `adb connect <ip>:<port>` again. If it persists, toggle Wireless debugging off and on, or re-pair |
-| Red screen: *Unable to load script* / *Could not connect to development server* | Run `adb reverse tcp:8081 tcp:8081` again, then press `r` |
-| App shows old code or behaves oddly after pulling changes or installing a package | Stop Metro, then `npm run start:clear` (clears Metro's cache) |
-| *Port 8081 is being used by another process* | An old Metro is still running. Close that terminal. If you accept another port Expo offers, reverse **that** port instead (`adb reverse tcp:8082 tcp:8082`) |
-| The router blocks devices from seeing each other (hotel/office Wi-Fi) | `npm run start:tunnel` instead of `npm start` |
-| Error that a **native module** is missing or not found (`Cannot find native module …`) | The installed build is older than a native package added since. Rebuild it (below). Adding JS or changing the database schema does **not** need a rebuild |
+| Symptom                                                                                | Fix                                                                                                                                                         |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `adb devices` is empty                                                                 | Wireless debugging is off, the phone is asleep/locked, or the port changed. Repeat [Step 3](#step-3-connect-the-phone-to-adb)                               |
+| Device shows as `offline` or `unauthorized`                                            | `adb disconnect`, then `adb connect <ip>:<port>` again. If it persists, toggle Wireless debugging off and on, or re-pair                                    |
+| Red screen: _Unable to load script_ / _Could not connect to development server_        | Run `adb reverse tcp:8081 tcp:8081` again, then press `r`                                                                                                   |
+| App shows old code or behaves oddly after pulling changes or installing a package      | Stop Metro, then `npm run start:clear` (clears Metro's cache)                                                                                               |
+| _Port 8081 is being used by another process_                                           | An old Metro is still running. Close that terminal. If you accept another port Expo offers, reverse **that** port instead (`adb reverse tcp:8082 tcp:8082`) |
+| The router blocks devices from seeing each other (hotel/office Wi-Fi)                  | `npm run start:tunnel` instead of `npm start`                                                                                                               |
+| Error that a **native module** is missing or not found (`Cannot find native module …`) | The installed build is older than a native package added since. Rebuild it (below). Adding JS or changing the database schema does **not** need a rebuild   |
 
 ---
 

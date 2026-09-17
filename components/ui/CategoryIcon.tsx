@@ -136,9 +136,24 @@ export const MAPPED_ICON_NAMES = Object.keys(ICONS);
 
 /** Colours offered when creating or recolouring a category. */
 export const CATEGORY_COLORS = [
-  '#E8833A', '#D4A32C', '#D4F55E', '#4B9B6E', '#3DDC97', '#2F8F8F',
-  '#5EC8F5', '#3A7CA5', '#4E86C7', '#8B5FBF', '#9B6BC4', '#C2548A',
-  '#D97BA0', '#D4544E', '#C75E5E', '#7A6A5A', '#8A8A8A', '#B0B3BC',
+  '#E8833A',
+  '#D4A32C',
+  '#D4F55E',
+  '#4B9B6E',
+  '#3DDC97',
+  '#2F8F8F',
+  '#5EC8F5',
+  '#3A7CA5',
+  '#4E86C7',
+  '#8B5FBF',
+  '#9B6BC4',
+  '#C2548A',
+  '#D97BA0',
+  '#D4544E',
+  '#C75E5E',
+  '#7A6A5A',
+  '#8A8A8A',
+  '#B0B3BC',
 ] as const;
 
 const FALLBACK = '#8B8D95';

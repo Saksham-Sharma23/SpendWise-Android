@@ -84,7 +84,10 @@ function snapshotBeforeMigrating(pending: JournalEntry[]): string {
   const latest = pending[pending.length - 1]!;
   const target = new File(dir, snapshotName(latest.idx, new Date()));
   sqliteDb.execSync(`VACUUM INTO ${quoteSql(sqlitePath(target))}`);
-  const names = dir.list().filter((e): e is File => e instanceof File).map((f) => f.name);
+  const names = dir
+    .list()
+    .filter((e): e is File => e instanceof File)
+    .map((f) => f.name);
   for (const name of snapshotsToDelete(names, 2)) new File(dir, name).delete();
   return target.uri;
 }
@@ -121,7 +124,10 @@ export async function bootDatabase(): Promise<BootOutcome> {
   if (pending.length > 0 && hasUserData()) {
     const check = sqliteDb.getFirstSync<{ quick_check: string }>('PRAGMA quick_check(1)');
     if (check?.quick_check !== 'ok') {
-      return { kind: 'unreadable', message: `The database failed an integrity check (${check?.quick_check ?? 'no result'}).` };
+      return {
+        kind: 'unreadable',
+        message: `The database failed an integrity check (${check?.quick_check ?? 'no result'}).`,
+      };
     }
     try {
       snapshot = snapshotBeforeMigrating(pending);
@@ -194,7 +200,10 @@ export async function shareDatabaseCopy(sourceUri?: string): Promise<void> {
   if (!source.exists) throw new Error('There is no database file to share.');
   const copy = new File(appDir(UNREADABLE_DIR), `spendwise-share-${timestampForFile()}.db`);
   source.copySync(copy);
-  await Sharing.shareAsync(copy.uri, { mimeType: 'application/x-sqlite3', dialogTitle: 'Save a copy of your SpendWise data' });
+  await Sharing.shareAsync(copy.uri, {
+    mimeType: 'application/x-sqlite3',
+    dialogTitle: 'Save a copy of your SpendWise data',
+  });
 }
 
 /**

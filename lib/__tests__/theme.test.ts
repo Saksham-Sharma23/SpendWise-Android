@@ -93,11 +93,31 @@ describe.each(themes)('%s palette — readability', (_name, p) => {
  */
 const BRIGHT_FILLS = [
   // CATEGORY_COLORS
-  '#E8833A', '#D4A32C', '#D4F55E', '#4B9B6E', '#3DDC97', '#2F8F8F',
-  '#5EC8F5', '#3A7CA5', '#4E86C7', '#8B5FBF', '#9B6BC4', '#C2548A',
-  '#D97BA0', '#D4544E', '#C75E5E', '#7A6A5A', '#8A8A8A', '#B0B3BC',
+  '#E8833A',
+  '#D4A32C',
+  '#D4F55E',
+  '#4B9B6E',
+  '#3DDC97',
+  '#2F8F8F',
+  '#5EC8F5',
+  '#3A7CA5',
+  '#4E86C7',
+  '#8B5FBF',
+  '#9B6BC4',
+  '#C2548A',
+  '#D97BA0',
+  '#D4544E',
+  '#C75E5E',
+  '#7A6A5A',
+  '#8A8A8A',
+  '#B0B3BC',
   // Seeded system-category colours not already above
-  '#C75E5E', '#3F9160', '#2E8B57', '#5F9EA0', '#7A6A5A', '#8A8A8A',
+  '#C75E5E',
+  '#3F9160',
+  '#2E8B57',
+  '#5F9EA0',
+  '#7A6A5A',
+  '#8A8A8A',
 ];
 
 describe('a glyph on a fixed bright fill', () => {
