@@ -18,23 +18,23 @@
 
 ## Status — 2026-09-19
 
-| #         | Phase                         | Est.  | Status                                              |
-| --------- | ----------------------------- | ----- | --------------------------------------------------- |
-| 0–5       | Foundations → Analytics       | —     | ✅ Code complete · 🟡 device checks open            |
-| G         | Groups — split expenses       | —     | ✅ Code complete · 🟡 device checks open            |
-| F0–F3, F5 | Fix phases (TASKS2)           | —     | ✅ Code complete · 🟡 device checks open            |
-| **R0**    | Stabilise the repo            | ½ d   | 🟡 all tasks done; **no remote**, APK recheck due   |
-| **R1**    | Correctness bugs              | 1½ d  | ✅ done 2026-09-17 (550 tests)                      |
-| **R2**    | Guard rails: lint, format, CI | 1½ d  | 🟡 code complete 2026-09-19 · full test run pending |
-| **R3**    | One data layer                | 3 d   | 🟡 code complete 2026-09-19 · full test run pending |
-| **R4**    | UI kit and thin routes        | 3 d   | ⬜                                                  |
-| **7**     | **Backup & restore**          | 3–4 d | ⬜ ← **most important remaining product work**      |
-| 8         | Native layer                  | 3–4 d | ⬜                                                  |
-| R5        | Performance (was TASKS2 F4)   | 2 d   | 🟡 2 of 7 done                                      |
-| R6        | Observability and release ops | 1 d   | ⬜                                                  |
-| 6A        | Sheets: import and workspaces | 7–8 d | ⬜ gated on the Sheets readiness gate               |
-| 6B        | Linked sheets                 | 4–5 d | ⬜                                                  |
-| 9         | Hardening & Play Store        | 4–5 d | ⬜                                                  |
+| #         | Phase                         | Est.  | Status                                            |
+| --------- | ----------------------------- | ----- | ------------------------------------------------- |
+| 0–5       | Foundations → Analytics       | —     | ✅ Code complete · 🟡 device checks open          |
+| G         | Groups — split expenses       | —     | ✅ Code complete · 🟡 device checks open          |
+| F0–F3, F5 | Fix phases (TASKS2)           | —     | ✅ Code complete · 🟡 device checks open          |
+| **R0**    | Stabilise the repo            | ½ d   | 🟡 all tasks done; **no remote**, APK recheck due |
+| **R1**    | Correctness bugs              | 1½ d  | ✅ done 2026-09-17 (550 tests)                    |
+| **R2**    | Guard rails: lint, format, CI | 1½ d  | ✅ done 2026-09-19 (568 tests)                    |
+| **R3**    | One data layer                | 3 d   | ✅ done 2026-09-19 (568 tests)                    |
+| **R4**    | UI kit and thin routes        | 3 d   | ⬜                                                |
+| **7**     | **Backup & restore**          | 3–4 d | ⬜ ← **most important remaining product work**    |
+| 8         | Native layer                  | 3–4 d | ⬜                                                |
+| R5        | Performance (was TASKS2 F4)   | 2 d   | 🟡 2 of 7 done                                    |
+| R6        | Observability and release ops | 1 d   | ⬜                                                |
+| 6A        | Sheets: import and workspaces | 7–8 d | ⬜ gated on the Sheets readiness gate             |
+| 6B        | Linked sheets                 | 4–5 d | ⬜                                                |
+| 9         | Hardening & Play Store        | 4–5 d | ⬜                                                |
 
 **Recommended order:** R0 → R1 → R2 → R3 → R4 → 7 → 8 → R5 → R6 → 6A → 6B → 9.
 _Why this order:_ a factory reset currently loses everything, so Backup (7) comes before any new data
@@ -152,6 +152,15 @@ only the phone can settle are in § Device verification (DV-9, DV-10, DV-17, DV-
 - [x] **`CONTRIBUTING.md`:** branch naming, one batch = one PR, the migration checklist (convention #7/#8), the device-verification rule
 
 **Done when:** CI is green on `main`, and a PR that adds `fetch`, a cross-feature import or `INTERNET` fails CI.
+
+**Discovered (2026-09-19, first full run after R2/R3):** all three fixtures in
+`db/__tests__/boundaries.test.ts` proved nothing. Each used a relative import, so `no-restricted-imports`
+(rule 5) or `import/no-unresolved` fired first and `boundaries/dependencies` never judged them — the
+rejection case asserted the wrong rule and failed, and the two "allowed" cases passed because a rule that
+never ran stayed quiet. Fixed in `50dd0ef`: fixtures use the `@/` form real code uses, and the allowed
+cases now assert the fixture is **clean** rather than merely un-flagged. Re-verified by renaming the rule
+to the boundaries v6 name — the sibling case fails, which is the regression this file exists to catch.
+The rule itself was never broken.
 
 ---
 
