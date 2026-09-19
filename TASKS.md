@@ -23,7 +23,7 @@
 | 0–5       | Foundations → Analytics       | —     | ✅ Code complete · 🟡 device checks open            |
 | G         | Groups — split expenses       | —     | ✅ Code complete · 🟡 device checks open            |
 | F0–F3, F5 | Fix phases (TASKS2)           | —     | ✅ Code complete · 🟡 device checks open            |
-| **R0**    | Stabilise the repo            | ½ d   | 🟡 R0-1/2/5/6/7 done; README + unused deps left     |
+| **R0**    | Stabilise the repo            | ½ d   | 🟡 all tasks done; **no remote**, APK recheck due   |
 | **R1**    | Correctness bugs              | 1½ d  | ✅ done 2026-09-17 (550 tests)                      |
 | **R2**    | Guard rails: lint, format, CI | 1½ d  | 🟡 code complete 2026-09-19 · full test run pending |
 | **R3**    | One data layer                | 3 d   | 🟡 code complete 2026-09-19 · full test run pending |
@@ -58,13 +58,16 @@ the boundaries are enforced _while_ files move.
 - [x] **Add `.gitattributes` (`* text=auto eol=lf`), `.editorconfig`, `.nvmrc` (22)** (T2) _(done 2026-09-17)_
       _Why:_ every git command warned about LF→CRLF on 30 files. Line-ending churn hides real diffs in review.
       _(No renormalise commit was needed: the files were already stored as LF.)_
-- [ ] **Write `README.md`**: what the app is (3 lines), prerequisites, `npm ci`, run on a phone, test,
-      build, where the docs are
+- [x] **Write `README.md`**: what the app is (3 lines), prerequisites, `npm ci`, run on a phone, test,
+      build, where the docs are _(done 2026-09-19)_
       _Why:_ CLAUDE.md is an agent context file. A human needs a one-page entry point.
-- [ ] **Remove unused dependencies:** `date-fns`, `@gorhom/bottom-sheet`, `expo-crypto`, `expo-document-picker`,
-      `expo-local-authentication` (T6). Re-add each in the phase that uses it (6A: document picker; 8: local auth)
+- [x] **Remove unused dependencies:** `date-fns`, `@gorhom/bottom-sheet`, `expo-crypto`, `expo-document-picker`,
+      `expo-local-authentication` (T6) _(done 2026-09-19: 6 packages removed; typecheck clean)_. Re-add each in
+      the phase that uses it (6A: document picker; 8: local auth)
       _Why:_ native ones are autolinked into every APK and pull in manifest entries that must then be blocked.
-      **Rebuild and run `npm run verify:apk`** afterwards, because this is a native change.
+      **Native change — still to do: rebuild and run `npm run verify:apk`**, and confirm `USE_BIOMETRIC` /
+      `USE_FINGERPRINT` have left the merged manifest (they were never in `blockedPermissions`, so removing
+      `expo-local-authentication` is what drops them).
 - [x] **Fix the misleading comments** (T4) _(done 2026-09-17, `ead7d44`)_: `lib/icons.ts:10` (the test it cites doesn't exist, see R2),
       `drizzle.studio.config.ts` (the device DB is no longer encrypted), `lib/theme.ts:7` (global.css is generated),
       the `dashboard/queries.ts` header (`features/devtools` doesn't exist), `categories/mutations.ts:163` (see B15)
@@ -325,6 +328,7 @@ with a fresh dev build (several need one: backup rules, splash colours). Tick he
 - [ ] Forced constraint error keeps a form open with a specific toast (dev and release)
 - [ ] Hammer Save → exactly one row
 - [ ] `npm run build:release-apk` fails if `INTERNET` is present (exercise `verify:apk` on a real release build)
+- [ ] After the R0-4 dependency removal (2026-09-19): rebuild from a clean `android/` and confirm `aapt2 dump permissions` no longer lists `USE_BIOMETRIC` or `USE_FINGERPRINT` — they came from `expo-local-authentication` and were never blocked
 - [ ] A row with `deleted_at` 31 days ago is purged at launch; one on its last day survives
 
 **Correctness**

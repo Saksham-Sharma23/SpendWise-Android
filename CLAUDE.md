@@ -6,6 +6,7 @@
 >
 > | Doc                                                                                | What it is for                                                                               |
 > | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+> | [`README.md`](README.md)                                                           | The human entry point: what the app is, how to run it, how it fits together                  |
 > | [`TASKS.md`](TASKS.md)                                                             | **The only live tracker**: status, next work in order, device checks, decisions              |
 > | [`plan.md`](plan.md)                                                               | **Task cards** for every remaining item: problem with file/line, fix steps, tests, done-when |
 > | [`docs/architecture-review-2026-09-17.md`](docs/architecture-review-2026-09-17.md) | Known bugs (`B1`…), architecture problems (`A1`…) and the **target architecture**            |
@@ -25,9 +26,10 @@
 - **This app makes zero network requests.** Anything that implies `fetch`, Axios, a base URL, a JWT or
   a token refresh is wrong, and predates the 2026-09-11 decision. The release build does not even declare
   `INTERNET`.
-- **Current phase: R4 (UI kit and thin routes), then Backup (7) and Sheets (6A).** R1–R3 are done (R0 has
-  its README and dependency removal left): every feature is on the standard layout in _Architecture_, and
-  new code must follow it.
+- **Current phase: R4 (UI kit and thin routes), then Backup (7) and Sheets (6A).** R0–R3 are done: every
+  feature is on the standard layout in _Architecture_, and new code must follow it. Two things R0 could not
+  close: the repo still has **no remote**, and removing the unused native packages needs a rebuild +
+  `npm run verify:apk` to confirm the manifest shrank.
 - **`npm run verify` before every push.** It runs typecheck (app **and** tests), lint, the lint self-test,
   formatting, `jest` (~5 min — the migration tests build 50k-row fixtures) and the release permission
   policy. ESLint enforces the layer boundaries and most conventions below; `eslint.config.js` gives each
@@ -77,7 +79,7 @@
 | Files                  | `expo-file-system`, `expo-sharing`                                                                     | CSV export, boot recovery sharing                                                                                        |
 | Declared, not yet used | `expo-notifications` (config plugin only)                                                              | Phase 8                                                                                                                  |
 | Legacy, to remove      | `expo-secure-store`                                                                                    | Only for `db/legacyEncryption.ts` (R6)                                                                                   |
-| Unused (remove in R0)  | `date-fns`, `@gorhom/bottom-sheet`, `expo-crypto`, `expo-document-picker`, `expo-local-authentication` |                                                                                                                          |
+| Removed in R0          | `date-fns`, `@gorhom/bottom-sheet`, `expo-crypto`, `expo-document-picker`, `expo-local-authentication` | Unused. Re-add in the phase that needs one: 6A document picker, 7 crypto (if hashing), 8 local auth                      |
 | Planned                | SheetJS (vendor tarball) + papaparse + ExcelJS (6A, after a spike) · `react-native-android-widget` (8) | Not installed                                                                                                            |
 | Tests                  | Jest 30 + ts-jest, Node environment, `better-sqlite3` running the real migrations                      | No component tests. `tsconfig.test.json` type-checks them; `tsconfig.jest.json` runs them                                |
 | Tooling                | ESLint 9 (flat) + `eslint-plugin-boundaries`, Prettier, GitHub Actions                                 | `npm run verify` runs everything CI runs                                                                                 |

@@ -196,8 +196,8 @@ Status: ⬜ not started · 🟡 in progress, or code complete awaiting a full te
 | **R0**       | **Stabilise the repo**                                                                                                         |            |     | **½ d**     | 🟡 4 of 7          |
 | R0-1         | Commit the F5 batch, move to `main`                                                                                            | T8         | P0  | 1 h         | ✅                 |
 | R0-2         | `.gitattributes`, `.editorconfig`, `.nvmrc`                                                                                    | T2         | P1  | 30 m        | ✅                 |
-| R0-3         | Write `README.md`                                                                                                              | T2         | P1  | 1 h         | ⬜                 |
-| R0-4         | Remove unused dependencies                                                                                                     | T6         | P1  | 1 h + build | ⬜                 |
+| R0-3         | Write `README.md`                                                                                                              | T2         | P1  | 1 h         | ✅                 |
+| R0-4         | Remove unused dependencies                                                                                                     | T6         | P1  | 1 h + build | 🟡 build left      |
 | R0-5         | Fix misleading comments                                                                                                        | T4         | P1  | 30 m        | ✅                 |
 | R0-6         | Delete empty placeholder folders                                                                                               | T3         | P2  | 5 m         | ✅                 |
 | R0-7         | Consolidate trackers, move designs out of CLAUDE.md                                                                            | T3, T5     | —   | —           | ✅                 |
@@ -346,7 +346,13 @@ contains no content changes (`git diff --ignore-all-space HEAD~1` is empty).
 repository already stored LF and only the Windows _working copy_ had CRLF. `.gitattributes` stops that
 drift from reaching the index in future. Also added `engines: { node: ">=22 <23" }` to `package.json`.
 
-### ⬜ R0-3 — Write `README.md`
+### ✅ R0-3 — Write `README.md`
+
+**Outcome (2026-09-19).** `README.md` written, covering all eight sections. Two deviations worth
+knowing: the quick start leads with `npm run android:local` and warns not to start Metro first (8 GB
+machine), and the **Licence section says no licence has been chosen** — the `LICENSE` file is Expo's
+MIT boilerplate, copyright 650 Industries, inherited from the template. It does not describe this
+app and must be replaced before the source is shared. Every doc link was checked to resolve.
 
 **Ref:** T2 · **Priority:** P1 · **Est:** 1 h · **Depends on:** R0-1
 
@@ -369,7 +375,18 @@ drift from reaching the index in future. Also added `engines: { node: ">=22 <23"
 **Done when:** someone who has never seen the repo can get a dev build on a phone using only the README
 and the linked run-on-phone doc.
 
-### ⬜ R0-4 — Remove unused dependencies
+### 🟡 R0-4 — Remove unused dependencies
+
+**Outcome (2026-09-19).** Step 1 re-verified zero imports (every hit outside `package-lock.json` was
+documentation). Step 2 removed 6 packages. Steps 3–4 needed less than the card assumed: no config-plugin
+entries referenced any of the five, and `USE_BIOMETRIC` / `USE_FINGERPRINT` were **never** in
+`blockedPermissions` — a 2026-09 note had deliberately left them for the Phase 8 app lock, so dropping
+`expo-local-authentication` is what removes them. CLAUDE.md's Stack row now reads "Removed in R0".
+`tsc` clean for both app and tests.
+
+**Still open — step 5, the native half:** `rm -rf android` → `npm run prebuild:dev` → build → `npm run verify:apk`,
+and confirm the two biometric permissions have actually left the merged manifest. Until that runs, the
+APK is unchanged and this card is not closed.
 
 **Ref:** T6 · **Priority:** P1 · **Est:** 1 h + a native build · **Depends on:** R0-1
 
