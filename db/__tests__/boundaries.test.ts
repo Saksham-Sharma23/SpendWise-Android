@@ -28,19 +28,28 @@ const CASES = [
   {
     name: 'imports-sibling.ts',
     what: 'a feature importing a SIBLING feature',
-    source: "import { splitEqual } from '../../groups/split';\nexport const bad = splitEqual;\n",
+    // The `@/` form, because that is what real code uses (rule 5) and it is
+    // the one `boundaries/dependencies` must judge on its own merits. Written
+    // as '../../groups/...' this passed for the WRONG reason: no-restricted-
+    // imports rejected the `../../`, and import/no-unresolved the bad path,
+    // so boundaries never saw it and a silent plugin breakage would not show.
+    source: "import { splitEqual } from '@/features/groups/domain/split';\nexport const bad = splitEqual;\n",
     expectRejected: true,
   },
   {
     name: 'imports-own.ts',
     what: 'a feature importing its OWN files',
-    source: "import { buildWhere } from '../filters';\nexport const fine = buildWhere;\n",
+    // A real path inside this feature. '../filters' did not exist (the file is
+    // data/filters.ts), so this case only ever raised import/no-unresolved.
+    source: "import { buildWhere } from '../data/filters';\nexport const fine = buildWhere;\n",
     expectRejected: false,
   },
   {
     name: 'imports-lib.ts',
     what: 'a feature importing down into lib',
-    source: "import { formatINR } from '../../../lib/money';\nexport const fine = formatINR;\n",
+    // `@/` again: '../../../lib/money' is rejected by rule 5 before boundaries
+    // sees it, which made this "allowed" assertion pass for the wrong reason.
+    source: "import { formatINR } from '@/lib/money';\nexport const fine = formatINR;\n",
     expectRejected: false,
   },
 ] as const;
@@ -104,8 +113,15 @@ describe('the layer boundaries are actually enforced', () => {
   for (const c of CASES) {
     it(`${c.expectRejected ? 'rejects' : 'allows'} ${c.what}`, () => {
       const rules = fired.get(c.name) ?? [];
-      if (c.expectRejected) expect(rules).toContain('boundaries/dependencies');
-      else expect(rules).not.toContain('boundaries/dependencies');
+      if (c.expectRejected) {
+        expect(rules).toContain('boundaries/dependencies');
+      } else {
+        // Not just "boundaries stayed quiet": the fixture must be CLEAN. An
+        // allowed import that trips any other rule means the fixture no longer
+        // resembles real code, and the case stops proving anything — which is
+        // exactly how all three of these silently rotted once.
+        expect(rules).toEqual([]);
+      }
     });
   }
 });
