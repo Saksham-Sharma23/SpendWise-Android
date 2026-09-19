@@ -1,16 +1,22 @@
-import { and, asc, desc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
-
 import { budgetRatio, budgetSpend, budgetState, fillMonths } from '@/data/ledger';
 import { META_KEYS, setMeta, useMeta } from '@/data/meta';
 import { readDb } from '@/db/read';
-import { budgets, categories, subscriptions, transactions } from '@/db/schema';
 import type { BillingCycle, SubscriptionStatus } from '@/db/schema';
 import { useDbQuery, type DbQueryResult } from '@/lib/db/useDbQuery';
 import { addMonthsClamped, getCycleWindow, startOfMonth, type ISODate } from '@/lib/dates';
-import { topCategoriesQuery, trendQuery } from './sql';
+import {
+  activeSubscriptionsQuery,
+  anyTransactionQuery,
+  homeBudgetsQuery,
+  overviewQuery,
+  recentQuery,
+  topCategoriesQuery,
+  trendQuery,
+} from './sql';
 
 /**
- * The dashboard's query boundary.
+ * Home's live reads. The SQL is in ./sql.ts (tested on the real schema) or
+ * shared in `@/data/ledger`; these hooks only bind it to the read handle.
  *
  * Home shows several figures at once and every write re-runs the subscribed
  * queries, so each figure is ONE small aggregate on an index, executed off the
@@ -58,25 +64,6 @@ export function useMonthOverview(today: ISODate): DbQueryResult<MonthOverview> {
     [thisStart, lastToDate],
     EMPTY_OVERVIEW,
   );
-}
-
-function overviewQuery(today: ISODate) {
-  const thisStart = startOfMonth(today);
-  const lastStart = addMonthsClamped(thisStart, -1);
-  const nextStart = addMonthsClamped(thisStart, 1);
-  const lastToDate = addMonthsClamped(today, -1);
-  const inThis = sql`${transactions.date} >= ${thisStart}`;
-  return readDb
-    .select({
-      incomePaise: sql<number>`coalesce(sum(case when ${inThis} and ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
-      expensePaise: sql<number>`coalesce(sum(case when ${inThis} and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
-      lastIncomePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
-      lastExpensePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
-      lastExpenseToDatePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.date} <= ${lastToDate} and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
-      count: sql<number>`coalesce(sum(case when ${inThis} then 1 else 0 end), 0)`,
-    })
-    .from(transactions)
-    .where(and(isNull(transactions.deletedAt), gte(transactions.date, lastStart), lt(transactions.date, nextStart)));
 }
 
 export interface TrendPoint {
@@ -151,43 +138,15 @@ export function useRecentTransactions(limit = 5): DbQueryResult<RecentTransactio
   );
 }
 
-// ---------------------------------------------------------------------------
-// Query builders — shared by the hooks above and the dev benchmark
-// (db/dev/benchmark.ts), so the timed SQL is exactly the shipped SQL.
-//
-// The month-bounded builders TAKE `db`, so features/dashboard/__tests__ can run
-// the shipped SQL on better-sqlite3 (convention #18). The rest still close over
-// readDb until R3 moves the whole feature to the standard layout.
-// ---------------------------------------------------------------------------
-
-function recentQuery(limit: number) {
-  return readDb
-    .select({
-      id: transactions.id,
-      type: transactions.type,
-      amountPaise: transactions.amountPaise,
-      date: transactions.date,
-      note: transactions.note,
-      categoryName: categories.name,
-      categoryIcon: categories.icon,
-      categoryColor: categories.color,
-    })
-    .from(transactions)
-    .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(isNull(transactions.deletedAt))
-    .orderBy(desc(transactions.date), desc(transactions.id))
-    .limit(limit);
-}
-
 /**
  * Bound to the app's read handle, so the benchmark times exactly what screens
  * run. Tests import the builders from `./sql` and pass their own handle.
  */
 export const dashboardQueries = {
-  overview: overviewQuery,
+  overview: (today: ISODate) => overviewQuery(readDb, today),
   trend: (months: number, today: ISODate) => trendQuery(readDb, months, today),
   topCategories: (today: ISODate, limit: number) => topCategoriesQuery(readDb, today, limit),
-  recent: recentQuery,
+  recent: (limit: number) => recentQuery(readDb, limit),
 };
 
 // ---------------------------------------------------------------------------
@@ -216,24 +175,7 @@ const EMPTY_SUBS: ActiveSubscription[] = [];
  */
 export function useActiveSubscriptions(): DbQueryResult<ActiveSubscription[]> {
   return useDbQuery(
-    async () =>
-      (await readDb
-        .select({
-          id: subscriptions.id,
-          name: subscriptions.name,
-          amountPaise: subscriptions.amountPaise,
-          billingCycle: subscriptions.billingCycle,
-          status: subscriptions.status,
-          anchorDate: subscriptions.anchorDate,
-          reminderDaysBefore: subscriptions.reminderDaysBefore,
-          categoryName: categories.name,
-          categoryIcon: categories.icon,
-          categoryColor: categories.color,
-        })
-        .from(subscriptions)
-        .leftJoin(categories, eq(subscriptions.categoryId, categories.id))
-        .where(and(isNull(subscriptions.deletedAt), eq(subscriptions.status, 'active')))
-        .orderBy(asc(subscriptions.name))) as ActiveSubscription[],
+    async () => (await activeSubscriptionsQuery(readDb)) as ActiveSubscription[],
     ['subscriptions', 'categories'],
     [],
     EMPTY_SUBS,
@@ -242,19 +184,7 @@ export function useActiveSubscriptions(): DbQueryResult<ActiveSubscription[]> {
 
 /** Whether the ledger holds any live transaction — one indexed probe, never a count. */
 export function useHasTransactions(): DbQueryResult<boolean> {
-  return useDbQuery(
-    async () => {
-      const rows = await readDb
-        .select({ id: transactions.id })
-        .from(transactions)
-        .where(isNull(transactions.deletedAt))
-        .limit(1);
-      return rows.length > 0;
-    },
-    ['transactions'],
-    [],
-    false,
-  );
+  return useDbQuery(async () => (await anyTransactionQuery(readDb)).length > 0, ['transactions'], [], false);
 }
 
 /** Whether the user dismissed first-run onboarding (app_meta `onboarding_dismissed`). */
@@ -295,18 +225,7 @@ const EMPTY_BUDGETS: DashboardBudget[] = [];
 export function useDashboardBudgets(today: ISODate, limit = 4): DbQueryResult<DashboardBudget[]> {
   return useDbQuery(
     async () => {
-      const rows = await readDb
-        .select({
-          id: budgets.id,
-          categoryId: budgets.categoryId,
-          limitPaise: budgets.limitPaise,
-          resetDay: budgets.resetDay,
-          isActive: budgets.isActive,
-          categoryName: categories.name,
-        })
-        .from(budgets)
-        .innerJoin(categories, eq(budgets.categoryId, categories.id))
-        .where(and(isNull(budgets.deletedAt), isNull(categories.deletedAt)));
+      const rows = await homeBudgetsQuery(readDb);
 
       if (rows.length === 0) return EMPTY_BUDGETS;
 

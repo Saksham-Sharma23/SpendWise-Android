@@ -14,7 +14,7 @@
 > | [`docs/history/`](docs/history/)                                                   | Archived trackers: the _why_ behind code that looks unusual                                  |
 > | [`pcref/CLAUDE.md`](pcref/CLAUDE.md)                                               | The web app's context. **Design and domain reference only.** Never call its API              |
 >
-> _Last checked against the code: 2026-09-17 (`7f69c5c` + the uncommitted F5 batch)._
+> _Last checked against the code: 2026-09-19 (branch `refactor/r2-r3`, after R3)._
 
 ---
 
@@ -25,10 +25,13 @@
 - **This app makes zero network requests.** Anything that implies `fetch`, Axios, a base URL, a JWT or
   a token refresh is wrong, and predates the 2026-09-11 decision. The release build does not even declare
   `INTERNET`.
-- **Current phase: refactoring (R0–R4 in TASKS.md) before Backup (7) and Sheets (6A).** New code goes in the
-  **target layout** described in _Architecture_, even where older features have not moved yet.
-- **Tests are the safety net.** `npx tsc --noEmit` and `npx jest` (478 tests; ~5 min on this machine — the migration tests build 50k-row fixtures) must stay green.
-  There is no ESLint yet (R2), so the conventions below are enforced by review.
+- **Current phase: R4 (UI kit and thin routes), then Backup (7) and Sheets (6A).** R1–R3 are done (R0 has
+  its README and dependency removal left): every feature is on the standard layout in _Architecture_, and
+  new code must follow it.
+- **`npm run verify` before every push.** It runs typecheck (app **and** tests), lint, the lint self-test,
+  formatting, `jest` (~5 min — the migration tests build 50k-row fixtures) and the release permission
+  policy. ESLint enforces the layer boundaries and most conventions below; `eslint.config.js` gives each
+  rule's reason. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before a first change.
 
 ## System
 
@@ -76,7 +79,8 @@
 | Legacy, to remove      | `expo-secure-store`                                                                                    | Only for `db/legacyEncryption.ts` (R6)                                                                                   |
 | Unused (remove in R0)  | `date-fns`, `@gorhom/bottom-sheet`, `expo-crypto`, `expo-document-picker`, `expo-local-authentication` |                                                                                                                          |
 | Planned                | SheetJS (vendor tarball) + papaparse + ExcelJS (6A, after a spike) · `react-native-android-widget` (8) | Not installed                                                                                                            |
-| Tests                  | Jest 30 + ts-jest, Node environment, `better-sqlite3` running the real migrations                      | No component tests                                                                                                       |
+| Tests                  | Jest 30 + ts-jest, Node environment, `better-sqlite3` running the real migrations                      | No component tests. `tsconfig.test.json` type-checks them; `tsconfig.jest.json` runs them                                |
+| Tooling                | ESLint 9 (flat) + `eslint-plugin-boundaries`, Prettier, GitHub Actions                                 | `npm run verify` runs everything CI runs                                                                                 |
 
 **Crash reporting:** none in release builds. Sentry is ruled out (it needs `INTERNET`); a local crash log is planned (R6).
 
@@ -92,79 +96,75 @@ routes   screens,       presentational  shared    SQLite   pure utilities
          feature data   UI              queries*  runtime  (+ lib/db runtime)
 ```
 
-`*data/` is the **target** shared layer (R3) and does not exist yet. Rules:
+Rules — **all enforced by ESLint** (`boundaries/dependencies` and `no-restricted-imports`):
 
 1. A feature never imports another feature. Something two features need moves **down** (`data/`, `components/`, `lib/`).
 2. `components/` and `lib/` never import `features/`. `lib/` stays free of React Native where it holds pure logic, so Node tests can load it.
-3. `app/` imports `db/` only in `app/_layout.tsx` (boot). _Today `app/settings/index.tsx` and `app/dev.tsx` also do; R4 moves them._
+3. A route imports a feature only through its `index.ts` (`@/features/groups`), never a file inside it.
+4. `app/` imports `db/` only in `app/_layout.tsx` (boot). _`app/settings/index.tsx` and `app/dev.tsx` still do; R4 moves them, and the named exception in `eslint.config.js` shrinks with them._
+5. Imports that leave their own folder use the `@/` alias (`@/lib/money`), never `../../`.
 
-### Repository layout (as it is today)
+### Repository layout
 
 ```
-app/                         routes. Thin ones render a feature screen; the four forms/sheets in (modals)/ are
-  _layout.tsx                  still full screens (R4 moves them)
+app/                         routes: read params, render one screen from `@/features/<name>`
+  _layout.tsx                  boots the database (the one route allowed to import db/)
   (tabs)/                    index (Home) · transactions · add (FAB placeholder) · insights · more
   (modals)/                  transaction · budget · subscription · filters (formSheet) · category · group ·
                              friend · split-expense · settle-up · balances (formSheet)
+                             transaction/budget/subscription/filters are still full screens; R4 moves them
   budgets/ tracker/ categories/ groups/[id]/{index,totals} friends/[id] settings/{index,recently-deleted}
   sheets/ backup/            placeholders for Phases 6A and 7
   dev.tsx                    dev harness (redirects away when !__DEV__)
-features/
-  transactions/              queries.ts (hooks + builders + writes) · filters.ts · pages.ts (keyset maths) ·
-                             filterStore.ts · schema.ts · csv.ts · export.ts · components/ (Ledger, RecentlyDeleted…)
-  dashboard/                 queries.ts · components/ (Dashboard, TrendChart card)
-  analytics/                 sql.ts (builders take db) · queries.ts (hooks) · period.ts (pure) · components/
-  budgets/                   queries.ts · progress.ts (pure) · dial.ts (pure) · schema.ts · components/
-  tracker/                   queries.ts · renewal.ts (pure) · schema.ts · components/
-  categories/                queries.ts · mutations.ts (writes take db) · components/
-  groups/                    split.ts · debts.ts · balances.ts · draft.ts · wording.ts (pure) · sql.ts · writes.ts
-                             (take db) · queries.ts (hooks) · mutations.ts (safeWrite) · components/
-  boot/components/BootFailure.tsx   settings/components/Appearance.tsx
+features/<name>/             analytics · boot · budgets · categories · dashboard · groups · settings ·
+                             tracker · transactions — every one in the SAME shape:
+  index.ts                   public surface: the only thing routes may import
+  components/                this feature's UI
+  data/sql.ts                read builders that TAKE `db` — tests run this exact SQL (#18)
+  data/writes.ts             write cores: take a sync `db`, use writeTx, throw UserFacingError
+  data/hooks.ts              useDbQuery hooks binding sql.ts to `readDb`
+  data/actions.ts            safeWrite-wrapped writes bound to the app `db`: what screens call
+  domain/                    pure logic — no db, no React Native (progress, renewal, split, debts, pages…)
+  schema.ts                  zod form schemas
+  benchmark.ts               the feature's queries for the dev harness (dev only)
+data/<topic>/                SHARED data access, below the features: sql.ts · hooks.ts · index.ts
+  ledger/                    monthTrend, incomeExpenseTotals, categoryTotals, budgetSpend, fillMonths,
+                             income/expense sum fragments; budgetState.ts = the ONE budget threshold
+  categories/                the live category list (+ income/expense filter) every picker uses
+  meta/                      app_meta get/set/useMeta
 components/
-  ui/                        Card, PressableScale, Segmented, CategoryIcon, LedgerRow, AnimatedAmount,
-                             DatePickerSheet, EmptyState, Swap, AmountDial, Avatar, *Card presentational pieces
+  ui/                        Card, PressableScale, Segmented, CategoryIcon (+ iconMap.ts), LedgerRow,
+                             AnimatedAmount, DatePickerSheet, EmptyState, Swap, AmountDial, Avatar, *Card pieces
   charts/                    AreaChart (scrubber) · Donut · MiniDonut · TrendChart · geometry.ts (pure, tested)
   layout/                    Screen (+ TAB_BAR_CLEARANCE) · TabBar (glass, droplet) · ThemeProvider · Welcome · glass
-db/
+db/                          the database itself — nothing app-level
   schema.ts                  THE source of truth for every table and type
+  types.ts                   SyncDb, AnyDb and allSync(): the one definition of a handle's type
   connection.ts              the one reopenable connection (proxy), pragmas, WAL checkpoint
   client.ts                  sync Drizzle handle `db`: writes + tiny point reads; `writeTx`
   read.ts                    async `readDb` (sqlite-proxy on the native thread): every screen read
   tx.ts                      runWriteTx: refuses async callbacks (pure, tested)
-  boot.ts                    readable? → pragmas → snapshot → migrate (FKs off) → seed → purge
-  migrate.ts · seed.ts · seedCore.ts · retention.ts · files.ts
-  encryptedCopy.ts           passphrase-encrypted backup copies (SQLCipher)
-  legacyEncryption.ts        one-time conversion of pre-2026-09-14 keyed databases (remove in R6)
-  devSeed.ts · benchmark.ts  dev harness tools
+  boot.ts                    readable? → pragmas → snapshot → migrate (FKs off) → integrity → seed → purge
+  migrate.ts                 FK-safe migration, user-data probe, integrity flag (pure, tested)
+  seed.ts · seedCore.ts · seedData.ts   system categories: binding · reconciliation · the list itself
+  retention.ts · files.ts · encryptedCopy.ts (passphrase backup copies) · legacyEncryption.ts (remove in R6)
+  dev/                       devSeed.ts · benchmark.ts — dev harness only; lint blocks production imports
   migrations/                generated by drizzle-kit. NEVER hand-edit; custom SQL via `--custom`
 lib/
   money.ts dates.ts calendar.ts today.ts heap.ts identity.ts insight.ts renewals.ts dedupe.ts icons.ts
   categoryColor.ts theme.ts themeCss.ts themeStore.ts motion.ts
   db/                        useDbQuery · changeHub · latestOnly · safeWrite · errors (UserFacingError)
+lint-fixtures/               deliberate violations; `npm run lint:selftest` proves each rule still fires
 plugins/withBackupRules.js   auto-backup exclusions (exclude-only; tested)
-scripts/                     with-dev-network.js (INTERNET opt-in) · gen-theme-css.ts · verify-apk.sh
+scripts/                     with-dev-network.js · gen-theme-css.ts · verify-apk.sh · check-release-policy.js ·
+                             lint-selftest.js
+.github/workflows/ci.yml     the same checks as `npm run verify` (no remote yet, so it has not run on GitHub)
 docs/                        see the table at the top · diagrams/01-debt-simplification.mmd
 ```
 
-### Target layout (R3/R4): use it for new code
-
-```
-features/<name>/
-  index.ts            public surface
-  screens/            full screens and modal screens (routes render these)
-  components/         feature-private UI
-  data/sql.ts         read builders that TAKE `db`, so tests run the shipped SQL
-  data/writes.ts      pure write cores that take a sync `db`, use writeTx, throw UserFacingError
-  data/hooks.ts       useDbQuery hooks binding sql.ts to readDb
-  data/actions.ts     safeWrite-wrapped writes bound to the app db: what screens call
-  domain/             pure logic (no db, no React Native)
-  schema.ts           zod form schemas
-data/                 shared queries two or more features need: ledger aggregates, categories, app_meta
-components/ui/        Text (variants), Button, IconButton, Chip, Field, FormModal + useSubmitOnce, Section…
-db/types.ts           one SyncDb / AnyDb type
-```
-
-`features/analytics` and `features/groups` are closest to this today; copy them, not `transactions`.
+**Copy an existing feature** when adding one: `features/budgets` and `features/tracker` are the smallest
+complete examples. Still to come in R4: `screens/` inside features, and a `components/ui` kit (Text
+variants, Button, FormModal) so screens stop styling text inline.
 
 ---
 

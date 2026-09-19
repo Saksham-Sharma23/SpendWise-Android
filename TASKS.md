@@ -132,7 +132,7 @@ only the phone can settle are in § Device verification (DV-9, DV-10, DV-17, DV-
 
 **Goal:** CLAUDE.md's conventions are enforced by tools. **Est:** 1½ days. (Supersedes TASKS2 F6.)
 
-- [ ] **ESLint (flat config) with `eslint-config-expo`, `eslint-plugin-boundaries`, `react-hooks`**
+- [x] **ESLint (flat config) with `eslint-config-expo`, `eslint-plugin-boundaries`, `react-hooks`**
   - boundaries: `app → features → (components | data) → db → lib`; no sibling features; `app/` may import `db/` only from `app/_layout.tsx`
   - `no-restricted-globals`: `fetch`, `XMLHttpRequest`, `WebSocket`
   - `no-restricted-syntax`: `parseFloat` / `toLocaleString` outside `lib/money.ts`; async function passed to `writeTx`/`.transaction(`
@@ -140,13 +140,13 @@ only the phone can settle are in § Device verification (DV-9, DV-10, DV-17, DV-
   - `@typescript-eslint/no-unused-vars` (removes the 30 shadowed `colors` imports)
     _Why:_ `npm run lint` fails today because ESLint isn't installed, so every rule exists only in prose.
     **Done when:** `npm run lint` passes and a deliberate violation of each rule fails.
-- [ ] **Prettier** (print width 120, the code's existing style) + `npm run format`; format once in a dedicated commit
-- [ ] **Type-check tests:** `npm run typecheck` runs `tsc --noEmit` **and** `tsc -p tsconfig.test.json --noEmit`; align `ts-jest` with Jest 30 (or move to `jest-expo`'s Node preset)
-- [ ] **Add the icon-mapping test that `lib/icons.ts` claims exists:** `ICON_NAMES` and `CategoryIcon`'s map are the same set. Extract the map to `components/ui/iconMap.ts` so Node can import it
-- [ ] **Adopt the `@/` import alias** (`tsconfig` already declares it; Metro supports it) and codemod relative imports (T7)
+- [x] **Prettier** (print width 120, the code's existing style) + `npm run format`; format once in a dedicated commit
+- [x] **Type-check tests:** `npm run typecheck` runs `tsc --noEmit` **and** `tsc -p tsconfig.test.json --noEmit`; align `ts-jest` with Jest 30 (or move to `jest-expo`'s Node preset)
+- [x] **Add the icon-mapping test that `lib/icons.ts` claims exists:** `ICON_NAMES` and `CategoryIcon`'s map are the same set. Extract the map to `components/ui/iconMap.ts` so Node can import it
+- [x] **Adopt the `@/` import alias** (`tsconfig` already declares it; Metro supports it) and codemod relative imports (T7)
       _Why:_ `../../../lib/theme` breaks on every move, and R3/R4 move a lot of files.
-- [ ] **GitHub Actions CI** on every PR: `npm ci` → typecheck → lint → jest → `EAS_BUILD_PROFILE=production npx expo config --json` asserts `INTERNET` ∈ `blockedPermissions` and `allowBackup: true`
-- [ ] **`CONTRIBUTING.md`:** branch naming, one batch = one PR, the migration checklist (convention #7/#8), the device-verification rule
+- [x] **GitHub Actions CI** on every PR: `npm ci` → typecheck → lint → jest → `EAS_BUILD_PROFILE=production npx expo config --json` asserts `INTERNET` ∈ `blockedPermissions` and `allowBackup: true`
+- [x] **`CONTRIBUTING.md`:** branch naming, one batch = one PR, the migration checklist (convention #7/#8), the device-verification rule
 
 **Done when:** CI is green on `main`, and a PR that adds `fetch`, a cross-feature import or `INTERNET` fails CI.
 
@@ -159,27 +159,36 @@ Move files first, then change behaviour, in separate commits so review stays rea
 
 ### Batch R3-A — Shared foundations
 
-- [ ] **`db/types.ts`: one `SyncDb` and one `AnyDb` type**; delete `AnalyticsDb`/`GroupsDb`/`SyncDb`/`RetentionDb`/`SeedDatabase` aliases and the `as unknown as { all() }` casts in `groups/queries.ts` (A6)
-- [ ] **`data/meta.ts`**: move `getMeta`/`setMeta` out of `db/seed.ts`; `dismissOnboarding` uses it (A7)
-- [ ] **`data/categories.ts`**: the live-category builder + `useCategories(kind?)`; delete the copy in `features/transactions/queries.ts`; update the subscription, filters and split-expense callers (A3)
-- [ ] **`data/ledger.ts`**: `incomeExpenseSums`, `monthTrend(db, from, to)` + `fillMonths`, `categoryTotals(db, from, to, limit?)`, `budgetSpend(db, windows)`. All take `db` and are **bounded on both ends** (locks in B1/B2)
+- [x] **`db/types.ts`: one `SyncDb` and one `AnyDb` type**; delete `AnalyticsDb`/`GroupsDb`/`SyncDb`/`RetentionDb`/`SeedDatabase` aliases and the `as unknown as { all() }` casts in `groups/queries.ts` (A6)
+- [x] **`data/meta.ts`**: move `getMeta`/`setMeta` out of `db/seed.ts`; `dismissOnboarding` uses it (A7)
+- [x] **`data/categories.ts`**: the live-category builder + `useCategories(kind?)`; delete the copy in `features/transactions/queries.ts`; update the subscription, filters and split-expense callers (A3)
+- [x] **`data/ledger.ts`**: `incomeExpenseSums`, `monthTrend(db, from, to)` + `fillMonths`, `categoryTotals(db, from, to, limit?)`, `budgetSpend(db, windows)`. All take `db` and are **bounded on both ends** (locks in B1/B2)
       _Why:_ the dashboard, analytics and budgets each had their own copy, and two copies of "this month's expenses" already disagreed.
-- [ ] **Move dev tools to `db/dev/`** (`devSeed.ts`, `benchmark.ts`)
+- [x] **Move dev tools to `db/dev/`** (`devSeed.ts`, `benchmark.ts`)
 
 ### Batch R3-B — Features onto the standard layout
 
 For each of `transactions`, `dashboard`, `analytics`, `budgets`, `tracker`, `categories`, `groups`:
 `data/sql.ts` (builders take `db`) · `data/writes.ts` (pure, throw `UserFacingError`) · `data/hooks.ts` · `data/actions.ts` (safeWrite-bound) · `domain/` (pure) · `index.ts`.
 
-- [ ] transactions _(also: export pages through `readDb` with keyset, not sync OFFSET [B17])_
-- [ ] dashboard + analytics onto `data/ledger.ts` (one threshold constant from `budgets/domain/progress.ts` via `data/`)
-- [ ] budgets (`budgetProgressForCategory` uses `data/ledger.budgetSpend`; `spend.test.ts` runs the shipped builder, not its hand-written copy)
-- [ ] tracker
-- [ ] categories: `CategoryError` becomes `UserFacingError`; screens drop their `try/catch` and branch on `WriteResult`
-- [ ] groups: `groupNetsSync` reuses `netsQuery`'s SQL fragment; move toasts out of `groups/mutations.ts` (actions return results, screens toast)
-- [ ] **`useDbQuery` gains `refetch()`**, and resets `status` to `pending` when `deps` change to a different entity (e.g. another group id) so one entity's data never renders under another's header
+- [x] transactions _(also: export pages through `readDb` with keyset, not sync OFFSET [B17])_
+- [x] dashboard + analytics onto `data/ledger.ts` (one threshold constant from `budgets/domain/progress.ts` via `data/`)
+- [x] budgets (`budgetProgressForCategory` uses `data/ledger.budgetSpend`; `spend.test.ts` runs the shipped builder, not its hand-written copy)
+- [x] tracker
+- [x] categories: `CategoryError` becomes `UserFacingError`; screens drop their `try/catch` and branch on `WriteResult`
+- [x] groups: `groupNetsSync` reuses `netsQuery`'s SQL fragment; move toasts out of `groups/mutations.ts` (actions return results, screens toast)
+- [x] **`useDbQuery` gains `refetch()`**, and resets `status` to `pending` when `deps` change to a different entity (e.g. another group id) so one entity's data never renders under another's header
 
 **Done when:** a grep for `readDb.select` finds hits only in `data/` and `features/*/data/sql.ts`; no SQL fragment appears in two files; lint boundaries pass; all tests are green.
+
+---
+
+**Status 2026-09-19:** code complete on branch `refactor/r2-r3`, one commit per task or batch.
+`tsc` (app and tests) and `npm run lint` are clean after every commit. **The full `jest` suite has not
+been run since R2-3**; run `npm run verify` before merging to `main`. New tests written in this phase and
+not yet run: `data/__tests__/{meta,categories}.test.ts`, the reworked `budgets/__tests__/spend.test.ts`,
+`transactions/__tests__/keyset.test.ts` and the summary test in `filters.test.ts`.
+CI cannot run until the repo has a remote.
 
 ---
 

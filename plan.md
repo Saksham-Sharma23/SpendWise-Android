@@ -189,7 +189,7 @@ lib/                         pure utilities + lib/db runtime (useDbQuery, safeWr
 
 ## 4. Task index
 
-Status: ⬜ not started · 🟡 in progress · ✅ done
+Status: ⬜ not started · 🟡 in progress, or code complete awaiting a full test run · ✅ done
 
 | ID           | Task                                                                                                                           | Ref        | Pri | Est         | Status             |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------ | ---------- | --- | ----------- | ------------------ |
@@ -971,7 +971,7 @@ landmark, "ChatGPT Plus" → sparkles, "Vi postpaid" → smartphone, "Car insura
 (Supersedes TASKS2 F6.) **Done when:** CI is green on `main`, and a PR that adds `fetch`, a cross-feature
 import or the `INTERNET` permission fails CI.
 
-### ⬜ R2-1 — ESLint with boundaries and project rules
+### 🟡 R2-1 — ESLint with boundaries and project rules
 
 **Ref:** T1 · **Priority:** P1 · **Est:** 4 h · **Depends on:** R0-1
 
@@ -1000,7 +1000,7 @@ must fail; a small script `npm run lint:selftest` runs ESLint on it and asserts 
 
 **Done when:** `npm run lint` passes, and each fixture fails with the expected rule.
 
-### ⬜ R2-2 — Prettier and one formatting commit
+### 🟡 R2-2 — Prettier and one formatting commit
 
 **Ref:** T1 · **Priority:** P2 · **Est:** 1 h · **Depends on:** R2-1
 
@@ -1011,7 +1011,7 @@ Run once, commit alone as `Format with Prettier`. Add that commit's hash to `.gi
 
 **Done when:** `npm run format:check` passes and blame skips the formatting commit.
 
-### ⬜ R2-3 — Type-check tests; align ts-jest with Jest 30
+### 🟡 R2-3 — Type-check tests; align ts-jest with Jest 30
 
 **Ref:** T1 · **Priority:** P1 · **Est:** 1½ h
 
@@ -1031,7 +1031,7 @@ does, per file, at test time. `ts-jest@29` is paired with `jest@30`.
 **Done when:** `npm run typecheck` checks tests, `npm i` shows no peer-dependency warnings for Jest, and
 test time is recorded here.
 
-### ⬜ R2-4 — Icon-mapping test (the one `lib/icons.ts` claims exists)
+### 🟡 R2-4 — Icon-mapping test (the one `lib/icons.ts` claims exists)
 
 **Ref:** T4 · **Priority:** P2 · **Est:** 1 h
 
@@ -1050,7 +1050,7 @@ A mistyped icon name renders a fallback silently.
 
 **Done when:** renaming one icon in either place fails the test.
 
-### ⬜ R2-5 — Adopt the `@/` import alias
+### 🟡 R2-5 — Adopt the `@/` import alias
 
 **Ref:** T7 · **Priority:** P1 · **Est:** 2 h · **Depends on:** R2-1
 
@@ -1068,7 +1068,7 @@ move many files, and each move breaks relative imports.
 
 **Done when:** no import contains `../../`, the app builds in Metro, and tests pass.
 
-### ⬜ R2-6 — GitHub Actions CI
+### 🟡 R2-6 — GitHub Actions CI
 
 **Ref:** T1 · **Priority:** P1 · **Est:** 2 h · **Depends on:** R2-1, R2-3
 
@@ -1088,7 +1088,7 @@ Protect `main`: require CI green and one PR.
 
 **Done when:** CI runs on a PR; a test PR that adds `fetch('x')` fails the lint job.
 
-### ⬜ R2-7 — `CONTRIBUTING.md`
+### 🟡 R2-7 — `CONTRIBUTING.md`
 
 **Ref:** T2 · **Priority:** P2 · **Est:** 1 h
 
@@ -1127,7 +1127,7 @@ copy of its query.
 
 ### Batch R3-A — Shared foundations
 
-### ⬜ R3-1 — `db/types.ts`: one `SyncDb` and one `AnyDb`
+### 🟡 R3-1 — `db/types.ts`: one `SyncDb` and one `AnyDb`
 
 **Ref:** A6 · **Priority:** P1 · **Est:** 2 h · **Depends on:** R2-5
 
@@ -1158,7 +1158,7 @@ casts `tx as SyncDb`.
 **Done when:** a search for `as unknown as` in `features/` and `db/` returns zero (or only commented,
 justified exceptions), and no other file declares a `BaseSQLiteDatabase` alias.
 
-### ⬜ R3-2 — `data/meta.ts`
+### 🟡 R3-2 — `data/meta.ts`
 
 **Ref:** A7 · **Priority:** P1 · **Est:** 1 h · **Depends on:** R3-1
 
@@ -1174,7 +1174,7 @@ in `db/meta.ts`** and have `data/meta.ts` re-export them plus the hook). Update 
 
 **Done when:** nothing outside `db/` imports `db/seed.ts` except boot.
 
-### ⬜ R3-3 — `data/categories.ts` and `useCategories`
+### 🟡 R3-3 — `data/categories.ts` and `useCategories`
 
 **Ref:** A3, A2 · **Priority:** P1 · **Est:** 2 h · **Depends on:** R3-1
 
@@ -1195,7 +1195,7 @@ order stable.
 
 **Done when:** one definition of "live categories" exists.
 
-### ⬜ R3-4 — `data/ledger.ts`: the shared aggregates
+### 🟡 R3-4 — `data/ledger.ts`: the shared aggregates
 
 **Ref:** A2 · **Priority:** P1 · **Est:** 4 h · **Depends on:** R3-1, R1-1, R1-2
 
@@ -1228,7 +1228,7 @@ and never adds months outside the range; `budgetSpend` respects `toExclusive`; `
 
 **Done when:** the module exists with tests; nothing uses it yet (next tasks switch callers).
 
-### ⬜ R3-5 — Move dev tools to `db/dev/`
+### 🟡 R3-5 — Move dev tools to `db/dev/`
 
 **Ref:** A7 · **Priority:** P2 · **Est:** 30 m
 
@@ -1238,7 +1238,7 @@ importing `db/dev/**` from anything except the dev harness.
 
 **Done when:** production boot code and dev tools live in different folders.
 
-### ⬜ R3-6 — `useDbQuery`: `refetch()` and reset on entity change
+### 🟡 R3-6 — `useDbQuery`: `refetch()` and reset on entity change
 
 **Ref:** B7, A1 · **Priority:** P1 · **Est:** 2 h
 
@@ -1267,7 +1267,7 @@ Each task follows the same recipe:
 3. Switch to `data/ledger.ts` / `data/categories.ts` where applicable. Commit.
 4. Tests run the shipped builders; delete any hand-written query copies.
 
-### ⬜ R3-7 — transactions → standard layout, keyset export
+### 🟡 R3-7 — transactions → standard layout, keyset export
 
 **Ref:** A1, B17 · **Priority:** P1 · **Est:** 4 h · **Depends on:** R3-1, R3-3
 
@@ -1294,7 +1294,7 @@ in order (run the builder on better-sqlite3).
 
 **Done when:** no OFFSET remains in the feature and export doesn't use the sync handle.
 
-### ⬜ R3-8 — dashboard + analytics onto `data/ledger.ts`
+### 🟡 R3-8 — dashboard + analytics onto `data/ledger.ts`
 
 **Ref:** A1, A2 · **Priority:** P1 · **Est:** 3 h · **Depends on:** R3-4
 
@@ -1312,7 +1312,7 @@ in order (run the builder on better-sqlite3).
 
 **Done when:** Home and Insights compute month totals, trends and category totals with the same functions.
 
-### ⬜ R3-9 — budgets → standard layout
+### 🟡 R3-9 — budgets → standard layout
 
 **Ref:** A1, A2 · **Priority:** P1 · **Est:** 2 h · **Depends on:** R3-4
 
@@ -1322,7 +1322,7 @@ runs the shipped `budgetSpend`**; delete its hand-written copy of the query.
 
 **Done when:** one budget-spend query exists and its test runs that query.
 
-### ⬜ R3-10 — tracker → standard layout
+### 🟡 R3-10 — tracker → standard layout
 
 **Ref:** A1 · **Priority:** P2 · **Est:** 1½ h · **Depends on:** R3-1
 
@@ -1331,7 +1331,7 @@ with `UserFacingError`; `index.ts`.
 
 **Done when:** tracker matches the recipe.
 
-### ⬜ R3-11 — categories → standard layout, `UserFacingError`
+### 🟡 R3-11 — categories → standard layout, `UserFacingError`
 
 **Ref:** A1 · **Priority:** P1 · **Est:** 2 h · **Depends on:** R3-3
 
@@ -1344,7 +1344,7 @@ Keep `normalizeCategoryName`/`tombstoneName` in `domain/names.ts`.
 
 **Done when:** no `CategoryError` and no `try/catch` around category writes in components.
 
-### ⬜ R3-12 — groups → standard layout, no toasts in the data layer
+### 🟡 R3-12 — groups → standard layout, no toasts in the data layer
 
 **Ref:** A1, A2, A6 · **Priority:** P1 · **Est:** 3 h · **Depends on:** R3-1
 

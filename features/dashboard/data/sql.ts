@@ -1,4 +1,7 @@
+import { and, asc, desc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
+
 import { categoryTotals, monthTrend } from '@/data/ledger/sql';
+import { budgets, categories, subscriptions, transactions } from '@/db/schema';
 import type { AnyDb } from '@/db/types';
 import { addMonthsClamped, startOfMonth, type ISODate } from '@/lib/dates';
 
@@ -24,4 +27,90 @@ export function trendQuery(db: AnyDb, months: number, today: ISODate) {
 export function topCategoriesQuery(db: AnyDb, today: ISODate, limit: number) {
   const month = today.slice(0, 7);
   return categoryTotals(db, month, month, limit);
+}
+
+/**
+ * This month and last month side by side in ONE query: one range scan on
+ * tx_ledger_idx, split into sums by CASE. Last month is also cut at the same
+ * day of the month as today, so the 10th compares ten days with ten days.
+ */
+export function overviewQuery(db: AnyDb, today: ISODate) {
+  const thisStart = startOfMonth(today);
+  const lastStart = addMonthsClamped(thisStart, -1);
+  const nextStart = addMonthsClamped(thisStart, 1);
+  const lastToDate = addMonthsClamped(today, -1);
+  const inThis = sql`${transactions.date} >= ${thisStart}`;
+  return db
+    .select({
+      incomePaise: sql<number>`coalesce(sum(case when ${inThis} and ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
+      expensePaise: sql<number>`coalesce(sum(case when ${inThis} and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
+      lastIncomePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`,
+      lastExpensePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
+      lastExpenseToDatePaise: sql<number>`coalesce(sum(case when not (${inThis}) and ${transactions.date} <= ${lastToDate} and ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`,
+      count: sql<number>`coalesce(sum(case when ${inThis} then 1 else 0 end), 0)`,
+    })
+    .from(transactions)
+    .where(and(isNull(transactions.deletedAt), gte(transactions.date, lastStart), lt(transactions.date, nextStart)));
+}
+
+/** The newest `limit` live transactions with their category's look. */
+export function recentQuery(db: AnyDb, limit: number) {
+  return db
+    .select({
+      id: transactions.id,
+      type: transactions.type,
+      amountPaise: transactions.amountPaise,
+      date: transactions.date,
+      note: transactions.note,
+      categoryName: categories.name,
+      categoryIcon: categories.icon,
+      categoryColor: categories.color,
+    })
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .where(isNull(transactions.deletedAt))
+    .orderBy(desc(transactions.date), desc(transactions.id))
+    .limit(limit);
+}
+
+/** Live ACTIVE subscriptions with their category's look, for the renewals card. */
+export function activeSubscriptionsQuery(db: AnyDb) {
+  return db
+    .select({
+      id: subscriptions.id,
+      name: subscriptions.name,
+      amountPaise: subscriptions.amountPaise,
+      billingCycle: subscriptions.billingCycle,
+      status: subscriptions.status,
+      anchorDate: subscriptions.anchorDate,
+      reminderDaysBefore: subscriptions.reminderDaysBefore,
+      categoryName: categories.name,
+      categoryIcon: categories.icon,
+      categoryColor: categories.color,
+    })
+    .from(subscriptions)
+    .leftJoin(categories, eq(subscriptions.categoryId, categories.id))
+    .where(and(isNull(subscriptions.deletedAt), eq(subscriptions.status, 'active')))
+    .orderBy(asc(subscriptions.name));
+}
+
+/** One indexed probe for "is there any live transaction at all" — never a count. */
+export function anyTransactionQuery(db: AnyDb) {
+  return db.select({ id: transactions.id }).from(transactions).where(isNull(transactions.deletedAt)).limit(1);
+}
+
+/** Live budgets on live categories, for Home's card. Spend comes from data/ledger. */
+export function homeBudgetsQuery(db: AnyDb) {
+  return db
+    .select({
+      id: budgets.id,
+      categoryId: budgets.categoryId,
+      limitPaise: budgets.limitPaise,
+      resetDay: budgets.resetDay,
+      isActive: budgets.isActive,
+      categoryName: categories.name,
+    })
+    .from(budgets)
+    .innerJoin(categories, eq(budgets.categoryId, categories.id))
+    .where(and(isNull(budgets.deletedAt), isNull(categories.deletedAt)));
 }
