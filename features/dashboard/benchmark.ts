@@ -1,5 +1,5 @@
-import type { BenchQuery } from '../../db/benchmark';
-import { todayISO } from '../../lib/dates';
+import type { BenchQuery } from '@/db/benchmark';
+import { todayISO } from '@/lib/dates';
 import { dashboardQueries } from './queries';
 
 /** The dashboard's shipped queries, for the dev harness benchmark. Local dates, never UTC. */

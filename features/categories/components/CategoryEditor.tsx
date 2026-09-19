@@ -6,10 +6,10 @@ import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
-import { CATEGORY_COLORS, CATEGORY_ICON_NAMES, CategoryIcon } from '../../../components/ui/CategoryIcon';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { formatCount } from '../../../lib/money';
-import { fonts, useColors, withAlpha } from '../../../lib/theme';
+import { CATEGORY_COLORS, CATEGORY_ICON_NAMES, CategoryIcon } from '@/components/ui/CategoryIcon';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { formatCount } from '@/lib/money';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 import {
   CategoryError,
   MAX_CATEGORY_NAME,

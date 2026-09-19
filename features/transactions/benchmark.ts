@@ -1,4 +1,4 @@
-import type { BenchQuery } from '../../db/benchmark';
+import type { BenchQuery } from '@/db/benchmark';
 import { EMPTY_FILTERS } from './filters';
 import { transactionQueries } from './queries';
 

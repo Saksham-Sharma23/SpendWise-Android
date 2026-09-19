@@ -8,11 +8,11 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
-import { CategoryIcon } from '../../components/ui/CategoryIcon';
-import { DatePickerSheet } from '../../components/ui/DatePickerSheet';
-import { PressableScale } from '../../components/ui/PressableScale';
-import { Segmented } from '../../components/ui/Segmented';
-import { colorForName } from '../../lib/categoryColor';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { DatePickerSheet } from '@/components/ui/DatePickerSheet';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { Segmented } from '@/components/ui/Segmented';
+import { colorForName } from '@/lib/categoryColor';
 import {
   createTransaction,
   getTransaction,
@@ -20,17 +20,17 @@ import {
   softDeleteTransaction,
   updateTransaction,
   useCategories,
-} from '../../features/transactions/queries';
+} from '@/features/transactions/queries';
 import {
   emptyTransactionForm,
   toTransactionInput,
   transactionFormSchema,
   type TransactionFormValues,
-} from '../../features/transactions/schema';
-import { addDays, formatDayMonth } from '../../lib/dates';
-import { useToday } from '../../lib/today';
-import { paiseToDecimalString } from '../../lib/money';
-import { fonts, useColors, withAlpha } from '../../lib/theme';
+} from '@/features/transactions/schema';
+import { addDays, formatDayMonth } from '@/lib/dates';
+import { useToday } from '@/lib/today';
+import { paiseToDecimalString } from '@/lib/money';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 
 /**
  * Add / edit a transaction.

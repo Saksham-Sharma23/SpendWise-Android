@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { useMotion } from '../../lib/motion';
+import { useMotion } from '@/lib/motion';
 
 interface Props {
   /** Changing this swaps the content. Anything comparable with `===`. */

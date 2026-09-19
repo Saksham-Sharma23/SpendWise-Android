@@ -1,4 +1,4 @@
-import { addMonthsClamped, daysBetween, startOfMonth, type ISODate } from '../../lib/dates';
+import { addMonthsClamped, daysBetween, startOfMonth, type ISODate } from '@/lib/dates';
 
 /**
  * The Analytics screen's arithmetic — pure, so it is tested without a phone

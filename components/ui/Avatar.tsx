@@ -1,8 +1,8 @@
 import { Text, View } from 'react-native';
 
-import { initials } from '../../lib/identity';
-import { fonts, useColors, withAlpha } from '../../lib/theme';
-import { colorForName } from '../../lib/categoryColor';
+import { initials } from '@/lib/identity';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { colorForName } from '@/lib/categoryColor';
 
 interface Props {
   name: string;

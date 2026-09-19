@@ -13,22 +13,22 @@ import { useEffect, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
-import { Screen } from '../../../components/layout/Screen';
-import { Welcome } from '../../../components/layout/Welcome';
-import { AnimatedAmount } from '../../../components/ui/AnimatedAmount';
-import { BudgetOverviewCard } from '../../../components/ui/BudgetOverviewCard';
-import { Card } from '../../../components/ui/Card';
-import { CategoryIcon } from '../../../components/ui/CategoryIcon';
-import { InsightBanner } from '../../../components/ui/InsightBanner';
-import { LedgerRow } from '../../../components/ui/LedgerRow';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { RenewalsCard } from '../../../components/ui/RenewalsCard';
-import { MONTHS_LONG, fromISODate, type ISODate } from '../../../lib/dates';
-import { buildInsight } from '../../../lib/insight';
-import { formatINR } from '../../../lib/money';
-import { upcomingRenewals } from '../../../lib/renewals';
-import { fonts, useColors, withAlpha } from '../../../lib/theme';
-import { useToday } from '../../../lib/today';
+import { Screen } from '@/components/layout/Screen';
+import { Welcome } from '@/components/layout/Welcome';
+import { AnimatedAmount } from '@/components/ui/AnimatedAmount';
+import { BudgetOverviewCard } from '@/components/ui/BudgetOverviewCard';
+import { Card } from '@/components/ui/Card';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { InsightBanner } from '@/components/ui/InsightBanner';
+import { LedgerRow } from '@/components/ui/LedgerRow';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { RenewalsCard } from '@/components/ui/RenewalsCard';
+import { MONTHS_LONG, fromISODate, type ISODate } from '@/lib/dates';
+import { buildInsight } from '@/lib/insight';
+import { formatINR } from '@/lib/money';
+import { upcomingRenewals } from '@/lib/renewals';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useToday } from '@/lib/today';
 import {
   dismissOnboarding,
   useActiveSubscriptions,

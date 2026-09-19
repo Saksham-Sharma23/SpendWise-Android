@@ -53,7 +53,7 @@ import {
   Wallet,
   Wifi,
   Wrench,
-  Zap
+  Zap,
 } from 'lucide-react-native';
 
 /**

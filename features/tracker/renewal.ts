@@ -8,8 +8,8 @@ import {
   type BillingCycle,
   type ISODate,
   type Urgency,
-} from '../../lib/dates';
-import { deterministicColor, deterministicIcon } from '../../lib/identity';
+} from '@/lib/dates';
+import { deterministicColor, deterministicIcon } from '@/lib/identity';
 
 /**
  * `_enrich`, ported from the web app's `subscriptions.py`.

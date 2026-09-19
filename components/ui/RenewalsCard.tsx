@@ -1,10 +1,10 @@
 import { CalendarClock } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
-import { formatDayMonth } from '../../lib/dates';
-import { formatINR } from '../../lib/money';
-import { renewalCountdown, type UpcomingRenewal } from '../../lib/renewals';
-import { accent, fonts, useColors, withAlpha } from '../../lib/theme';
+import { formatDayMonth } from '@/lib/dates';
+import { formatINR } from '@/lib/money';
+import { renewalCountdown, type UpcomingRenewal } from '@/lib/renewals';
+import { accent, fonts, useColors, withAlpha } from '@/lib/theme';
 import { Card } from './Card';
 import { CategoryIcon } from './CategoryIcon';
 import { PressableScale } from './PressableScale';

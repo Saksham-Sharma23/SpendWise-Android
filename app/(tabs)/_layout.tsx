@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 
-import { TabBar } from '../../components/layout/TabBar';
-import { useColors } from '../../lib/theme';
+import { TabBar } from '@/components/layout/TabBar';
+import { useColors } from '@/lib/theme';
 
 /**
  * Four tabs and one action.

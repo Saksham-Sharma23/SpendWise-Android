@@ -2,8 +2,8 @@ import { ChevronRight, PiggyBank, TriangleAlert } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { MiniDonut, softToneFor, toneFor } from '../charts/MiniDonut';
-import { formatINRCompact } from '../../lib/money';
-import { fonts, useColors } from '../../lib/theme';
+import { formatINRCompact } from '@/lib/money';
+import { fonts, useColors } from '@/lib/theme';
 import { Card } from './Card';
 import { PressableScale } from './PressableScale';
 

@@ -8,8 +8,8 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
-import { useMotion } from '../../lib/motion';
-import { fonts, springs, useColors } from '../../lib/theme';
+import { useMotion } from '@/lib/motion';
+import { fonts, springs, useColors } from '@/lib/theme';
 import { PressableScale } from './PressableScale';
 
 export interface SegmentOption<T extends string> {

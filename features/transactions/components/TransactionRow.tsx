@@ -3,9 +3,9 @@ import { memo } from 'react';
 import { Text, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 
-import { LedgerRow } from '../../../components/ui/LedgerRow';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { fonts, useColors } from '../../../lib/theme';
+import { LedgerRow } from '@/components/ui/LedgerRow';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { fonts, useColors } from '@/lib/theme';
 import type { TransactionRow as Row } from '../queries';
 
 /**

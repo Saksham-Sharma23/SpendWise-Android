@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react';
 import { Text, View, type TextStyle } from 'react-native';
 
-import { AreaChart } from '../../../components/charts/AreaChart';
-import { AnimatedAmount } from '../../../components/ui/AnimatedAmount';
-import { Card } from '../../../components/ui/Card';
-import { formatMonthYear, type ISODate } from '../../../lib/dates';
-import { formatINRCompact } from '../../../lib/money';
-import { fonts, useColors } from '../../../lib/theme';
+import { AreaChart } from '@/components/charts/AreaChart';
+import { AnimatedAmount } from '@/components/ui/AnimatedAmount';
+import { Card } from '@/components/ui/Card';
+import { formatMonthYear, type ISODate } from '@/lib/dates';
+import { formatINRCompact } from '@/lib/money';
+import { fonts, useColors } from '@/lib/theme';
 import { useSpendingTrend } from '../queries';
 
 /**

@@ -1,11 +1,11 @@
 import { and, asc, desc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 
-import { setMeta } from '../../db/seed';
-import { readDb } from '../../db/read';
-import { appMeta, budgets, categories, META_KEYS, subscriptions, transactions } from '../../db/schema';
-import type { BillingCycle, SubscriptionStatus } from '../../db/schema';
-import { useDbQuery, type DbQueryResult } from '../../lib/db/useDbQuery';
-import { addMonthsClamped, getCycleWindow, startOfMonth, type ISODate } from '../../lib/dates';
+import { setMeta } from '@/db/seed';
+import { readDb } from '@/db/read';
+import { appMeta, budgets, categories, META_KEYS, subscriptions, transactions } from '@/db/schema';
+import type { BillingCycle, SubscriptionStatus } from '@/db/schema';
+import { useDbQuery, type DbQueryResult } from '@/lib/db/useDbQuery';
+import { addMonthsClamped, getCycleWindow, startOfMonth, type ISODate } from '@/lib/dates';
 import { topCategoriesQuery, trendQuery } from './sql';
 
 /**

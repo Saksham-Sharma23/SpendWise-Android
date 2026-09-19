@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
-import { mix, shadow, useColors, useThemeName } from '../../lib/theme';
+import { mix, shadow, useColors, useThemeName } from '@/lib/theme';
 
 interface CardProps {
   children: ReactNode;

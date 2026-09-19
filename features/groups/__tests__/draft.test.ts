@@ -1,4 +1,4 @@
-import { paiseToDecimalString } from '../../../lib/money';
+import { paiseToDecimalString } from '@/lib/money';
 import { draftFromExpense, emptyDraft, evaluate } from '../draft';
 import { formatPercent } from '../split';
 

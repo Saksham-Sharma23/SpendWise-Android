@@ -5,12 +5,12 @@ import { Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Screen } from '../../../components/layout/Screen';
-import { CategoryIcon } from '../../../components/ui/CategoryIcon';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { formatCount } from '../../../lib/money';
-import { fonts, useColors } from '../../../lib/theme';
+import { Screen } from '@/components/layout/Screen';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { formatCount } from '@/lib/money';
+import { fonts, useColors } from '@/lib/theme';
 import { useCategoriesWithUsageResult, type CategoryWithUsage } from '../queries';
 
 /**

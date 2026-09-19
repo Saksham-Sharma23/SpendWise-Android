@@ -5,7 +5,7 @@ import { ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { fonts, useColors } from '../../lib/theme';
+import { fonts, useColors } from '@/lib/theme';
 import { PressableScale } from '../ui/PressableScale';
 import { BlurTarget } from './glass';
 

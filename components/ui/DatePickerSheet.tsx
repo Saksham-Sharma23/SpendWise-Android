@@ -3,10 +3,10 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { WEEKDAY_INITIALS, clampDate, inMonth, monthGrid, monthRange, openingMonth } from '../../lib/calendar';
-import { MONTHS_SHORT, formatDayMonth, type ISODate } from '../../lib/dates';
-import { useMotion } from '../../lib/motion';
-import { fonts, useColors, withAlpha } from '../../lib/theme';
+import { WEEKDAY_INITIALS, clampDate, inMonth, monthGrid, monthRange, openingMonth } from '@/lib/calendar';
+import { MONTHS_SHORT, formatDayMonth, type ISODate } from '@/lib/dates';
+import { useMotion } from '@/lib/motion';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 import { PressableScale } from './PressableScale';
 
 interface Props {

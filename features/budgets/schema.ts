@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { MAX_AMOUNT_PAISE, parseAmountToPaise } from '../../lib/money';
+import { MAX_AMOUNT_PAISE, parseAmountToPaise } from '@/lib/money';
 import type { BudgetInput } from './queries';
 
 /**

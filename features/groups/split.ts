@@ -12,7 +12,7 @@
 
 // lib/money.ts is pure and imports nothing, so this file stays loadable in
 // Node without pulling in React Native.
-import { MAX_AMOUNT_PAISE } from '../../lib/money';
+import { MAX_AMOUNT_PAISE } from '@/lib/money';
 
 /**
  * The largest expense a group can record: the app-wide ₹10 crore typo guard

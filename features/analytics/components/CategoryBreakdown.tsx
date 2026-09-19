@@ -3,16 +3,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { Donut } from '../../../components/charts/Donut';
-import { Card } from '../../../components/ui/Card';
-import { CategoryIcon } from '../../../components/ui/CategoryIcon';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { Swap } from '../../../components/ui/Swap';
-import { categoryColor } from '../../../lib/categoryColor';
-import { formatMonthYear, type ISODate } from '../../../lib/dates';
-import { formatINR } from '../../../lib/money';
-import { useMotion } from '../../../lib/motion';
-import { fonts, useColors, withAlpha } from '../../../lib/theme';
+import { Donut } from '@/components/charts/Donut';
+import { Card } from '@/components/ui/Card';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { Swap } from '@/components/ui/Swap';
+import { categoryColor } from '@/lib/categoryColor';
+import { formatMonthYear, type ISODate } from '@/lib/dates';
+import { formatINR } from '@/lib/money';
+import { useMotion } from '@/lib/motion';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 import { clampMonth, shiftMonth, toSlices, type Slice } from '../period';
 import { useCategoryBreakdown } from '../queries';
 

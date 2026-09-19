@@ -10,12 +10,12 @@ import {
   splitExpenseShares,
   splitExpenses,
   splitGroups,
-} from '../../db/schema';
-import type * as schema from '../../db/schema';
-import type { SplitMethod } from '../../db/schema';
-import { runWriteTx } from '../../db/tx';
-import { UserFacingError } from '../../lib/db/errors';
-import { formatINR } from '../../lib/money';
+} from '@/db/schema';
+import type * as schema from '@/db/schema';
+import type { SplitMethod } from '@/db/schema';
+import { runWriteTx } from '@/db/tx';
+import { UserFacingError } from '@/lib/db/errors';
+import { formatINR } from '@/lib/money';
 import type { PlannedSettlement } from './balances';
 import { expenseDebts, type Contribution } from './debts';
 import { MAX_EXPENSE_PAISE } from './split';

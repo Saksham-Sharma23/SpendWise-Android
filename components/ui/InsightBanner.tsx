@@ -10,8 +10,8 @@ import {
 import { Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
-import type { Insight, InsightIcon, InsightTone } from '../../lib/insight';
-import { colors, fonts, useColors, withAlpha } from '../../lib/theme';
+import type { Insight, InsightIcon, InsightTone } from '@/lib/insight';
+import { colors, fonts, useColors, withAlpha } from '@/lib/theme';
 import { Card } from './Card';
 
 const ICONS: Record<InsightIcon, LucideIcon> = {

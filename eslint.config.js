@@ -167,6 +167,15 @@ module.exports = defineConfig([
               message: 'Use useDbQuery over readDb (CLAUDE.md #6).',
             },
           ],
+          // R2-5: anything outside your own folder is imported by @/ path.
+          // `../../lib/theme` breaks every time a file moves; `@/lib/theme`
+          // never does. Relative imports stay for siblings in the same unit.
+          patterns: [
+            {
+              group: ['../../*'],
+              message: 'Import across folders with the @/ alias (e.g. @/lib/money), not ../../',
+            },
+          ],
         },
       ],
 

@@ -1,7 +1,7 @@
 import { and, isNotNull, isNull, lt } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
-import { addDays, todayISO, type ISODate } from '../lib/dates';
+import { addDays, todayISO, type ISODate } from '@/lib/dates';
 import { transactions } from './schema';
 import type * as schema from './schema';
 

@@ -1,6 +1,6 @@
-import { db } from '../../db/client';
-import { readDb } from '../../db/read';
-import { useDbQuery, type DbQueryResult, type TableName } from '../../lib/db/useDbQuery';
+import { db } from '@/db/client';
+import { readDb } from '@/db/read';
+import { useDbQuery, type DbQueryResult, type TableName } from '@/lib/db/useDbQuery';
 import {
   buildGroupBalances,
   friendBalances,

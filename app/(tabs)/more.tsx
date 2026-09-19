@@ -15,10 +15,10 @@ import {
 import { Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { Screen } from '../../components/layout/Screen';
-import { Card } from '../../components/ui/Card';
-import { PressableScale } from '../../components/ui/PressableScale';
-import { accent, fonts, useColors, withAlpha, type AccentHue } from '../../lib/theme';
+import { Screen } from '@/components/layout/Screen';
+import { Card } from '@/components/ui/Card';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { accent, fonts, useColors, withAlpha, type AccentHue } from '@/lib/theme';
 
 type Row = {
   icon: LucideIcon;

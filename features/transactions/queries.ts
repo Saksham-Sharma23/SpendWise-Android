@@ -3,15 +3,15 @@ import { useIsFocused } from 'expo-router';
 import { addDatabaseChangeListener } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { db } from '../../db/client';
-import { readDb } from '../../db/read';
-import { safeWrite, type WriteResult } from '../../lib/db/safeWrite';
-import { useDbQuery } from '../../lib/db/useDbQuery';
-import { categories, transactions } from '../../db/schema';
-import type { TransactionType } from '../../db/schema';
-import { makeDedupeHash } from '../../lib/dedupe';
-import { nowISO, type ISODate } from '../../lib/dates';
-import { useToday } from '../../lib/today';
+import { db } from '@/db/client';
+import { readDb } from '@/db/read';
+import { safeWrite, type WriteResult } from '@/lib/db/safeWrite';
+import { useDbQuery } from '@/lib/db/useDbQuery';
+import { categories, transactions } from '@/db/schema';
+import type { TransactionType } from '@/db/schema';
+import { makeDedupeHash } from '@/lib/dedupe';
+import { nowISO, type ISODate } from '@/lib/dates';
+import { useToday } from '@/lib/today';
 import { atOrNewerThan, buildWhere, olderThan, type LedgerKey, type TransactionFilters } from './filters';
 import { idsNotInPages, keyOf, stalePages, type OlderPage } from './pages';
 

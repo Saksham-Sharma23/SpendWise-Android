@@ -2,9 +2,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowRight, Sparkles } from 'lucide-react-native';
 import { ScrollView, Text, View } from 'react-native';
 
-import { Avatar } from '../../../components/ui/Avatar';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { fonts, useColors, withAlpha } from '../../../lib/theme';
+import { Avatar } from '@/components/ui/Avatar';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 import { useGroup } from '../queries';
 import { memberStatus, simplifiedNote, transferLine } from '../wording';
 import { SectionLabel, toneColor } from './kit';

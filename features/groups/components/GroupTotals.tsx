@@ -3,15 +3,15 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { Donut } from '../../../components/charts/Donut';
-import { Screen } from '../../../components/layout/Screen';
-import { Avatar } from '../../../components/ui/Avatar';
-import { Card } from '../../../components/ui/Card';
-import { CategoryIcon } from '../../../components/ui/CategoryIcon';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { categoryColor } from '../../../lib/categoryColor';
-import { formatINR } from '../../../lib/money';
-import { fonts, useColors } from '../../../lib/theme';
+import { Donut } from '@/components/charts/Donut';
+import { Screen } from '@/components/layout/Screen';
+import { Avatar } from '@/components/ui/Avatar';
+import { Card } from '@/components/ui/Card';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { categoryColor } from '@/lib/categoryColor';
+import { formatINR } from '@/lib/money';
+import { fonts, useColors } from '@/lib/theme';
 import { useGroup, useGroupStats } from '../queries';
 import { SectionLabel } from './kit';
 

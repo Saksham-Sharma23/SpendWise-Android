@@ -1,4 +1,4 @@
-import { paiseToDecimalString } from '../../lib/money';
+import { paiseToDecimalString } from '@/lib/money';
 
 /**
  * CSV formatting for the ledger export — pure, so it is tested in Node.

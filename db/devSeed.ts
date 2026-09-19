@@ -1,8 +1,8 @@
 import { sql } from 'drizzle-orm';
 import { File, Paths } from 'expo-file-system';
 
-import { addDays, nowISO, toISODate } from '../lib/dates';
-import { makeDedupeHash } from '../lib/dedupe';
+import { addDays, nowISO, toISODate } from '@/lib/dates';
+import { makeDedupeHash } from '@/lib/dedupe';
 import { db, sqliteDb, writeTx } from './client';
 import { verifyEncryptedCopy, writeEncryptedCopy, type CopyVerification } from './encryptedCopy';
 import { categories, transactions } from './schema';

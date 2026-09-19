@@ -1,8 +1,8 @@
 import { DatabaseBackup } from 'lucide-react-native';
 import { View } from 'react-native';
 
-import { Screen } from '../../components/layout/Screen';
-import { EmptyState } from '../../components/ui/EmptyState';
+import { Screen } from '@/components/layout/Screen';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 export default function BackupScreen() {
   return (

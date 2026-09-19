@@ -4,7 +4,7 @@ import { and, desc, eq, isNull } from 'drizzle-orm';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { categories, transactions } from '../../../db/schema';
+import { categories, transactions } from '@/db/schema';
 import { buildWhere, hasActiveFilters, resolveDateRange, type TransactionFilters } from '../filters';
 
 /**

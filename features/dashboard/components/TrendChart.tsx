@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
-import { TrendChart as Chart, type TrendMode } from '../../../components/charts/TrendChart';
-import { Card } from '../../../components/ui/Card';
-import { Segmented } from '../../../components/ui/Segmented';
-import { formatMonthYear } from '../../../lib/dates';
-import { formatINR, formatINRCompact } from '../../../lib/money';
-import { fonts, useColors } from '../../../lib/theme';
-import { useToday } from '../../../lib/today';
+import { TrendChart as Chart, type TrendMode } from '@/components/charts/TrendChart';
+import { Card } from '@/components/ui/Card';
+import { Segmented } from '@/components/ui/Segmented';
+import { formatMonthYear } from '@/lib/dates';
+import { formatINR, formatINRCompact } from '@/lib/money';
+import { fonts, useColors } from '@/lib/theme';
+import { useToday } from '@/lib/today';
 import { useMonthlyTrend } from '../queries';
 
 type Range = '6' | '12';

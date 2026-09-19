@@ -1,8 +1,8 @@
 import { and, asc, desc, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
-import { categories, groupMembers, people, splitExpenses, splitGroups } from '../../db/schema';
-import type * as schema from '../../db/schema';
+import { categories, groupMembers, people, splitExpenses, splitGroups } from '@/db/schema';
+import type * as schema from '@/db/schema';
 
 /**
  * The Groups read builders. Like features/analytics/sql.ts they take the

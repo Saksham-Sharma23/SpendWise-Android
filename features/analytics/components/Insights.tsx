@@ -4,10 +4,10 @@ import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { Screen } from '../../../components/layout/Screen';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { Segmented } from '../../../components/ui/Segmented';
-import { useToday } from '../../../lib/today';
+import { Screen } from '@/components/layout/Screen';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Segmented } from '@/components/ui/Segmented';
+import { useToday } from '@/lib/today';
 import { RANGES, type RangeMonths } from '../period';
 import { useEarliestDate, usePeriodStats } from '../queries';
 import { CategoryBreakdown } from './CategoryBreakdown';

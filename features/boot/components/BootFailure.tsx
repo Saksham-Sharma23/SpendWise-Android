@@ -3,9 +3,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
-import { moveDatabaseAside, shareDatabaseCopy, type BootOutcome } from '../../../db/boot';
-import { fonts, useColors } from '../../../lib/theme';
-import { useThemeStore } from '../../../lib/themeStore';
+import { moveDatabaseAside, shareDatabaseCopy, type BootOutcome } from '@/db/boot';
+import { fonts, useColors } from '@/lib/theme';
+import { useThemeStore } from '@/lib/themeStore';
 
 /**
  * What the user sees when the database cannot be opened, migrated or seeded.

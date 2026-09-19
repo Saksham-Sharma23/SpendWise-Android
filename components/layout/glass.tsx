@@ -4,7 +4,7 @@ import { useCallback, useRef, type ReactNode, type RefObject } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { create } from 'zustand';
 
-import { useThemeName } from '../../lib/theme';
+import { useThemeName } from '@/lib/theme';
 
 /**
  * Real backdrop blur for the glass tab bar — when the native module exists.

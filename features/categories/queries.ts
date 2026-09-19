@@ -1,9 +1,9 @@
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 
-import { db } from '../../db/client';
-import { readDb } from '../../db/read';
-import { categories, transactions } from '../../db/schema';
-import { useDbQuery, type DbQueryResult } from '../../lib/db/useDbQuery';
+import { db } from '@/db/client';
+import { readDb } from '@/db/read';
+import { categories, transactions } from '@/db/schema';
+import { useDbQuery, type DbQueryResult } from '@/lib/db/useDbQuery';
 import * as m from './mutations';
 
 /**

@@ -1,4 +1,4 @@
-import { MaxHeap } from '../../lib/heap';
+import { MaxHeap } from '@/lib/heap';
 import { allocate } from './split';
 
 /**

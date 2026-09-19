@@ -17,11 +17,11 @@ import {
   PlusJakartaSans_700Bold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 
-import { bootDatabase, type BootOutcome } from '../db/boot';
-import { checkpointWal } from '../db/connection';
-import { ThemeProvider } from '../components/layout/ThemeProvider';
-import { BootFailure } from '../features/boot/components/BootFailure';
-import { useColors, useThemeName } from '../lib/theme';
+import { bootDatabase, type BootOutcome } from '@/db/boot';
+import { checkpointWal } from '@/db/connection';
+import { ThemeProvider } from '@/components/layout/ThemeProvider';
+import { BootFailure } from '@/features/boot/components/BootFailure';
+import { useColors, useThemeName } from '@/lib/theme';
 
 // Keep the splash up until the database is open, migrated and seeded. Flashing
 // an empty shell while the schema is still being created reads as broken.

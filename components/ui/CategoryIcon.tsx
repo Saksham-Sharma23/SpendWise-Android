@@ -1,8 +1,8 @@
 import { Text, View } from 'react-native';
 
 import { ICON_COMPONENTS, FALLBACK_ICON } from './iconMap';
-import { ICON_NAMES } from '../../lib/icons';
-import { colors, withAlpha } from '../../lib/theme';
+import { ICON_NAMES } from '@/lib/icons';
+import { colors, withAlpha } from '@/lib/theme';
 
 /**
  * Category glyphs. Categories store a lucide icon NAME (seeded to match the

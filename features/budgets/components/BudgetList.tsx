@@ -4,17 +4,17 @@ import { Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { toast } from 'sonner-native';
 
-import { MiniDonut, softToneFor, toneFor } from '../../../components/charts/MiniDonut';
-import { Screen } from '../../../components/layout/Screen';
-import { Card } from '../../../components/ui/Card';
-import { CategoryIcon } from '../../../components/ui/CategoryIcon';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { colorForName } from '../../../lib/categoryColor';
-import { formatDayMonth } from '../../../lib/dates';
-import { formatINR } from '../../../lib/money';
-import { useToday } from '../../../lib/today';
-import { fonts, useColors, withAlpha } from '../../../lib/theme';
+import { MiniDonut, softToneFor, toneFor } from '@/components/charts/MiniDonut';
+import { Screen } from '@/components/layout/Screen';
+import { Card } from '@/components/ui/Card';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { colorForName } from '@/lib/categoryColor';
+import { formatDayMonth } from '@/lib/dates';
+import { formatINR } from '@/lib/money';
+import { useToday } from '@/lib/today';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 import { budgetTotals, daysLeftLabel, type BudgetProgress } from '../progress';
 import { restoreBudget, softDeleteBudget, useBudgetsWithSpend } from '../queries';
 

@@ -1,4 +1,4 @@
-import { CategoryEditor } from '../../features/categories/components/CategoryEditor';
+import { CategoryEditor } from '@/features/categories/components/CategoryEditor';
 
 export default function CategoryModal() {
   return <CategoryEditor />;

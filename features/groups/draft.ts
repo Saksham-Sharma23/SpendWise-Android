@@ -1,5 +1,5 @@
-import type { SplitMethod } from '../../db/schema';
-import { parseAmountToPaise } from '../../lib/money';
+import type { SplitMethod } from '@/db/schema';
+import { parseAmountToPaise } from '@/lib/money';
 import type { Contribution, PersonId } from './debts';
 import { FULL_PERCENT_BP, parsePercent, splitEqual, splitExact, splitPercent, splitShares } from './split';
 import type { ShareInput } from './writes';

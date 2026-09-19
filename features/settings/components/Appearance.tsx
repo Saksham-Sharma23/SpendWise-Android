@@ -2,10 +2,10 @@ import { Check, Moon, Smartphone, Sun } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { Card } from '../../../components/ui/Card';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { fonts, PALETTES, useColors, withAlpha, type ThemeName } from '../../../lib/theme';
-import { useThemeStore, type ThemePreference } from '../../../lib/themeStore';
+import { Card } from '@/components/ui/Card';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { fonts, PALETTES, useColors, withAlpha, type ThemeName } from '@/lib/theme';
+import { useThemeStore, type ThemePreference } from '@/lib/themeStore';
 
 /**
  * The appearance chooser: System, Light or Dark.

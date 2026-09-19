@@ -1,10 +1,10 @@
 import { and, eq, isNull, ne, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
-import * as schema from '../../db/schema';
-import { nowISO } from '../../lib/dates';
-import { runWriteTx } from '../../db/tx';
-import { budgets, categories, splitExpenses, subscriptions, transactions } from '../../db/schema';
+import * as schema from '@/db/schema';
+import { nowISO } from '@/lib/dates';
+import { runWriteTx } from '@/db/tx';
+import { budgets, categories, splitExpenses, subscriptions, transactions } from '@/db/schema';
 
 /**
  * Category writes — create, rename/recolour, merge, delete.

@@ -3,12 +3,12 @@ import { memo, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
-import { CategoryIcon } from '../../../components/ui/CategoryIcon';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { formatDayMonth } from '../../../lib/dates';
-import { formatINR } from '../../../lib/money';
-import { renewalCountdown } from '../../../lib/renewals';
-import { colors, fonts, useColors, withAlpha } from '../../../lib/theme';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { formatDayMonth } from '@/lib/dates';
+import { formatINR } from '@/lib/money';
+import { renewalCountdown } from '@/lib/renewals';
+import { colors, fonts, useColors, withAlpha } from '@/lib/theme';
 import type { EnrichedSubscription } from '../renewal';
 
 export interface CardActions {

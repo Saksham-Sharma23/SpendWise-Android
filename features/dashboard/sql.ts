@@ -1,9 +1,9 @@
 import { and, asc, desc, eq, gte, isNull, lt, lte, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
-import { categories, transactions } from '../../db/schema';
-import type * as schema from '../../db/schema';
-import { addMonthsClamped, startOfMonth, type ISODate } from '../../lib/dates';
+import { categories, transactions } from '@/db/schema';
+import type * as schema from '@/db/schema';
+import { addMonthsClamped, startOfMonth, type ISODate } from '@/lib/dates';
 
 /**
  * The dashboard's month-bounded query builders.

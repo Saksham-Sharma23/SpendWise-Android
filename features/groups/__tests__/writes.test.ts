@@ -1,5 +1,5 @@
-import { freshDb } from '../../../db/__tests__/support';
-import { UserFacingError } from '../../../lib/db/errors';
+import { freshDb } from '@/db/__tests__/support';
+import { UserFacingError } from '@/lib/db/errors';
 import { buildGroupBalances, friendBalances, planFriendSettlement, yourView, type GroupRef } from '../balances';
 import { expenseNets, netsFromEdges, type Contribution } from '../debts';
 import { splitEqual } from '../split';

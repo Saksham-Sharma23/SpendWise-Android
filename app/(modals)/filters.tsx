@@ -5,17 +5,17 @@ import { ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CategoryIcon } from '../../components/ui/CategoryIcon';
-import { DatePickerSheet } from '../../components/ui/DatePickerSheet';
-import { PressableScale } from '../../components/ui/PressableScale';
-import { Segmented } from '../../components/ui/Segmented';
-import { colorForName } from '../../lib/categoryColor';
-import { useFilterStore } from '../../features/transactions/filterStore';
-import { DATE_PRESETS, NO_DATES, resolveDateRange } from '../../features/transactions/filters';
-import { hasActiveFilters, useCategories } from '../../features/transactions/queries';
-import { formatDayMonth } from '../../lib/dates';
-import { useToday } from '../../lib/today';
-import { fonts, useColors, withAlpha } from '../../lib/theme';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { DatePickerSheet } from '@/components/ui/DatePickerSheet';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { Segmented } from '@/components/ui/Segmented';
+import { colorForName } from '@/lib/categoryColor';
+import { useFilterStore } from '@/features/transactions/filterStore';
+import { DATE_PRESETS, NO_DATES, resolveDateRange } from '@/features/transactions/filters';
+import { hasActiveFilters, useCategories } from '@/features/transactions/queries';
+import { formatDayMonth } from '@/lib/dates';
+import { useToday } from '@/lib/today';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 
 /**
  * The filter sheet.

@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 
-import { nowISO } from '../lib/dates';
+import { nowISO } from '@/lib/dates';
 import { db } from './client';
 import { appMeta } from './schema';
 import { reconcileSystemCategories, type SystemCategory } from './seedCore';

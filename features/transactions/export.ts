@@ -1,7 +1,7 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
-import { todayISO } from '../../lib/dates';
+import { todayISO } from '@/lib/dates';
 import { csvFileName, csvHeader, csvLine } from './csv';
 import { getTransactionsPage, hasActiveFilters, type TransactionFilters } from './queries';
 

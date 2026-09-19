@@ -8,9 +8,9 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
-import { CategoryIcon } from '../../components/ui/CategoryIcon';
-import { BudgetAmountDial } from '../../features/budgets/components/BudgetAmountDial';
-import { PressableScale } from '../../components/ui/PressableScale';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { BudgetAmountDial } from '@/features/budgets/components/BudgetAmountDial';
+import { PressableScale } from '@/components/ui/PressableScale';
 import {
   createBudget,
   getBudget,
@@ -18,13 +18,13 @@ import {
   softDeleteBudget,
   updateBudget,
   useBudgetableCategories,
-} from '../../features/budgets/queries';
-import { budgetFormSchema, emptyBudgetForm, toBudgetInput, type BudgetFormValues } from '../../features/budgets/schema';
-import { colorForName } from '../../lib/categoryColor';
-import { getCycleWindow, formatDayMonth } from '../../lib/dates';
-import { paiseToDecimalString } from '../../lib/money';
-import { useToday } from '../../lib/today';
-import { fonts, useColors, withAlpha } from '../../lib/theme';
+} from '@/features/budgets/queries';
+import { budgetFormSchema, emptyBudgetForm, toBudgetInput, type BudgetFormValues } from '@/features/budgets/schema';
+import { colorForName } from '@/lib/categoryColor';
+import { getCycleWindow, formatDayMonth } from '@/lib/dates';
+import { paiseToDecimalString } from '@/lib/money';
+import { useToday } from '@/lib/today';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 
 /**
  * Set or edit a budget.

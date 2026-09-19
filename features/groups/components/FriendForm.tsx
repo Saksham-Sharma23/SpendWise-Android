@@ -5,9 +5,9 @@ import { KeyboardAvoidingView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
-import { Avatar } from '../../../components/ui/Avatar';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { fonts, useColors } from '../../../lib/theme';
+import { Avatar } from '@/components/ui/Avatar';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { fonts, useColors } from '@/lib/theme';
 import { addFriend, removeFriend, renameFriend } from '../mutations';
 import { getFriends } from '../queries';
 import { RoundButton } from './kit';

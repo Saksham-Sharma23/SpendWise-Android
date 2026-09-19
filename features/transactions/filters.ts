@@ -1,8 +1,8 @@
 import { and, eq, gte, inArray, isNull, lte, or, sql, type SQL } from 'drizzle-orm';
 
-import { categories, transactions } from '../../db/schema';
-import type { TransactionType } from '../../db/schema';
-import { addDays, startOfMonth, todayISO, type ISODate } from '../../lib/dates';
+import { categories, transactions } from '@/db/schema';
+import type { TransactionType } from '@/db/schema';
+import { addDays, startOfMonth, todayISO, type ISODate } from '@/lib/dates';
 
 /**
  * Filter construction for the ledger — deliberately kept free of any database

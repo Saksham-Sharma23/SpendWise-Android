@@ -2,15 +2,15 @@ import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
-import { Screen } from '../components/layout/Screen';
-import { formatCount } from '../lib/money';
-import { useColors } from '../lib/theme';
-import { databaseSizeBytes, countTransactions, runBenchmark } from '../db/benchmark';
-import type { BenchResult } from '../db/benchmark';
-import { devClearTransactions, devEncryptedCopyRoundTrip, devSeedTransactions } from '../db/devSeed';
-import { analyticsBenchQueries } from '../features/analytics/benchmark';
-import { dashboardBenchQueries } from '../features/dashboard/benchmark';
-import { transactionBenchQueries } from '../features/transactions/benchmark';
+import { Screen } from '@/components/layout/Screen';
+import { formatCount } from '@/lib/money';
+import { useColors } from '@/lib/theme';
+import { databaseSizeBytes, countTransactions, runBenchmark } from '@/db/benchmark';
+import type { BenchResult } from '@/db/benchmark';
+import { devClearTransactions, devEncryptedCopyRoundTrip, devSeedTransactions } from '@/db/devSeed';
+import { analyticsBenchQueries } from '@/features/analytics/benchmark';
+import { dashboardBenchQueries } from '@/features/dashboard/benchmark';
+import { transactionBenchQueries } from '@/features/transactions/benchmark';
 
 /**
  * Development-only harness for the Phase 1 exit criterion.

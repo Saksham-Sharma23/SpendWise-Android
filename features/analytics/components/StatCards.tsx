@@ -2,16 +2,16 @@ import { useRouter } from 'expo-router';
 import { CalendarDays, Crown, PiggyBank, Receipt, type LucideIcon } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
-import { AnimatedAmount } from '../../../components/ui/AnimatedAmount';
-import { Card } from '../../../components/ui/Card';
-import { CategoryIcon } from '../../../components/ui/CategoryIcon';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { Swap } from '../../../components/ui/Swap';
-import { categoryColor } from '../../../lib/categoryColor';
-import type { DbQueryResult } from '../../../lib/db/useDbQuery';
-import { formatDayMonth } from '../../../lib/dates';
-import { formatCount, formatINR } from '../../../lib/money';
-import { fonts, useColors, withAlpha } from '../../../lib/theme';
+import { AnimatedAmount } from '@/components/ui/AnimatedAmount';
+import { Card } from '@/components/ui/Card';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { Swap } from '@/components/ui/Swap';
+import { categoryColor } from '@/lib/categoryColor';
+import type { DbQueryResult } from '@/lib/db/useDbQuery';
+import { formatDayMonth } from '@/lib/dates';
+import { formatCount, formatINR } from '@/lib/money';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 import type { PeriodStats } from '../queries';
 
 /**

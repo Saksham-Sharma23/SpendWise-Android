@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { fonts, springs, useColors, useThemeName, withAlpha } from '../../lib/theme';
+import { fonts, springs, useColors, useThemeName, withAlpha } from '@/lib/theme';
 import { PressableScale } from '../ui/PressableScale';
 import { BLUR_AVAILABLE, GlassBlur } from './glass';
 

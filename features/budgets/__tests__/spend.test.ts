@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 
-import { freshDb } from '../../../db/__tests__/support';
-import { getCycleWindow } from '../../../lib/dates';
+import { freshDb } from '@/db/__tests__/support';
+import { getCycleWindow } from '@/lib/dates';
 
 /**
  * The cycle-window SQL, against the REAL migrated schema.

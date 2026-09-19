@@ -1,4 +1,4 @@
-import { formatINR } from '../../lib/money';
+import { formatINR } from '@/lib/money';
 
 /**
  * How Groups talks about money — one place, so every screen says the same

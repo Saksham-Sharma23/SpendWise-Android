@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 
-import { categories, transactions } from '../../../db/schema';
-import { freshDb } from '../../../db/__tests__/support';
+import { categories, transactions } from '@/db/schema';
+import { freshDb } from '@/db/__tests__/support';
 import { topCategoriesQuery, trendQuery, type DashboardDb } from '../sql';
 
 /**

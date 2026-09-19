@@ -5,12 +5,12 @@ import { KeyboardAvoidingView, ScrollView, Text, TextInput, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
-import { Avatar } from '../../../components/ui/Avatar';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { addDays, formatDayMonth } from '../../../lib/dates';
-import { formatINR, paiseToDecimalString, parseAmountToPaise } from '../../../lib/money';
-import { useToday } from '../../../lib/today';
-import { fonts, useColors } from '../../../lib/theme';
+import { Avatar } from '@/components/ui/Avatar';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { addDays, formatDayMonth } from '@/lib/dates';
+import { formatINR, paiseToDecimalString, parseAmountToPaise } from '@/lib/money';
+import { useToday } from '@/lib/today';
+import { fonts, useColors } from '@/lib/theme';
 import { planFriendSettlement } from '../balances';
 import { settle, settleMany } from '../mutations';
 import { useGroup, useGroupsHub } from '../queries';

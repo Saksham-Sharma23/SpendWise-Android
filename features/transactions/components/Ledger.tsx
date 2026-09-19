@@ -7,16 +7,16 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
-import { Screen, TAB_BAR_CLEARANCE } from '../../../components/layout/Screen';
-import { AnimatedAmount } from '../../../components/ui/AnimatedAmount';
-import { Card } from '../../../components/ui/Card';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { Segmented } from '../../../components/ui/Segmented';
-import { categoryColor } from '../../../lib/categoryColor';
-import { formatMonthYear } from '../../../lib/dates';
-import { formatCount } from '../../../lib/money';
-import { fonts, useColors } from '../../../lib/theme';
+import { Screen, TAB_BAR_CLEARANCE } from '@/components/layout/Screen';
+import { AnimatedAmount } from '@/components/ui/AnimatedAmount';
+import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { Segmented } from '@/components/ui/Segmented';
+import { categoryColor } from '@/lib/categoryColor';
+import { formatMonthYear } from '@/lib/dates';
+import { formatCount } from '@/lib/money';
+import { fonts, useColors } from '@/lib/theme';
 import { exportTransactionsCsv } from '../export';
 import { useFilterStore } from '../filterStore';
 import {

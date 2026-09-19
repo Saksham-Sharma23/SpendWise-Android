@@ -2,9 +2,9 @@ import { X } from 'lucide-react-native';
 import { ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { formatDayMonth } from '../../../lib/dates';
-import { fonts, useColors, withAlpha } from '../../../lib/theme';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { formatDayMonth } from '@/lib/dates';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 import { DATE_PRESETS, NO_DATES, type TransactionFilters } from '../filters';
 
 interface Props {

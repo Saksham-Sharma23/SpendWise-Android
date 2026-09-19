@@ -3,17 +3,17 @@ import { RotateCcw, Trash2 } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { toast } from 'sonner-native';
 
-import { RETENTION_DAYS, daysLeft } from '../../../db/retention';
-import { Screen } from '../../../components/layout/Screen';
-import { Card } from '../../../components/ui/Card';
-import { CategoryIcon } from '../../../components/ui/CategoryIcon';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { colorForName } from '../../../lib/categoryColor';
-import { formatDayMonth } from '../../../lib/dates';
-import { formatINR } from '../../../lib/money';
-import { fonts, useColors, withAlpha } from '../../../lib/theme';
-import { useToday } from '../../../lib/today';
+import { RETENTION_DAYS, daysLeft } from '@/db/retention';
+import { Screen } from '@/components/layout/Screen';
+import { Card } from '@/components/ui/Card';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { colorForName } from '@/lib/categoryColor';
+import { formatDayMonth } from '@/lib/dates';
+import { formatINR } from '@/lib/money';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useToday } from '@/lib/today';
 import {
   deleteTransactionsForever,
   restoreTransactions,

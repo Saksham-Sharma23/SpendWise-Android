@@ -1,7 +1,7 @@
 import { colorScheme } from 'nativewind';
 import { useEffect, type ReactNode } from 'react';
 
-import { useSystemThemeSync } from '../../lib/themeStore';
+import { useSystemThemeSync } from '@/lib/themeStore';
 
 /**
  * Applies the stored theme preference to both colour systems.

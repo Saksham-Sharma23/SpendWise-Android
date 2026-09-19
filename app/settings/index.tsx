@@ -3,12 +3,12 @@ import { Bell, ChevronRight, Fingerprint, Info, Trash2 } from 'lucide-react-nati
 import { Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { RETENTION_DAYS } from '../../db/retention';
-import { Screen } from '../../components/layout/Screen';
-import { Card } from '../../components/ui/Card';
-import { PressableScale } from '../../components/ui/PressableScale';
-import { Appearance } from '../../features/settings/components/Appearance';
-import { fonts, useColors, withAlpha } from '../../lib/theme';
+import { RETENTION_DAYS } from '@/db/retention';
+import { Screen } from '@/components/layout/Screen';
+import { Card } from '@/components/ui/Card';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { Appearance } from '@/features/settings/components/Appearance';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 
 function SectionLabel({ children }: { children: string }) {
   const colors = useColors();

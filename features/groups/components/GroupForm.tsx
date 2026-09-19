@@ -6,11 +6,11 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
-import { Avatar } from '../../../components/ui/Avatar';
-import { CategoryIcon } from '../../../components/ui/CategoryIcon';
-import { PressableScale } from '../../../components/ui/PressableScale';
-import { deterministicColor, deterministicIcon } from '../../../lib/identity';
-import { fonts, useColors, withAlpha } from '../../../lib/theme';
+import { Avatar } from '@/components/ui/Avatar';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { deterministicColor, deterministicIcon } from '@/lib/identity';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 import { addFriend, addGroup, editGroup, removeGroup } from '../mutations';
 import { getFriends, getGroupRow, getMembers } from '../queries';
 import { RoundButton, SectionLabel } from './kit';

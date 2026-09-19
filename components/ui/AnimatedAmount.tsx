@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Text, type StyleProp, type TextStyle } from 'react-native';
 
-import { useMotion } from '../../lib/motion';
-import { formatINR, type FormatOptions } from '../../lib/money';
+import { useMotion } from '@/lib/motion';
+import { formatINR, type FormatOptions } from '@/lib/money';
 
 interface Props {
   paise: number;

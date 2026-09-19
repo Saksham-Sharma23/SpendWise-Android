@@ -10,8 +10,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
-import { useMotion } from '../../lib/motion';
-import { useColors } from '../../lib/theme';
+import { useMotion } from '@/lib/motion';
+import { useColors } from '@/lib/theme';
 import { donutArcs, hitArc, type Arc } from './geometry';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);

@@ -1,4 +1,4 @@
-import { getCycleWindow } from '../../../lib/dates';
+import { getCycleWindow } from '@/lib/dates';
 import { budgetStatus, budgetTotals, daysLeftLabel, WARNING_RATIO, type BudgetRow } from '../progress';
 
 /**

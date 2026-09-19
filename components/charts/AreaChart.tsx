@@ -15,10 +15,10 @@ import Animated, {
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { MONTHS_SHORT, formatMonthYear } from '../../lib/dates';
-import { formatINR, formatINRCompact } from '../../lib/money';
-import { useMotion } from '../../lib/motion';
-import { fonts, useColors } from '../../lib/theme';
+import { MONTHS_SHORT, formatMonthYear } from '@/lib/dates';
+import { formatINR, formatINRCompact } from '@/lib/money';
+import { useMotion } from '@/lib/motion';
+import { fonts, useColors } from '@/lib/theme';
 import { labelStep, niceCeiling, pointX, resample, scrubIndex, smoothPath } from './geometry';
 import type { TrendPoint } from './TrendChart';
 

@@ -8,29 +8,29 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
-import { CategoryIcon } from '../../components/ui/CategoryIcon';
-import { PressableScale } from '../../components/ui/PressableScale';
-import { Segmented } from '../../components/ui/Segmented';
-import { useCategories } from '../../features/transactions/queries';
+import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { Segmented } from '@/components/ui/Segmented';
+import { useCategories } from '@/features/transactions/queries';
 import {
   createSubscription,
   getSubscription,
   restoreSubscription,
   softDeleteSubscription,
   updateSubscription,
-} from '../../features/tracker/queries';
-import { deterministicColor, deterministicIcon } from '../../lib/identity';
+} from '@/features/tracker/queries';
+import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import {
   emptySubscriptionForm,
   subscriptionFormSchema,
   toSubscriptionInput,
   type SubscriptionFormValues,
-} from '../../features/tracker/schema';
-import { colorForName } from '../../lib/categoryColor';
-import { addDays, addMonthsClamped, formatDayMonth, getNextRenewal, toMonthlyPaise } from '../../lib/dates';
-import { formatINR, paiseToDecimalString, parseAmountToPaise } from '../../lib/money';
-import { useToday } from '../../lib/today';
-import { fonts, useColors, withAlpha } from '../../lib/theme';
+} from '@/features/tracker/schema';
+import { colorForName } from '@/lib/categoryColor';
+import { addDays, addMonthsClamped, formatDayMonth, getNextRenewal, toMonthlyPaise } from '@/lib/dates';
+import { formatINR, paiseToDecimalString, parseAmountToPaise } from '@/lib/money';
+import { useToday } from '@/lib/today';
+import { fonts, useColors, withAlpha } from '@/lib/theme';
 
 /**
  * Add / edit a subscription.

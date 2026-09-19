@@ -1,5 +1,5 @@
-import type { BenchQuery } from '../../db/benchmark';
-import { todayISO } from '../../lib/dates';
+import type { BenchQuery } from '@/db/benchmark';
+import { todayISO } from '@/lib/dates';
 import { periodWindow } from './period';
 import { analyticsQueries } from './queries';
 

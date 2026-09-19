@@ -1,8 +1,8 @@
 import { and, asc, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
-import { categories, transactions } from '../../db/schema';
-import type * as schema from '../../db/schema';
+import { categories, transactions } from '@/db/schema';
+import type * as schema from '@/db/schema';
 
 /**
  * The Analytics query builders — every figure on the screen, aggregated in

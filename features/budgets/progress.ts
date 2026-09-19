@@ -1,4 +1,4 @@
-import type { CycleWindow, ISODate } from '../../lib/dates';
+import type { CycleWindow, ISODate } from '@/lib/dates';
 
 /**
  * Budget progress — pure, so every threshold is tested without a database.
