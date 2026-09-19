@@ -16,25 +16,25 @@
 
 ---
 
-## Status — 2026-09-17
+## Status — 2026-09-19
 
-| #         | Phase                         | Est.  | Status                                          |
-| --------- | ----------------------------- | ----- | ----------------------------------------------- |
-| 0–5       | Foundations → Analytics       | —     | ✅ Code complete · 🟡 device checks open        |
-| G         | Groups — split expenses       | —     | ✅ Code complete · 🟡 device checks open        |
-| F0–F3, F5 | Fix phases (TASKS2)           | —     | ✅ Code complete · 🟡 device checks open        |
-| **R0**    | Stabilise the repo            | ½ d   | 🟡 R0-1/2/5/6/7 done; README + unused deps left |
-| **R1**    | Correctness bugs              | 1½ d  | ✅ done 2026-09-17 (550 tests)                  |
-| **R2**    | Guard rails: lint, format, CI | 1½ d  | ⬜                                              |
-| **R3**    | One data layer                | 3 d   | ⬜                                              |
-| **R4**    | UI kit and thin routes        | 3 d   | ⬜                                              |
-| **7**     | **Backup & restore**          | 3–4 d | ⬜ ← **most important remaining product work**  |
-| 8         | Native layer                  | 3–4 d | ⬜                                              |
-| R5        | Performance (was TASKS2 F4)   | 2 d   | 🟡 2 of 7 done                                  |
-| R6        | Observability and release ops | 1 d   | ⬜                                              |
-| 6A        | Sheets: import and workspaces | 7–8 d | ⬜ gated on the Sheets readiness gate           |
-| 6B        | Linked sheets                 | 4–5 d | ⬜                                              |
-| 9         | Hardening & Play Store        | 4–5 d | ⬜                                              |
+| #         | Phase                         | Est.  | Status                                              |
+| --------- | ----------------------------- | ----- | --------------------------------------------------- |
+| 0–5       | Foundations → Analytics       | —     | ✅ Code complete · 🟡 device checks open            |
+| G         | Groups — split expenses       | —     | ✅ Code complete · 🟡 device checks open            |
+| F0–F3, F5 | Fix phases (TASKS2)           | —     | ✅ Code complete · 🟡 device checks open            |
+| **R0**    | Stabilise the repo            | ½ d   | 🟡 R0-1/2/5/6/7 done; README + unused deps left     |
+| **R1**    | Correctness bugs              | 1½ d  | ✅ done 2026-09-17 (550 tests)                      |
+| **R2**    | Guard rails: lint, format, CI | 1½ d  | 🟡 code complete 2026-09-19 · full test run pending |
+| **R3**    | One data layer                | 3 d   | 🟡 code complete 2026-09-19 · full test run pending |
+| **R4**    | UI kit and thin routes        | 3 d   | ⬜                                                  |
+| **7**     | **Backup & restore**          | 3–4 d | ⬜ ← **most important remaining product work**      |
+| 8         | Native layer                  | 3–4 d | ⬜                                                  |
+| R5        | Performance (was TASKS2 F4)   | 2 d   | 🟡 2 of 7 done                                      |
+| R6        | Observability and release ops | 1 d   | ⬜                                                  |
+| 6A        | Sheets: import and workspaces | 7–8 d | ⬜ gated on the Sheets readiness gate               |
+| 6B        | Linked sheets                 | 4–5 d | ⬜                                                  |
+| 9         | Hardening & Play Store        | 4–5 d | ⬜                                                  |
 
 **Recommended order:** R0 → R1 → R2 → R3 → R4 → 7 → 8 → R5 → R6 → 6A → 6B → 9.
 _Why this order:_ a factory reset currently loses everything, so Backup (7) comes before any new data

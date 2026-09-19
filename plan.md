@@ -218,7 +218,7 @@ Status: ⬜ not started · 🟡 in progress, or code complete awaiting a full te
 | R1-14        | Group delete/restore respects balances and membership                                                                          | B14        | P1  | 2 h         | ✅                 |
 | R1-15        | Merge stops hard-deleting budget history                                                                                       | B15        | P2  | 45 m        | ✅                 |
 | R1-16        | `deterministicIcon` matches whole words                                                                                        | B19        | P3  | 1 h         | ✅                 |
-| **R2**       | **Guard rails**                                                                                                                |            |     | **1½ d**    |                    |
+| **R2**       | **Guard rails**                                                                                                                |            |     | **1½ d**    | 🟡 code complete   |
 | R2-1         | ESLint with boundaries and project rules                                                                                       | T1         | P1  | 4 h         | ⬜                 |
 | R2-2         | Prettier + one formatting commit                                                                                               | T1         | P2  | 1 h         | ⬜                 |
 | R2-3         | Type-check tests; align ts-jest with Jest 30                                                                                   | T1         | P1  | 1½ h        | ⬜                 |
@@ -226,7 +226,7 @@ Status: ⬜ not started · 🟡 in progress, or code complete awaiting a full te
 | R2-5         | Adopt the `@/` import alias                                                                                                    | T7         | P1  | 2 h         | ⬜                 |
 | R2-6         | GitHub Actions CI                                                                                                              | T1         | P1  | 2 h         | ⬜                 |
 | R2-7         | `CONTRIBUTING.md`                                                                                                              | T2         | P2  | 1 h         | ⬜                 |
-| **R3**       | **One data layer**                                                                                                             |            |     | **3 d**     |                    |
+| **R3**       | **One data layer**                                                                                                             |            |     | **3 d**     | 🟡 code complete   |
 | R3-1         | `db/types.ts`: one `SyncDb` / `AnyDb`                                                                                          | A6         | P1  | 2 h         | ⬜                 |
 | R3-2         | `data/meta.ts`                                                                                                                 | A7         | P1  | 1 h         | ⬜                 |
 | R3-3         | `data/categories.ts` + `useCategories`                                                                                         | A3         | P1  | 2 h         | ⬜                 |
