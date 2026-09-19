@@ -29,6 +29,8 @@ Already passed (`npm run verify`, 19 Sep, before the session ended):
 | **B26** | A category merge is refused if it would put expenses, subscriptions, group expenses or a budget on an income-only category, or income on an expense-only one.                                                                            | 6         |
 | **B27** | The boot-failure "Share a copy" uses `VACUUM INTO`, so recent changes still in the WAL are included. Old share copies are deleted at the next good launch.                                                                               | 1         |
 | **B28** | One group's screen queries only that group and its people. The expense form looks up its group once, not on every render.                                                                                                                | 2         |
+| **B29** | When two identical screen reads start together, the second one's prepared statement is now thrown away and finalized, instead of overwriting (and leaking) the first one's cached statement.                                             | 2         |
+| **B30** | The CSV formula guard also covers a leading tab or carriage return (OWASP list).                                                                                                                                                         | 2         |
 
 ## Commands
 
@@ -36,10 +38,10 @@ Run from `D:\Projects\SpendWise_Android`, in PowerShell or Git Bash.
 
 ### 1. Only the tests for these fixes (under a minute)
 
-Covers B21, B23, B24, B25, B26 and B28:
+Covers B21, B23, B24, B25, B26, B28, B29 and B30:
 
 ```bash
-npx jest features/groups/__tests__/writes.test.ts features/budgets/__tests__/progress.test.ts features/transactions/__tests__/recentlyDeleted.test.ts db/__tests__/retention.test.ts features/categories/__tests__/mutations.test.ts
+npx jest features/groups/__tests__/writes.test.ts features/budgets/__tests__/progress.test.ts features/transactions/__tests__/recentlyDeleted.test.ts db/__tests__/retention.test.ts features/categories/__tests__/mutations.test.ts db/__tests__/read.test.ts features/transactions/__tests__/csv.test.ts
 ```
 
 ### 2. The full test suite (about 7 minutes)

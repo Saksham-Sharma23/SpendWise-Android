@@ -80,8 +80,16 @@ async function execute(sql: string, params: Params): Promise<unknown[][]> {
     owned = true;
   } else {
     entry = { stmt: await openReadConnection().prepareAsync(sql), busy: false };
-    cache.set(sql, entry);
-    evictOldestIdle();
+    if (cache.has(sql)) {
+      // B29: an identical query missed the cache in the same tick and cached
+      // its statement while this one was being prepared. Overwriting it would
+      // orphan that statement (not owned, no longer cached, so nothing ever
+      // finalizes it); instead this one is the throwaway, finalized below.
+      owned = true;
+    } else {
+      cache.set(sql, entry);
+      evictOldestIdle();
+    }
   }
 
   entry.busy = true;

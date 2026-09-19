@@ -26,14 +26,15 @@ export interface CsvRow {
 
 /**
  * Quote a cell when it contains a delimiter, quote or line break, doubling
- * embedded quotes (RFC 4180). A leading = + - @ is prefixed with an
- * apostrophe so a note like "=HYPERLINK(...)" cannot run as a formula when
- * the file is opened in a spreadsheet.
+ * embedded quotes (RFC 4180). A leading = + - @, tab or carriage return is
+ * prefixed with an apostrophe so a note like "=HYPERLINK(...)" cannot run as
+ * a formula when the file is opened in a spreadsheet. Tab and CR are on the
+ * OWASP list (B30): some spreadsheets skip them and evaluate what follows.
  */
 export function csvCell(value: string | null | undefined): string {
   if (value == null) return '';
   let v = String(value);
-  if (/^[=+\-@]/.test(v)) v = `'${v}`;
+  if (/^[=+\-@\t\r]/.test(v)) v = `'${v}`;
   if (/[",\r\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
   return v;
 }

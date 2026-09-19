@@ -15,7 +15,7 @@
 > | [`docs/history/`](docs/history/)                                                   | Archived trackers: the _why_ behind code that looks unusual                                  |
 > | [`pcref/CLAUDE.md`](pcref/CLAUDE.md)                                               | The web app's context. **Design and domain reference only.** Never call its API              |
 >
-> _Last checked against the code: 2026-09-19 (branch `refactor/r2-r3`, after R3)._
+> _Last checked against the code: 2026-09-19 (branch `fix/review-b21-b28`, after R3 and the review fixes)._
 
 ---
 
@@ -27,9 +27,9 @@
   a token refresh is wrong, and predates the 2026-09-11 decision. The release build does not even declare
   `INTERNET`.
 - **Current phase: R4 (UI kit and thin routes), then Backup (7) and Sheets (6A).** R0–R3 are done: every
-  feature is on the standard layout in _Architecture_, and new code must follow it. Two things R0 could not
-  close: the repo still has **no remote**, and removing the unused native packages needs a rebuild +
-  `npm run verify:apk` to confirm the manifest shrank.
+  feature is on the standard layout in _Architecture_, and new code must follow it. One thing R0 could not
+  close: removing the unused native packages needs a rebuild + `npm run verify:apk` to confirm the manifest
+  shrank.
 - **`npm run verify` before every push.** It runs typecheck (app **and** tests), lint, the lint self-test,
   formatting, `jest` (~5 min — the migration tests build 50k-row fixtures) and the release permission
   policy. ESLint enforces the layer boundaries and most conventions below; `eslint.config.js` gives each
@@ -37,13 +37,13 @@
 
 ## System
 
-|              |                                                                          |
-| ------------ | ------------------------------------------------------------------------ |
-| OS           | Windows 10. PowerShell 5.1 default; Git Bash available                   |
-| Project root | `D:\Projects\SpendWise_Android`                                          |
-| Node         | 22.x                                                                     |
-| Test device  | One physical Android phone over wireless debugging. No emulator          |
-| Git          | Branch `main`. **No remote yet** — the repo is local-only (plan.md R0-1) |
+|              |                                                                                         |
+| ------------ | --------------------------------------------------------------------------------------- |
+| OS           | Windows 10. PowerShell 5.1 default; Git Bash available                                  |
+| Project root | `D:\Projects\SpendWise_Android`                                                         |
+| Node         | 22.x                                                                                    |
+| Test device  | One physical Android phone over wireless debugging. No emulator                         |
+| Git          | Branch `main`; remote `origin` = github.com/Saksham-Sharma23/SpendWise-Android (public) |
 
 ---
 
@@ -160,7 +160,7 @@ lint-fixtures/               deliberate violations; `npm run lint:selftest` prov
 plugins/withBackupRules.js   auto-backup exclusions (exclude-only; tested)
 scripts/                     with-dev-network.js · gen-theme-css.ts · verify-apk.sh · check-release-policy.js ·
                              lint-selftest.js
-.github/workflows/ci.yml     the same checks as `npm run verify` (no remote yet, so it has not run on GitHub)
+.github/workflows/ci.yml     the same checks as `npm run verify`, on every PR and every push to `main` (green on its first run)
 docs/                        see the table at the top · diagrams/01-debt-simplification.mmd
 ```
 

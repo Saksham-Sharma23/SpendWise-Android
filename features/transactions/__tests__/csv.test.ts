@@ -20,6 +20,19 @@ describe('csvCell', () => {
     expect(csvCell('@home')).toBe("'@home");
   });
 
+  /** B30: OWASP also lists a leading tab and carriage return. */
+  it('neutralises a formula hidden behind a leading tab or carriage return', () => {
+    expect(csvCell('\t=HYPERLINK("x")')).toBe(`"'\t=HYPERLINK(""x"")"`);
+    expect(csvCell('\t+91')).toBe("'\t+91");
+    // A CR also forces quoting, so the apostrophe lands inside the quotes.
+    expect(csvCell('\r=1+1')).toBe(`"'\r=1+1"`);
+  });
+
+  it('leaves a tab or carriage return later in the value alone', () => {
+    expect(csvCell('Chai\tand snacks')).toBe('Chai\tand snacks');
+    expect(csvCell('Chai\r')).toBe('"Chai\r"');
+  });
+
   it('keeps the rupee sign intact', () => {
     expect(csvCell('₹500 gift')).toBe('₹500 gift');
   });

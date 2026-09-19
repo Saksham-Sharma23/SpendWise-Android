@@ -3,6 +3,7 @@
 > The **one** live tracker. **Full task cards (problem, code, fix, tests, done-when for every item):
 > [`plan.md`](plan.md).** Context: [`CLAUDE.md`](CLAUDE.md) · Evidence for the R-phases:
 > [`docs/architecture-review-2026-09-17.md`](docs/architecture-review-2026-09-17.md) (IDs like `B4`, `A2`, `T6` refer to it; `R0`–`R6` are phases in this file).
+> `B21`–`B30` come from the second review, [`docs/code-review-2026-09-19.md`](docs/code-review-2026-09-19.md).
 > History (read-only): [`docs/history/`](docs/history/). The old Phase 0–5 and Groups tracker and the
 > TASKS2 fix tracker live there with all their ticks and _Discovered_ notes.
 
@@ -23,10 +24,11 @@
 | 0–5       | Foundations → Analytics       | —     | ✅ Code complete · 🟡 device checks open          |
 | G         | Groups — split expenses       | —     | ✅ Code complete · 🟡 device checks open          |
 | F0–F3, F5 | Fix phases (TASKS2)           | —     | ✅ Code complete · 🟡 device checks open          |
-| **R0**    | Stabilise the repo            | ½ d   | 🟡 all tasks done; **no remote**, APK recheck due |
+| **R0**    | Stabilise the repo            | ½ d   | 🟡 all done; GitHub remote added; APK recheck due |
 | **R1**    | Correctness bugs              | 1½ d  | ✅ done 2026-09-17 (550 tests)                    |
 | **R2**    | Guard rails: lint, format, CI | 1½ d  | ✅ done 2026-09-19 (568 tests)                    |
 | **R3**    | One data layer                | 3 d   | ✅ done 2026-09-19 (568 tests)                    |
+| **RF**    | Review fixes B21–B30 + motion | —     | ✅ code 2026-09-19 · 🟡 `verify` + phone checks   |
 | **R4**    | UI kit and thin routes        | 3 d   | ⬜                                                |
 | **7**     | **Backup & restore**          | 3–4 d | ⬜ ← **most important remaining product work**    |
 | 8         | Native layer                  | 3–4 d | ⬜                                                |
@@ -37,6 +39,7 @@
 | 9         | Hardening & Play Store        | 4–5 d | ⬜                                                |
 
 **Recommended order:** R0 → R1 → R2 → R3 → R4 → 7 → 8 → R5 → R6 → 6A → 6B → 9.
+_2026-09-19:_ the review fixes (RF) and most of R5 were done early, on branch `fix/review-b21-b28`. **Next: R4.**
 _Why this order:_ a factory reset currently loses everything, so Backup (7) comes before any new data
 surface. The refactor (R3/R4) comes before Backup and Sheets so that the two biggest new features are
 written in the target layout, not ported into it afterwards. Guard rails (R2) come before the refactor so
@@ -54,7 +57,8 @@ the boundaries are enforced _while_ files move.
 - [x] **Commit the F5 working tree; work on `main`** (T8) _(done 2026-09-17: `b29f79a` code, `173b303` docs,
       `ead7d44` R0. `main` did not exist and there is no remote, so `master` was renamed rather than merged.)_
       _Why:_ 32 modified files (date picker, recently deleted, generated theme CSS) existed only on one disk.
-      **Still open: no remote.** The repo is local-only, so a disk failure still loses everything.
+      ~~**Still open: no remote.**~~ **Closed 2026-09-19:** pushed to GitHub
+      (`Saksham-Sharma23/SpendWise-Android`, public); CI passed on its first run.
 - [x] **Add `.gitattributes` (`* text=auto eol=lf`), `.editorconfig`, `.nvmrc` (22)** (T2) _(done 2026-09-17)_
       _Why:_ every git command warned about LF→CRLF on 30 files. Line-ending churn hides real diffs in review.
       _(No renormalise commit was needed: the files were already stored as LF.)_
@@ -206,6 +210,46 @@ CI cannot run until the repo has a remote.
 
 ---
 
+## RF — Review fixes and motion (2026-09-19)
+
+From [`docs/code-review-2026-09-19.md`](docs/code-review-2026-09-19.md) (74/100). Branch `fix/review-b21-b28`.
+How to test each fix, and the B22 phone steps: [`docs/review-fixes-b21-b28.md`](docs/review-fixes-b21-b28.md).
+**Code complete; `npm run verify` has not been run on it yet.**
+
+### Bugs — committed in `5b74e29`
+
+- [x] **[B21] High:** deleting or editing a group expense, or deleting a settlement, is refused when it names someone who left the group; the expense form explains and closes. Undoing a group delete is refused if a member was removed as a friend (8 tests)
+- [x] **[B22] Medium:** screen reads run on their own `query_only` connection, so a read never sees an uncommitted write; `closeConnection()` closes both
+- [x] **[B23] Medium:** budgets show the real reset day (the day after the cycle ends); the last day reads "Last day" (3 tests)
+- [x] **[B24]** "Empty" in Recently deleted removes every row, not just the 500 listed; the dialog shows the real total (3 tests)
+- [x] **[B25]** retention and "days left" count local days, not UTC dates (up to 5½ h off in IST) (4 tests)
+- [x] **[B26]** a category merge refuses to put expenses, subscriptions, group expenses or a budget on an income-only category, or income on an expense-only one (6 tests)
+- [x] **[B27]** boot-failure "Share a copy" uses `VACUUM INTO`, so WAL changes are included; old share copies are cleaned up (1 test)
+- [x] **[B28]** a group's screen queries only that group and its people; the expense form looks its group up once (2 tests)
+
+### Bugs — not committed yet
+
+- [x] **[B29]** two identical reads starting together no longer leak a prepared statement: the loser is a throwaway and is finalized (`db/read.ts`; new `db/__tests__/read.test.ts`, 2 tests)
+- [x] **[B30]** the CSV formula guard also covers a leading tab or carriage return (2 tests)
+
+### Motion — committed in `5b74e29`
+
+- [x] **No overshoot:** Reanimated 4's default mass (4) made every spring that set only damping and stiffness bounce 28–64%. `springs` in `lib/theme.ts` are now critically damped, plus `curves` (enter · exit · standard)
+- [x] **Group form sheets** (`groups/components/kit.tsx`) slide on a timed curve instead of a bouncy spring; the tab droplet stretches less (20%) and its two edges travel at closer speeds
+- [x] **Kept bouncy on purpose** (your call): the tab icon pop, the Home trend bars, the Insights scrubber line
+- [x] **[A2] iOS-style screen transitions:** pushed screens slide in from the right (`ios_from_right`); full-screen forms rise from the bottom (`MODAL` in `app/_layout.tsx`); formSheets and tab switches unchanged
+- [x] **[C9] One set of shared animations:** `rise` / `appear` / `leave` / `reflow` in `lib/motion.ts` replace ~80 hand-tuned entering/exiting/layout animations in 31 files (14 durations → one per role; 10 px rise, not 25; staggers capped at 360 ms)
+
+### Still to do
+
+- [ ] `npm run verify` green on the branch (typecheck, lint, format, jest, release policy)
+- [ ] B22 phone check (steps in `docs/review-fixes-b21-b28.md`)
+- [ ] Look over the motion on the phone: screen pushes, modals, group sheets, tab droplet, Home count-up, a crore-scale total fitting
+- [ ] Commit B29/B30, push the branch, open a PR, CI green, merge
+- [ ] The rest of the review: T10–T14, A8, A9 and the smaller items (see the review's §5 order)
+
+---
+
 ## R4 — UI kit and thin routes
 
 **Goal:** a screen is composed from primitives, and a route file is a one-liner. **Est:** 3 days.
@@ -343,6 +387,12 @@ with a fresh dev build (several need one: backup rules, splash colours). Tick he
 - [ ] Release build passes the new `verify:apk` allowlist: `rm -rf android` → `npm run prebuild` → `npm run build:release-apk`. Expect exactly `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE` and `…DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`; no `USE_BIOMETRIC`, `USE_FINGERPRINT` or `SYSTEM_ALERT_WINDOW` (all three reached the 2026-09-19 dev APK)
 - [ ] A row with `deleted_at` 31 days ago is purged at launch; one on its last day survives
 
+**Review fixes and motion (RF, 2026-09-19)**
+
+- [ ] B22: a save on one screen shows up on another only after it commits (steps in `docs/review-fixes-b21-b28.md`)
+- [ ] Motion: screen push/back, modal rise, group Add-expense sheet, tab droplet, no overshoot anywhere
+- [ ] `AnimatedAmount`: Home counts up after an add; a crore-scale total still fits on one line; TalkBack reads the figure once
+
 **Correctness**
 
 - [ ] Change the phone's date while backgrounded → Home and a "Last 7 days" filter update on resume
@@ -354,7 +404,7 @@ with a fresh dev build (several need one: backup rules, splash colours). Tick he
 
 **Performance** (50k seeded DB)
 
-- [ ] Dev harness benchmark: 24-month trend ≤ 50 ms; record every row in R5
+- [x] Dev harness benchmark: 24-month trend ≤ 50 ms; record every row in R5 _(2026-09-19: 19.5 ms; table in plan.md R5-5)_
 - [ ] A 500 ms artificial `SELECT` does not freeze the tab-bar droplet
 - [ ] Home paints in one frame; adding a transaction from Home causes no droplet stutter
 - [ ] Ledger scrolls 2,000 rows; adding a transaction then transfers ≤ one page (dev row-count log)
@@ -384,21 +434,23 @@ with a fresh dev build (several need one: backup rules, splash colours). Tick he
 
 Newest first. Full reasoning for older rows: `docs/history/`.
 
-| Date       | Decision                                                                                                            | Reason                                                                                                        |
-| ---------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| 2026-09-19 | **No rollup tables**                                                                                                | Phone, 50k rows: the 24-month trend takes 19.5 ms, indexed, against a 50 ms bar (plan.md R5-5)                |
-| 2026-09-19 | **Swipeable stays mounted per row; no "Reduce transparency" setting**                                               | Phone A/B scrolling 50k rows: both costs were within run-to-run noise (plan.md R5-4)                          |
-| 2026-09-17 | **Refactor (R0–R4) before Backup and Sheets; Backup (7) before Sheets (6A)**                                        | Durability is the top product risk; the two largest new features should be written once, in the target layout |
-| 2026-09-17 | **Shared `data/` layer below features** for queries 2+ features need                                                | "No sibling imports" without a shared layer produced copied queries that drifted (B1/B2)                      |
-| 2026-09-17 | **One tracker**: TASKS.md; TASKS2.md and the Phase 0–5 detail archived to `docs/history/`                           | Open items were spread across four places                                                                     |
-| 2026-09-17 | JS date picker (`lib/calendar.ts`), not a native module                                                             | Ships over the air; paints in the app's theme, not the system's                                               |
-| 2026-09-17 | `global.css` generated from `lib/theme.ts` (`npm run theme:css`, test-enforced)                                     | Two hand-synced palettes drift                                                                                |
-| 2026-09-17 | Soft-deleted transactions purged after 30 days (import-batch rows exempt)                                           | Deleted rows were kept forever                                                                                |
-| 2026-09-15 | Light theme + System/Light/Dark toggle shipped; `userInterfaceStyle: 'automatic'`                                   | Supersedes "dark-only v1"                                                                                     |
-| 2026-09-15 | Groups built, separate from the ledger; friends are typed names                                                     | No contacts permission                                                                                        |
-| 2026-09-15 | Charts stay on react-native-svg + Reanimated (no Skia)                                                              | ≤ 24 points; no native rebuild                                                                                |
-| 2026-09-14 | Main DB unkeyed; SQLCipher only for passphrase-encrypted backup files                                               | Keystore keys made auto-backup restores unopenable                                                            |
-| 2026-09-14 | `useDbQuery` + `readDb` replace `useLiveQuery`                                                                      | Per-row re-runs, missed joins, races, swallowed errors                                                        |
-| 2026-09-14 | Keyset ledger pages; `categories.kind`; `is_recurring` dropped; `uid` on every user table; one ISO timestamp format | Migrations 0001–0006                                                                                          |
-| 2026-09-14 | Imports become Sheets (separate workspaces); app edits its own copy; per-sheet "include in totals" via `money_rows` | User's model                                                                                                  |
-| 2026-09-11 | Standalone, offline-only; SQLite + Drizzle; aggregation in SQL; three backup layers                                 | The founding decisions                                                                                        |
+| Date       | Decision                                                                                                            | Reason                                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-19 | **Motion: timed curves and critically damped springs; no overshoot by default**                                     | The Reanimated 4 default mass made springs bounce 28–64%, which read as cheap. Three bouncy spots were kept by choice |
+| 2026-09-19 | **iOS-style navigation on Android**                                                                                 | A push slides from the right and forms rise from the bottom, so direction says where you are                          |
+| 2026-09-19 | **No rollup tables**                                                                                                | Phone, 50k rows: the 24-month trend takes 19.5 ms, indexed, against a 50 ms bar (plan.md R5-5)                        |
+| 2026-09-19 | **Swipeable stays mounted per row; no "Reduce transparency" setting**                                               | Phone A/B scrolling 50k rows: both costs were within run-to-run noise (plan.md R5-4)                                  |
+| 2026-09-17 | **Refactor (R0–R4) before Backup and Sheets; Backup (7) before Sheets (6A)**                                        | Durability is the top product risk; the two largest new features should be written once, in the target layout         |
+| 2026-09-17 | **Shared `data/` layer below features** for queries 2+ features need                                                | "No sibling imports" without a shared layer produced copied queries that drifted (B1/B2)                              |
+| 2026-09-17 | **One tracker**: TASKS.md; TASKS2.md and the Phase 0–5 detail archived to `docs/history/`                           | Open items were spread across four places                                                                             |
+| 2026-09-17 | JS date picker (`lib/calendar.ts`), not a native module                                                             | Ships over the air; paints in the app's theme, not the system's                                                       |
+| 2026-09-17 | `global.css` generated from `lib/theme.ts` (`npm run theme:css`, test-enforced)                                     | Two hand-synced palettes drift                                                                                        |
+| 2026-09-17 | Soft-deleted transactions purged after 30 days (import-batch rows exempt)                                           | Deleted rows were kept forever                                                                                        |
+| 2026-09-15 | Light theme + System/Light/Dark toggle shipped; `userInterfaceStyle: 'automatic'`                                   | Supersedes "dark-only v1"                                                                                             |
+| 2026-09-15 | Groups built, separate from the ledger; friends are typed names                                                     | No contacts permission                                                                                                |
+| 2026-09-15 | Charts stay on react-native-svg + Reanimated (no Skia)                                                              | ≤ 24 points; no native rebuild                                                                                        |
+| 2026-09-14 | Main DB unkeyed; SQLCipher only for passphrase-encrypted backup files                                               | Keystore keys made auto-backup restores unopenable                                                                    |
+| 2026-09-14 | `useDbQuery` + `readDb` replace `useLiveQuery`                                                                      | Per-row re-runs, missed joins, races, swallowed errors                                                                |
+| 2026-09-14 | Keyset ledger pages; `categories.kind`; `is_recurring` dropped; `uid` on every user table; one ISO timestamp format | Migrations 0001–0006                                                                                                  |
+| 2026-09-14 | Imports become Sheets (separate workspaces); app edits its own copy; per-sheet "include in totals" via `money_rows` | User's model                                                                                                          |
+| 2026-09-11 | Standalone, offline-only; SQLite + Drizzle; aggregation in SQL; three backup layers                                 | The founding decisions                                                                                                |
