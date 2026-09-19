@@ -1,13 +1,17 @@
 {
+  // Type-checks the test suites, which tsconfig.json deliberately excludes so
+  // that `tsc --noEmit` stays a check of what SHIPS.
+  //
+  // `npm run typecheck` runs both. Before R2-3 this file could not run at all:
+  // it set moduleResolution to "node", which TypeScript 6 rejects alongside
+  // expo's `customConditions`, so test types were only ever checked per-file
+  // by ts-jest at run time — after a failure, not before one.
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "types": ["jest", "node"],
     "jsx": "react-jsx",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "verbatimModuleSyntax": false,
-    "noEmit": false
-  }
+    "noEmit": true
+  },
+  "include": ["**/__tests__/**/*.ts", "**/__tests__/**/*.tsx", "**/*.test.ts", "**/*.test.tsx", "db/**/*.ts"],
+  "exclude": ["node_modules", "android", "ios"]
 }

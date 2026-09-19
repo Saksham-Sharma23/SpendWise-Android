@@ -13,7 +13,7 @@
     "android": "node scripts/with-dev-network.js expo run:android --device",
     "prebuild": "expo prebuild --platform android",
     "prebuild:dev": "node scripts/with-dev-network.js expo prebuild --platform android",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "theme:css": "node scripts/gen-theme-css.ts",
     "lint": "eslint . --ignore-pattern \"lint-fixtures/**\" --max-warnings 0",
     "test": "jest",
@@ -25,12 +25,14 @@
     "build:preview": "eas build --profile preview --platform android",
     "build:prod": "eas build --profile production --platform android",
     "android:local": "node scripts/with-dev-network.js expo run:android --device -- -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2",
-    "build:local-apk": "cd android && gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2",
+    "build:local-apk": "cd android && .\\gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2",
     "verify:apk": "bash scripts/verify-apk.sh",
-    "build:release-apk": "cd android && gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2 && cd .. && bash scripts/verify-apk.sh",
+    "build:release-apk": "cd android && .\\gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2 && cd .. && bash scripts/verify-apk.sh",
     "lint:selftest": "node scripts/lint-selftest.js",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check:release-policy": "node scripts/check-release-policy.js",
+    "verify": "npm run typecheck && npm run lint && npm run lint:selftest && npm run format:check && jest && npm run check:release-policy"
   },
   "dependencies": {
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",

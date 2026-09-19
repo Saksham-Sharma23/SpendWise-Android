@@ -1,79 +1,111 @@
 import { execFileSync } from 'node:child_process';
-import { rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * The architecture rule, tested the only way it can be: by writing a violation
- * into the real tree and asserting ESLint rejects it.
+ * The architecture rule, tested the only way it can be: by writing violations
+ * into the real tree and asserting ESLint rejects them.
  *
  * `npm run lint:selftest` cannot cover this one. `boundaries/dependencies`
  * only applies to paths in `boundaries/include` — app, features, data,
  * components, db, lib — so a fixture parked outside those folders can never
- * trigger it, and a fixture inside them would be linted by every normal run.
+ * trigger it, and one inside them would be linted by every normal run.
  *
  * This matters more than the other rules: "a feature never imports a sibling"
  * is the single constraint holding the architecture together, and it is the
- * one most likely to break quietly when the plugin is upgraded. It already did
- * once — boundaries v7 renamed `element-types` to `dependencies`, and the old
- * name kept "working" while reporting nothing.
+ * most likely to break quietly on a plugin upgrade. It already did once —
+ * boundaries v7 renamed `element-types` to `dependencies` during R2, and the
+ * old name kept "working" while reporting nothing at all.
+ *
+ * All the cases go through ONE ESLint run: starting it costs ~10 s, and a
+ * suite people skip because it is slow protects nothing.
  */
 
 const ROOT = join(__dirname, '..', '..');
+const TMP_DIR = join(ROOT, 'features', 'transactions', '__lint_tmp__');
 
-function lint(file: string): string {
+const CASES = [
+  {
+    name: 'imports-sibling.ts',
+    what: 'a feature importing a SIBLING feature',
+    source: "import { splitEqual } from '../../groups/split';\nexport const bad = splitEqual;\n",
+    expectRejected: true,
+  },
+  {
+    name: 'imports-own.ts',
+    what: 'a feature importing its OWN files',
+    source: "import { buildWhere } from '../filters';\nexport const fine = buildWhere;\n",
+    expectRejected: false,
+  },
+  {
+    name: 'imports-lib.ts',
+    what: 'a feature importing down into lib',
+    source: "import { formatINR } from '../../../lib/money';\nexport const fine = formatINR;\n",
+    expectRejected: false,
+  },
+] as const;
+
+interface LintResult {
+  filePath: string;
+  messages: { ruleId: string | null }[];
+}
+
+/** Write every case, lint them all at once, and return the rules each triggered. */
+function lintAllCases(): Map<string, string[]> {
+  mkdirSync(TMP_DIR, { recursive: true });
+  const files = CASES.map((c) => {
+    const file = join(TMP_DIR, c.name);
+    writeFileSync(file, c.source, 'utf8');
+    return file;
+  });
+
+  let raw = '[]';
   try {
-    execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['eslint', '--no-ignore', '-f', 'json', file], {
+    execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['eslint', '--no-ignore', '-f', 'json', ...files], {
       cwd: ROOT,
       encoding: 'utf8',
       maxBuffer: 32 * 1024 * 1024,
       shell: process.platform === 'win32',
     });
-    return '[]';
   } catch (e) {
-    // ESLint exits non-zero when it reports problems, which is the point.
+    // ESLint exits non-zero when it reports problems, which is the point here.
     const out = (e as { stdout?: string }).stdout;
-    return out && out.trim().startsWith('[') ? out : '[]';
-  }
-}
-
-function rulesFiredFor(relativePath: string, source: string): string[] {
-  const dir = join(ROOT, 'features', 'transactions', '__lint_tmp__');
-  mkdirSync(dir, { recursive: true });
-  const file = join(dir, relativePath);
-  writeFileSync(file, source, 'utf8');
-  try {
-    const results = JSON.parse(lint(file)) as { messages: { ruleId: string | null }[] }[];
-    return results.flatMap((r) => r.messages.map((m) => m.ruleId ?? ''));
+    if (out && out.trim().startsWith('[')) raw = out;
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(TMP_DIR, { recursive: true, force: true });
   }
+
+  const results = JSON.parse(raw) as LintResult[];
+  const byName = new Map<string, string[]>();
+  for (const r of results) {
+    const name = r.filePath.split(/[\\/]/).pop()!;
+    byName.set(
+      name,
+      r.messages.map((m) => m.ruleId ?? ''),
+    );
+  }
+  return byName;
 }
 
 describe('the layer boundaries are actually enforced', () => {
-  // ESLint has to start up for each case, so these are slower than a unit test.
   jest.setTimeout(120_000);
 
-  it('rejects a feature importing a sibling feature', () => {
-    const fired = rulesFiredFor(
-      'imports-sibling.ts',
-      ["import { splitEqual } from '../../groups/split';", 'export const bad = splitEqual;', ''].join('\n'),
-    );
-    expect(fired).toContain('boundaries/dependencies');
+  let fired: Map<string, string[]>;
+  beforeAll(() => {
+    fired = lintAllCases();
   });
 
-  it('allows a feature to import its OWN files', () => {
-    const fired = rulesFiredFor(
-      'imports-own.ts',
-      ["import { buildWhere } from '../filters';", 'export const fine = buildWhere;', ''].join('\n'),
-    );
-    expect(fired).not.toContain('boundaries/dependencies');
+  it('linted every case, so a silent no-op cannot pass as success', () => {
+    // If ESLint returned nothing at all, the "allowed" assertions below would
+    // pass for the wrong reason.
+    expect(fired.get('imports-sibling.ts')).toBeDefined();
   });
 
-  it('allows a feature to import down into lib', () => {
-    const fired = rulesFiredFor(
-      'imports-lib.ts',
-      ["import { formatINR } from '../../../lib/money';", 'export const fine = formatINR;', ''].join('\n'),
-    );
-    expect(fired).not.toContain('boundaries/dependencies');
-  });
+  for (const c of CASES) {
+    it(`${c.expectRejected ? 'rejects' : 'allows'} ${c.what}`, () => {
+      const rules = fired.get(c.name) ?? [];
+      if (c.expectRejected) expect(rules).toContain('boundaries/dependencies');
+      else expect(rules).not.toContain('boundaries/dependencies');
+    });
+  }
 });
