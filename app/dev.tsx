@@ -1,3 +1,6 @@
+import { transactionBenchQueries } from '@/features/transactions';
+import { dashboardBenchQueries } from '@/features/dashboard';
+import { analyticsBenchQueries } from '@/features/analytics';
 import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
@@ -8,9 +11,6 @@ import { useColors } from '@/lib/theme';
 import { databaseSizeBytes, countTransactions, runBenchmark } from '@/db/dev/benchmark';
 import type { BenchResult } from '@/db/dev/benchmark';
 import { devClearTransactions, devEncryptedCopyRoundTrip, devSeedTransactions } from '@/db/dev/devSeed';
-import { analyticsBenchQueries } from '@/features/analytics/benchmark';
-import { dashboardBenchQueries } from '@/features/dashboard/benchmark';
-import { transactionBenchQueries } from '@/features/transactions/benchmark';
 
 /**
  * Development-only harness for the Phase 1 exit criterion.

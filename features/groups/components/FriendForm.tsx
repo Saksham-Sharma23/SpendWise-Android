@@ -8,7 +8,8 @@ import { toast } from 'sonner-native';
 import { Avatar } from '@/components/ui/Avatar';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { fonts, useColors } from '@/lib/theme';
-import { addFriend, removeFriend, renameFriend } from '../data/actions';
+import { addFriend, removeFriend, renameFriend, undoRemoveFriend } from '../data/actions';
+import { toastWithUndo } from './undoToast';
 import { getFriends } from '../data/hooks';
 import { RoundButton } from './kit';
 
@@ -41,7 +42,9 @@ export function FriendForm() {
 
   const onRemove = () => {
     if (editingId == null || !initial) return;
-    if (removeFriend(editingId, initial.name).ok) router.dismissTo('/groups');
+    if (!removeFriend(editingId).ok) return;
+    toastWithUndo(`${initial.name} removed`, () => undoRemoveFriend(editingId));
+    router.dismissTo('/groups');
   };
 
   return (

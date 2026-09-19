@@ -9,7 +9,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
-import { BudgetAmountDial } from '@/features/budgets/components/BudgetAmountDial';
 import { PressableScale } from '@/components/ui/PressableScale';
 import {
   createBudget,
@@ -22,6 +21,7 @@ import {
   emptyBudgetForm,
   toBudgetInput,
   type BudgetFormValues,
+  BudgetAmountDial,
 } from '@/features/budgets';
 import { colorForName } from '@/lib/categoryColor';
 import { getCycleWindow, formatDayMonth } from '@/lib/dates';

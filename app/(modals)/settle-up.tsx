@@ -1,5 +1,4 @@
-import { SettleUpForm } from '@/features/groups/components/SettleUpForm';
-
+import { SettleUpForm } from '@/features/groups';
 export default function SettleUpModal() {
   return <SettleUpForm />;
 }

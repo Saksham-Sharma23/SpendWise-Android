@@ -1,4 +1,4 @@
-import { ExpenseForm } from '@/features/groups/components/ExpenseForm';
+import { ExpenseForm } from '@/features/groups';
 import { useCategories } from '@/data/categories';
 
 /**

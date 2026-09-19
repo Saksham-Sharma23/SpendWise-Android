@@ -1,3 +1,4 @@
+import { BootFailure } from '@/features/boot';
 import '../global.css';
 
 import { useFonts } from 'expo-font';
@@ -20,7 +21,6 @@ import {
 import { bootDatabase, type BootOutcome } from '@/db/boot';
 import { checkpointWal } from '@/db/connection';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
-import { BootFailure } from '@/features/boot/components/BootFailure';
 import { useColors, useThemeName } from '@/lib/theme';
 
 // Keep the splash up until the database is open, migrated and seeded. Flashing

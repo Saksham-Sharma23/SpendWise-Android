@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 
 import {
   groupMembers,
@@ -13,11 +13,13 @@ import {
 import type { SplitMethod } from '@/db/schema';
 import { runWriteTx } from '@/db/tx';
 import { UserFacingError } from '@/lib/db/errors';
+import { nowISO } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
 import type { PlannedSettlement } from '../domain/balances';
+import { netsQuery } from './sql';
 import { expenseDebts, type Contribution } from '../domain/debts';
 import { MAX_EXPENSE_PAISE } from '../domain/split';
-import type { SyncDb } from '@/db/types';
+import { allSync, type SyncDb } from '@/db/types';
 
 /**
  * Every Groups write, against a SYNC database handle so the same code runs on
@@ -34,7 +36,6 @@ import type { SyncDb } from '@/db/types';
  * transaction — so balances can never disagree with the expenses behind them.
  */
 
-const now = () => new Date().toISOString();
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 // ---------------------------------------------------------------------------
@@ -66,11 +67,11 @@ export function renamePerson(db: SyncDb, id: number, name: string): void {
   const clean = cleanName(name, 'friend');
   runWriteTx(db, (tx) => {
     tx.update(people)
-      .set({ name: clean, updatedAt: now() })
+      .set({ name: clean, updatedAt: nowISO() })
       .where(and(eq(people.id, id), eq(people.isSelf, false)))
       .run();
     // The hidden 1:1 group is named after the friend.
-    tx.update(splitGroups).set({ name: clean, updatedAt: now() }).where(eq(splitGroups.directPersonId, id)).run();
+    tx.update(splitGroups).set({ name: clean, updatedAt: nowISO() }).where(eq(splitGroups.directPersonId, id)).run();
   });
 }
 
@@ -102,7 +103,7 @@ export function deletePerson(db: SyncDb, id: number): void {
   if (net !== 0) throw new UserFacingError(`Settle up with ${person.name} first`);
 
   runWriteTx(db, (tx) => {
-    const at = now();
+    const at = nowISO();
     tx.update(people).set({ deletedAt: at }).where(eq(people.id, id)).run();
     tx.update(splitGroups)
       .set({ deletedAt: at })
@@ -163,7 +164,7 @@ export function updateGroup(db: SyncDb, groupId: number, input: GroupInput): voi
 
   runWriteTx(db, (tx) => {
     tx.update(splitGroups)
-      .set({ name, icon: input.icon, simplifyDebts: input.simplifyDebts, updatedAt: now() })
+      .set({ name, icon: input.icon, simplifyDebts: input.simplifyDebts, updatedAt: nowISO() })
       .where(eq(splitGroups.id, groupId))
       .run();
 
@@ -189,7 +190,7 @@ export function updateGroup(db: SyncDb, groupId: number, input: GroupInput): voi
         }
       }
       tx.update(groupMembers)
-        .set({ deletedAt: now() })
+        .set({ deletedAt: nowISO() })
         .where(
           and(
             eq(groupMembers.groupId, groupId),
@@ -249,7 +250,7 @@ export function deleteGroup(db: SyncDb, groupId: number): void {
       );
     }
 
-    tx.update(splitGroups).set({ deletedAt: now() }).where(eq(splitGroups.id, groupId)).run();
+    tx.update(splitGroups).set({ deletedAt: nowISO() }).where(eq(splitGroups.id, groupId)).run();
   });
 }
 
@@ -392,7 +393,7 @@ export function saveExpense(db: SyncDb, input: ExpenseInput, id?: number): numbe
     } else {
       const res = tx
         .update(splitExpenses)
-        .set({ ...values, updatedAt: now() })
+        .set({ ...values, updatedAt: nowISO() })
         .where(and(eq(splitExpenses.id, id), isNull(splitExpenses.deletedAt)))
         .run() as { changes: number };
       if (res.changes === 0) throw new UserFacingError('That expense no longer exists');
@@ -426,7 +427,7 @@ export function saveExpense(db: SyncDb, input: ExpenseInput, id?: number): numbe
 }
 
 export function deleteExpense(db: SyncDb, id: number): void {
-  db.update(splitExpenses).set({ deletedAt: now() }).where(eq(splitExpenses.id, id)).run();
+  db.update(splitExpenses).set({ deletedAt: nowISO() }).where(eq(splitExpenses.id, id)).run();
 }
 
 /**
@@ -551,7 +552,7 @@ export function recordSettlements(db: SyncDb, plan: readonly PlannedSettlement[]
 export function deleteSettlements(db: SyncDb, ids: readonly number[]): void {
   if (ids.length === 0) return;
   db.update(settlements)
-    .set({ deletedAt: now() })
+    .set({ deletedAt: nowISO() })
     .where(inArray(settlements.id, [...ids]))
     .run();
 }
@@ -583,24 +584,11 @@ export function restoreSettlements(db: SyncDb, ids: readonly number[]): void {
 
 /** Net per person in one group — the same arithmetic as sql.ts `netsQuery`, run synchronously. */
 function groupNetsSync(db: SyncDb, groupId: number): Map<number, number> {
-  const rows = db
-    .select({ personId: sql<number>`x.person_id`, net: sql<number>`sum(x.v)` })
-    .from(
-      sql`(
-        SELECT p.person_id AS person_id, p.paid_paise AS v FROM split_expense_payers p JOIN split_expenses e ON e.id = p.expense_id
-         WHERE e.deleted_at IS NULL AND e.group_id = ${groupId}
-        UNION ALL
-        SELECT s.person_id, -s.owed_paise FROM split_expense_shares s JOIN split_expenses e ON e.id = s.expense_id
-         WHERE e.deleted_at IS NULL AND e.group_id = ${groupId}
-        UNION ALL
-        SELECT from_person_id, amount_paise FROM settlements WHERE deleted_at IS NULL AND group_id = ${groupId}
-        UNION ALL
-        SELECT to_person_id, -amount_paise FROM settlements WHERE deleted_at IS NULL AND group_id = ${groupId}
-      ) x`,
-    )
-    .groupBy(sql`x.person_id`)
-    .all();
-  return new Map(rows.map((r) => [r.personId, r.net]));
+  // The SAME query the balances screen reads (R3-12). This used to be a second
+  // hand-written copy of the flows union, so a change to how balances are
+  // summed would have moved the screen and not the guards, or the reverse.
+  const rows = allSync<{ personId: number; netPaise: number }>(netsQuery(db, groupId));
+  return new Map(rows.map((r) => [r.personId, r.netPaise]));
 }
 
 /** Whether a person has any non-zero balance in any live group. Returns the first non-zero net found, or 0. */

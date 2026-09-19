@@ -29,7 +29,8 @@ import { formatINR, paiseToDecimalString, parseAmountToPaise } from '@/lib/money
 import { useToday } from '@/lib/today';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
 import { draftFromExpense, emptyDraft, evaluate, type Draft } from '../domain/draft';
-import { directGroupFor, removeExpense, saveSplitExpense } from '../data/actions';
+import { directGroupFor, removeExpense, saveSplitExpense, undoRemoveExpense } from '../data/actions';
+import { toastWithUndo } from './undoToast';
 import { getExpenseForEdit, getFriends, getGroupRow, getMembers, getSelfId, useGroupsHub } from '../data/hooks';
 import { formatPercent } from '../domain/split';
 import { FormSheet, RoundButton, SectionLabel } from './kit';
@@ -191,7 +192,8 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
 
   const onDelete = () => {
     if (editingId == null || saving.current) return;
-    if (!removeExpense(editingId, description.trim() || 'Expense').ok) return;
+    if (!removeExpense(editingId).ok) return;
+    toastWithUndo(`${description.trim() || 'Expense'} deleted`, () => undoRemoveExpense(editingId));
     saving.current = true;
     router.back();
   };

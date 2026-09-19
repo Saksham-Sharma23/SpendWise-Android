@@ -16,3 +16,4 @@ export {
   toSubscriptionInput,
   type SubscriptionFormValues,
 } from './schema';
+export { Tracker } from './components/Tracker';

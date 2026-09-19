@@ -1,6 +1,5 @@
+import { GroupDetail } from '@/features/groups';
 import { useLocalSearchParams } from 'expo-router';
-
-import { GroupDetail } from '@/features/groups/components/GroupDetail';
 
 export default function GroupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

@@ -1,5 +1,4 @@
-import { GroupForm } from '@/features/groups/components/GroupForm';
-
+import { GroupForm } from '@/features/groups';
 export default function GroupModal() {
   return <GroupForm />;
 }

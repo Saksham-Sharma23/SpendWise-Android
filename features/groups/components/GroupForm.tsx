@@ -11,7 +11,8 @@ import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
-import { addFriend, addGroup, editGroup, removeGroup } from '../data/actions';
+import { addFriend, addGroup, editGroup, removeGroup, undoRemoveGroup } from '../data/actions';
+import { toastWithUndo } from './undoToast';
 import { getFriends, getGroupRow, getMembers } from '../data/hooks';
 import { RoundButton, SectionLabel } from './kit';
 
@@ -114,7 +115,9 @@ export function GroupForm() {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            if (removeGroup(editingId, initial?.name ?? 'Group').ok) router.dismissTo('/groups');
+            if (!removeGroup(editingId).ok) return;
+            toastWithUndo(`${initial?.name ?? 'Group'} deleted`, () => undoRemoveGroup(editingId));
+            router.dismissTo('/groups');
           },
         },
       ],

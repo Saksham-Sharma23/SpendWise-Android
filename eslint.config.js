@@ -265,6 +265,59 @@ module.exports = defineConfig([
   },
 
   /**
+   * Routes import a feature only through its index.ts — its public surface.
+   *
+   * `@/features/groups/components/GroupsHub` couples a route to where a file
+   * happens to live inside the feature, so moving it breaks the route. With
+   * `@/features/groups` the feature decides what it exports and can reorganise
+   * freely behind that (R3-B). Listed after the db/dev block so it wins for
+   * app/; app/dev.tsx gets its own copy that still allows db/dev.
+   */
+  {
+    files: ['app/**/*.{ts,tsx}'],
+    ignores: ['app/dev.tsx'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'drizzle-orm/expo-sqlite',
+              importNames: ['useLiveQuery'],
+              message: 'Use useDbQuery over readDb (CLAUDE.md #6).',
+            },
+          ],
+          patterns: [
+            { group: ['../../*'], message: 'Import across folders with the @/ alias, not ../../' },
+            { group: ['@/db/dev/*'], message: 'db/dev is for the dev harness only.' },
+            {
+              group: ['@/features/*/**'],
+              message: 'Routes import a feature through its index: `@/features/<name>`, not a file inside it.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['app/dev.tsx'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['../../*'], message: 'Import across folders with the @/ alias, not ../../' },
+            {
+              group: ['@/features/*/**'],
+              message: 'Routes import a feature through its index: `@/features/<name>`, not a file inside it.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  /**
    * lib/ holds pure logic that Node tests load directly, so it must stay free
    * of React Native. The listed files are the deliberate exceptions: lib/db is
    * the read runtime, and the rest are theme/motion glue a component uses.

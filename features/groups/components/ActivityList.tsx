@@ -7,7 +7,8 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { MONTHS_LONG, MONTHS_SHORT } from '@/lib/dates';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
-import { removeSettlements } from '../data/actions';
+import { removeSettlements, undoRemoveSettlements } from '../data/actions';
+import { toastWithUndo } from './undoToast';
 import type { ActivityRow, PersonRow } from '../data/hooks';
 import { expenseEffect, paidLine, settlementLine } from '../domain/wording';
 import { toneColor } from './kit';
@@ -156,7 +157,9 @@ function SettlementRow({ row, people, selfId }: { row: ActivityRow; people: Map<
     <PressableScale
       accessibilityRole="button"
       accessibilityHint="Long press to delete this payment"
-      onLongPress={() => removeSettlements([row.id])}
+      onLongPress={() => {
+        if (removeSettlements([row.id]).ok) toastWithUndo('Payment deleted', () => undoRemoveSettlements([row.id]));
+      }}
       delayLongPress={350}
       scaleTo={0.98}
       className="flex-row items-center gap-3 py-2.5"
