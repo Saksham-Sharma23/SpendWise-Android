@@ -84,6 +84,25 @@ do
   fi
 done
 
+# --- 4b. Nothing else at all: an ALLOWLIST, not just the denylists above ---
+# The denylists only catch permissions someone already thought of. On
+# 2026-09-19 a dev APK carried four nobody had listed: USE_BIOMETRIC and
+# USE_FINGERPRINT (androidx.biometric, via expo-secure-store) and
+# SYSTEM_ALERT_WINDOW and VIBRATE (Expo's prebuild template). Every permission
+# in a release APK must now be named here; a new one fails until someone
+# decides it belongs. To trace one: android/app/build/intermediates/
+# manifest_merge_blame_file/*/manifest-merger-blame-*-report.txt
+ALLOWED='^(android\.permission\.(POST_NOTIFICATIONS|RECEIVE_BOOT_COMPLETED|WAKE_LOCK|VIBRATE)|[a-z0-9_.]+\.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION)$'
+# WAKE_LOCK: scheduled notifications (Phase 8). VIBRATE: notification vibration
+# on API 24–25, a normal install-time permission. DYNAMIC_RECEIVER_NOT_EXPORTED_
+# PERMISSION: added by AndroidX core, private to this app's own signature.
+UNEXPECTED="$(echo "$PERMS" | grep -vE "$ALLOWED" | grep -v '^$')"
+if [ -n "$UNEXPECTED" ]; then
+  echo "FAIL: permissions not on the allowlist:"
+  echo "$UNEXPECTED" | sed 's/^/       /'
+  fail=1
+fi
+
 # --- 5. Native layer: arm64 only, and SQLCipher actually present --------
 echo "=== Native libraries ==="
 python - "$APK" <<'PY'

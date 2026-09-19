@@ -65,9 +65,11 @@ the boundaries are enforced _while_ files move.
       `expo-local-authentication` (T6) _(done 2026-09-19: 6 packages removed; typecheck clean)_. Re-add each in
       the phase that uses it (6A: document picker; 8: local auth)
       _Why:_ native ones are autolinked into every APK and pull in manifest entries that must then be blocked.
-      **Native change — still to do: rebuild and run `npm run verify:apk`**, and confirm `USE_BIOMETRIC` /
-      `USE_FINGERPRINT` have left the merged manifest (they were never in `blockedPermissions`, so removing
-      `expo-local-authentication` is what drops them).
+      **Discovered on the first rebuild:** `USE_BIOMETRIC` / `USE_FINGERPRINT` did **not** leave. They come from
+      `androidx.biometric` via `expo-secure-store` (R6), not from `expo-local-authentication`. The same APK
+      carried `SYSTEM_ALERT_WINDOW` from Expo's template. All three are now in `blockedPermissions`, and
+      `verify:apk` has an allowlist so the next surprise fails the check (plan.md R0-4).
+      **Still to do:** a clean **release** build passing `npm run verify:apk`.
 - [x] **Fix the misleading comments** (T4) _(done 2026-09-17, `ead7d44`)_: `lib/icons.ts:10` (the test it cites doesn't exist, see R2),
       `drizzle.studio.config.ts` (the device DB is no longer encrypted), `lib/theme.ts:7` (global.css is generated),
       the `dashboard/queries.ts` header (`features/devtools` doesn't exist), `categories/mutations.ts:163` (see B15)
@@ -337,7 +339,7 @@ with a fresh dev build (several need one: backup rules, splash colours). Tick he
 - [ ] Forced constraint error keeps a form open with a specific toast (dev and release)
 - [ ] Hammer Save → exactly one row
 - [ ] `npm run build:release-apk` fails if `INTERNET` is present (exercise `verify:apk` on a real release build)
-- [ ] After the R0-4 dependency removal (2026-09-19): rebuild from a clean `android/` and confirm `aapt2 dump permissions` no longer lists `USE_BIOMETRIC` or `USE_FINGERPRINT` — they came from `expo-local-authentication` and were never blocked
+- [ ] Release build passes the new `verify:apk` allowlist: `rm -rf android` → `npm run prebuild` → `npm run build:release-apk`. Expect exactly `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE` and `…DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`; no `USE_BIOMETRIC`, `USE_FINGERPRINT` or `SYSTEM_ALERT_WINDOW` (all three reached the 2026-09-19 dev APK)
 - [ ] A row with `deleted_at` 31 days ago is purged at launch; one on its last day survives
 
 **Correctness**

@@ -273,6 +273,7 @@ npm run db:generate                   # after editing db/schema.ts, then READ th
 **Android and build**
 
 - **Verify permissions on the built APK, never on `expo config` or the manifest.** `android.permissions` only _adds_; library manifests contribute more; a stale `android/` keeps the old policy. Only `blockedPermissions` removes, and only `aapt2 dump permissions` on the artifact tells the truth.
+- **A library's own dependencies add permissions too, and so does Expo's template.** `expo-secure-store` → `androidx.biometric` brought `USE_BIOMETRIC`/`USE_FINGERPRINT`; the prebuild template writes `SYSTEM_ALERT_WINDOW` into the _main_ manifest. So `verify:apk` is an **allowlist** (it checks the release APK by default). To find where a permission came from, read `android/app/build/intermediates/manifest_merge_blame_file/*/manifest-merger-blame-*-report.txt`.
 - **`expo-notifications` drags in FCM, Install Referrer and ~18 OEM badge permissions.** All are blocked in `app.config.ts`. `WAKE_LOCK` is kept for scheduled notifications.
 - **Auto-backup has a 25 MB quota and fails silently.** Backup rules are exclude-only (any `<include>` narrows the backup), have no wildcards, and exclude WAL/SHM, snapshots, legacy, unreadable and the dev-launcher bundle.
 - **A Keystore-keyed database cannot survive auto-backup.** If on-device encryption ever returns, the key must be recoverable by the user (a recovery code), never Keystore-only.

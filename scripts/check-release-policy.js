@@ -6,6 +6,8 @@
  *      INTERNET permission (CLAUDE.md #1).
  *   2. allowBackup is on. Android auto-backup is one of the three durability
  *      layers; turning it off silently would remove it.
+ *   3. The permissions that arrive uninvited stay blocked: SYSTEM_ALERT_WINDOW
+ *      (Expo's template) and USE_BIOMETRIC / USE_FINGERPRINT (expo-secure-store).
  *
  * It evaluates app.config.ts exactly as a release build does: no dev-network
  * opt-in, so the check fails closed if someone reintroduces a rule like the old
@@ -47,8 +49,16 @@ const android = config.android ?? {};
 const problems = [];
 
 const blocked = android.blockedPermissions ?? [];
-if (!blocked.includes('android.permission.INTERNET')) {
-  problems.push('android.blockedPermissions does not include android.permission.INTERNET');
+// Each of these reaches the release manifest from a library or Expo's template
+// unless blocked; verify:apk's allowlist has the final word on the artifact.
+const MUST_BLOCK = [
+  'android.permission.INTERNET',
+  'android.permission.SYSTEM_ALERT_WINDOW', // Expo's prebuild template
+  'android.permission.USE_BIOMETRIC', // androidx.biometric, via expo-secure-store
+  'android.permission.USE_FINGERPRINT', // same
+];
+for (const p of MUST_BLOCK) {
+  if (!blocked.includes(p)) problems.push(`android.blockedPermissions does not include ${p}`);
 }
 const declared = android.permissions ?? [];
 if (declared.includes('android.permission.INTERNET')) {
@@ -63,4 +73,4 @@ if (problems.length > 0) {
   for (const p of problems) console.error(`  - ${p}`);
   process.exit(1);
 }
-console.log('Release policy OK: INTERNET blocked, allowBackup on.');
+console.log(`Release policy OK: ${MUST_BLOCK.length} permissions blocked (INTERNET first), allowBackup on.`);

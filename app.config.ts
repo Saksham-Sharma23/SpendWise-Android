@@ -54,6 +54,16 @@ const BLOCKED_ALWAYS = [
   'android.permission.READ_EXTERNAL_STORAGE',
   'android.permission.WRITE_EXTERNAL_STORAGE',
 
+  // --- Pulled in transitively by expo-secure-store --------------------
+  // It depends on androidx.biometric:biometric, whose manifest declares both.
+  // The app never shows a biometric prompt: its one SecureStore use
+  // (db/legacyEncryption.ts) reads and deletes a key that was stored with
+  // WHEN_UNLOCKED, never `requireAuthentication`. Found 2026-09-19, when
+  // removing expo-local-authentication (R0-4) did NOT drop them — the merge
+  // report traced them here. Unblock these when the Phase 8 app lock is built.
+  'android.permission.USE_BIOMETRIC',
+  'android.permission.USE_FINGERPRINT',
+
   // --- Pulled in transitively by expo-notifications -------------------
   // We schedule LOCAL notifications only: no FCM project, no push tokens,
   // no server. But the library ships the full remote-push stack, and its
@@ -91,6 +101,10 @@ const ANDROID_BLOCKED = [
   // The whole point of this app: a release build must be unable to reach the
   // network at all, enforced by Android rather than by convention.
   ...(IS_DEV ? [] : ['android.permission.INTERNET']),
+  // "Display over other apps". Expo's prebuild template declares it in the
+  // MAIN manifest, so it ships in release unless removed. Only React Native's
+  // dev tooling can use it, which is why dev builds keep it.
+  ...(IS_DEV ? [] : ['android.permission.SYSTEM_ALERT_WINDOW']),
 ];
 
 export default ({ config }: ConfigContext): ExpoConfig => ({

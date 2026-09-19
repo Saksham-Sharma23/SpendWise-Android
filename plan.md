@@ -379,14 +379,32 @@ and the linked run-on-phone doc.
 
 **Outcome (2026-09-19).** Step 1 re-verified zero imports (every hit outside `package-lock.json` was
 documentation). Step 2 removed 6 packages. Steps 3–4 needed less than the card assumed: no config-plugin
-entries referenced any of the five, and `USE_BIOMETRIC` / `USE_FINGERPRINT` were **never** in
-`blockedPermissions` — a 2026-09 note had deliberately left them for the Phase 8 app lock, so dropping
-`expo-local-authentication` is what removes them. CLAUDE.md's Stack row now reads "Removed in R0".
-`tsc` clean for both app and tests.
+entries referenced any of the five. CLAUDE.md's Stack row now reads "Removed in R0". `tsc` clean for both
+app and tests.
 
-**Still open — step 5, the native half:** `rm -rf android` → `npm run prebuild:dev` → build → `npm run verify:apk`,
-and confirm the two biometric permissions have actually left the merged manifest. Until that runs, the
-APK is unchanged and this card is not closed.
+**Step 5 disproved an assumption (2026-09-19).** The first clean dev build after the removal **still**
+carried `USE_BIOMETRIC` and `USE_FINGERPRINT`. This card, and the first version of this outcome, had said
+that dropping `expo-local-authentication` would remove them. It did not: Gradle's merge report
+(`android/app/build/intermediates/manifest_merge_blame_file/…`) traced both to
+`androidx.biometric:biometric:1.1.0`, a dependency of **`expo-secure-store`**, which stays until R6. The
+same APK also carried `SYSTEM_ALERT_WINDOW` and `VIBRATE`, which Expo's prebuild template writes into the
+MAIN manifest, so they were never debug-only. None was caught before because `verify:apk` only had
+denylists.
+
+Fixed in the same batch:
+
+- `app.config.ts` blocks `USE_BIOMETRIC` / `USE_FINGERPRINT` always (safe: the one SecureStore use reads a
+  key stored `WHEN_UNLOCKED`, never behind `requireAuthentication`), and `SYSTEM_ALERT_WINDOW` in release
+  only (React Native's dev tooling can use it). `VIBRATE` stays: a normal permission, used by notification
+  vibration on API 24–25.
+- `scripts/verify-apk.sh` gains an **allowlist**: a release APK may hold only `POST_NOTIFICATIONS`,
+  `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE` and AndroidX's app-private
+  `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. Proven against the dev APK: it names all four surprises.
+- `scripts/check-release-policy.js` (CI, no build needed) now requires all four blocks in the release config.
+  Proven both ways: passes as written, fails when `USE_BIOMETRIC` is un-blocked.
+
+**Still open:** the blocks are a native change, so they only reach an APK on the next clean build. Close this
+card when a **release** build passes `npm run verify:apk` (the script checks the release APK by default).
 
 **Ref:** T6 · **Priority:** P1 · **Est:** 1 h + a native build · **Depends on:** R0-1
 
