@@ -98,6 +98,53 @@ describe('formatINR', () => {
   it('never renders NaN', () => {
     expect(formatINR(NaN)).toBe('₹0.00');
   });
+
+  it('rounds whole rupees half up, and keeps the paise exact', () => {
+    expect(formatINR(12449, { whole: true })).toBe('₹124');
+    expect(formatINR(12450, { whole: true })).toBe('₹125');
+    expect(formatINR(-12450, { whole: true })).toBe('-₹125');
+    expect(formatINR(5)).toBe('₹0.05');
+    expect(formatINR(MAX_AMOUNT_PAISE)).toBe('₹10,00,00,000.00');
+  });
+});
+
+/**
+ * B18: formatINR no longer calls toLocaleString at runtime. The old start-up
+ * ICU probe is now this test: Node ships full ICU, so the manual grouping must
+ * produce exactly what 'en-IN' does, for any amount the app can hold.
+ */
+describe('formatINR matches ICU en-IN grouping', () => {
+  const icu = (paise: number, whole: boolean) => {
+    const digits = whole ? 0 : 2;
+    const body = Math.abs(paise / 100)
+      .toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+      .replace(/[  ]/g, '');
+    return `${paise < 0 ? '-' : ''}₹${body}`;
+  };
+
+  it('ICU in this Node really groups in lakhs (else the test proves nothing)', () => {
+    expect((124500).toLocaleString('en-IN')).toBe('1,24,500');
+  });
+
+  it('for 10,000 random amounts, both signs, up to ₹10 crore', () => {
+    // A fixed-seed LCG, so a failure reproduces.
+    let seed = 20260919;
+    const next = () => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+    const edges = [0, 1, 5, 99, 100, 49_950, 99_999, 1_00_000, 99_99_999, 1_00_00_000, MAX_AMOUNT_PAISE];
+    const values = [...edges, ...edges.map((v) => -v)];
+    for (let i = 0; i < 10_000; i++) {
+      // Log-uniform, so small and crore-scale amounts are both well covered.
+      const v = Math.floor(Math.exp(next() * Math.log(MAX_AMOUNT_PAISE)));
+      values.push(next() < 0.2 ? -v : v);
+    }
+    for (const v of values) {
+      expect(formatINR(v)).toBe(icu(v, false));
+      expect(formatINR(v, { whole: true })).toBe(icu(v, true));
+    }
+  });
 });
 
 /**

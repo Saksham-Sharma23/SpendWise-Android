@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 
 import {
   groupMembers,
@@ -254,8 +254,24 @@ export function deleteGroup(db: SyncDb, groupId: number): void {
   });
 }
 
+/**
+ * Undo a group delete — refused if a member has since been removed as a friend.
+ * `deletePerson` only looks at live groups, so it can remove someone who is
+ * still a member of a deleted one; restoring it would list a removed friend.
+ */
 export function restoreGroup(db: SyncDb, groupId: number): void {
-  db.update(splitGroups).set({ deletedAt: null }).where(eq(splitGroups.id, groupId)).run();
+  runWriteTx(db, (tx) => {
+    const removed = tx
+      .select({ name: people.name })
+      .from(groupMembers)
+      .innerJoin(people, eq(people.id, groupMembers.personId))
+      .where(and(eq(groupMembers.groupId, groupId), isNull(groupMembers.deletedAt), isNotNull(people.deletedAt)))
+      .all()[0];
+    if (removed) {
+      throw new UserFacingError(`${removed.name} is no longer one of your friends, so this group can’t be restored`);
+    }
+    tx.update(splitGroups).set({ deletedAt: null }).where(eq(splitGroups.id, groupId)).run();
+  });
 }
 
 /** The hidden group behind a 1:1 friendship, created the first time it is needed. */
@@ -391,6 +407,16 @@ export function saveExpense(db: SyncDb, input: ExpenseInput, id?: number): numbe
     if (id == null) {
       expenseId = tx.insert(splitExpenses).values(values).returning({ id: splitExpenses.id }).all()[0]!.id;
     } else {
+      // Replacing the payers and shares drops anyone who has since left the
+      // group, which would move a balance onto them (B21).
+      const old = tx
+        .select({ groupId: splitExpenses.groupId })
+        .from(splitExpenses)
+        .where(and(eq(splitExpenses.id, id), isNull(splitExpenses.deletedAt)))
+        .all()[0];
+      if (!old) throw new UserFacingError('That expense no longer exists');
+      assertPeopleStillMembers(tx, old.groupId, peopleOnExpense(tx, id), 'expense', 'changed');
+
       const res = tx
         .update(splitExpenses)
         .set({ ...values, updatedAt: nowISO() })
@@ -426,8 +452,26 @@ export function saveExpense(db: SyncDb, input: ExpenseInput, id?: number): numbe
   });
 }
 
+/**
+ * Delete an expense — only while everyone it names is still a member (B21).
+ *
+ * Removing an expense moves the balance of everyone on it. Someone who has
+ * left the group can't settle up any more, so a balance moved onto them could
+ * never be cleared. The mirror image of `restoreExpense`.
+ */
 export function deleteExpense(db: SyncDb, id: number): void {
-  db.update(splitExpenses).set({ deletedAt: nowISO() }).where(eq(splitExpenses.id, id)).run();
+  runWriteTx(db, (tx) => {
+    const expense = tx
+      .select({ groupId: splitExpenses.groupId })
+      .from(splitExpenses)
+      .where(and(eq(splitExpenses.id, id), isNull(splitExpenses.deletedAt)))
+      .all()[0];
+    if (!expense) throw new UserFacingError('That expense no longer exists');
+
+    assertPeopleStillMembers(tx, expense.groupId, peopleOnExpense(tx, id), 'expense', 'deleted');
+
+    tx.update(splitExpenses).set({ deletedAt: nowISO() }).where(eq(splitExpenses.id, id)).run();
+  });
 }
 
 /**
@@ -446,7 +490,7 @@ export function restoreExpense(db: SyncDb, id: number): void {
       .all()[0];
     if (!expense) throw new UserFacingError('That expense no longer exists');
 
-    assertPeopleStillMembers(tx, expense.groupId, peopleOnExpense(tx, id), 'expense');
+    assertPeopleStillMembers(tx, expense.groupId, peopleOnExpense(tx, id), 'expense', 'restored');
 
     tx.update(splitExpenses).set({ deletedAt: null }).where(eq(splitExpenses.id, id)).run();
   });
@@ -467,12 +511,17 @@ function peopleOnExpense(db: SyncDb, expenseId: number): number[] {
   return [...new Set([...payers, ...shares].map((r) => r.personId))];
 }
 
-/** Refuse when anyone named is no longer a live member of the group. */
+/**
+ * Refuse when anyone named is no longer a live member of the group: deleting,
+ * changing or restoring the row would move a balance onto someone who can no
+ * longer settle it.
+ */
 function assertPeopleStillMembers(
   db: SyncDb,
   groupId: number,
   personIds: readonly number[],
   what: 'expense' | 'settlement',
+  action: 'restored' | 'deleted' | 'changed',
 ): void {
   if (personIds.length === 0) return;
 
@@ -490,7 +539,7 @@ function assertPeopleStillMembers(
 
   const name =
     db.select({ name: people.name }).from(people).where(eq(people.id, missing[0]!)).all()[0]?.name ?? 'Someone';
-  throw new UserFacingError(`${name} is no longer in this group, so that ${what} can’t be restored`);
+  throw new UserFacingError(`${name} is no longer in this group, so that ${what} can’t be ${action}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -549,12 +598,25 @@ export function recordSettlements(db: SyncDb, plan: readonly PlannedSettlement[]
   );
 }
 
+/** Delete settle-ups — only while both people on each are still members (B21, as deleteExpense). */
 export function deleteSettlements(db: SyncDb, ids: readonly number[]): void {
   if (ids.length === 0) return;
-  db.update(settlements)
-    .set({ deletedAt: nowISO() })
-    .where(inArray(settlements.id, [...ids]))
-    .run();
+  runWriteTx(db, (tx) => {
+    const rows = tx
+      .select({ groupId: settlements.groupId, from: settlements.fromPersonId, to: settlements.toPersonId })
+      .from(settlements)
+      .where(and(inArray(settlements.id, [...ids]), isNull(settlements.deletedAt)))
+      .all();
+
+    for (const r of rows) {
+      assertPeopleStillMembers(tx, r.groupId, [r.from, r.to], 'settlement', 'deleted');
+    }
+
+    tx.update(settlements)
+      .set({ deletedAt: nowISO() })
+      .where(and(inArray(settlements.id, [...ids]), isNull(settlements.deletedAt)))
+      .run();
+  });
 }
 
 /** Undo a settle-up — only while both people are still members (B14, as restoreExpense). */
@@ -568,7 +630,7 @@ export function restoreSettlements(db: SyncDb, ids: readonly number[]): void {
       .all();
 
     for (const r of rows) {
-      assertPeopleStillMembers(tx, r.groupId, [r.from, r.to], 'settlement');
+      assertPeopleStillMembers(tx, r.groupId, [r.from, r.to], 'settlement', 'restored');
     }
 
     tx.update(settlements)

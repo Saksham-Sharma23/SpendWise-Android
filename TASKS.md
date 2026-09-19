@@ -30,7 +30,7 @@
 | **R4**    | UI kit and thin routes        | 3 d   | ⬜                                                |
 | **7**     | **Backup & restore**          | 3–4 d | ⬜ ← **most important remaining product work**    |
 | 8         | Native layer                  | 3–4 d | ⬜                                                |
-| R5        | Performance (was TASKS2 F4)   | 2 d   | 🟡 2 of 7 done                                    |
+| R5        | Performance (was TASKS2 F4)   | 2 d   | 🟡 7 of 8 done; 2 slow queries to index           |
 | R6        | Observability and release ops | 1 d   | ⬜                                                |
 | 6A        | Sheets: import and workspaces | 7–8 d | ⬜ gated on the Sheets readiness gate             |
 | 6B        | Linked sheets                 | 4–5 d | ⬜                                                |
@@ -272,11 +272,12 @@ CI cannot run until the repo has a remote.
 
 - [x] Keyset ledger pages, page 1 live _(TASKS2 4A)_
 - [x] Row memo on drawn fields; sticky month headers _(TASKS2 4A)_
-- [ ] **[B16] `AnimatedAmount` off React state** — Reanimated shared value → animated `TextInput` text via a worklet formatter; skip while unfocused
-- [ ] **[B18] `formatINR` always uses manual Indian grouping** (make it worklet-safe for the task above); keep the ICU probe as a test only
-- [ ] **Search:** drop `lower()` (LIKE is already case-insensitive for ASCII; keep `ESCAPE`); measure FTS5 trigram only if realistic notes show a win
-- [ ] **Measure, then decide:** swipeable mounted per row vs on touch; glass tab-bar blur cost during ledger scroll → "Reduce transparency" setting if it drops frames. Record numbers here either way
-- [ ] **Record on-device query timings** and close the rollup-table decision (lean: no; plans verified 2026-09-15, desktop trend 3.5 ms)
+- [x] **[B16] `AnimatedAmount` off React state** — shared value + `withTiming` → read-only animated `TextInput` `text` via the worklet `formatINR`; one React render per change; jumps (no count) while unfocused or with reduced motion. Shrink-to-fit is done by measuring (TextInput has no `adjustsFontSizeToFit`) _(2026-09-19, needs a look on the phone)_
+- [x] **[B18] `formatINR` always uses manual Indian grouping** — integer-only and a worklet; no `toLocaleString`. The ICU probe is now a test: 10,000 seeded random amounts must equal Node's `en-IN` output _(2026-09-19)_
+- [x] **Search:** `lower()` dropped, `ESCAPE` kept; the pattern is no longer lowered in JS either (it made `É` search for `é`). **FTS5 trigram: not evaluated**, because notes are ASCII-dominant; reopen only if the "search page" row below goes over 50 ms on the phone _(2026-09-19)_
+- [x] **Measure, then decide:** swipeable per row vs on touch; tab-bar blur during ledger scroll. **Decided 2026-09-19: keep both as they are.** Turning the swipeable off cut janky frames from ~8.5% to ~6.4% and p90 from 31 to 27 ms (dev build); that is inside run-to-run noise, and mounting on touch would cost the first swipe, so rows keep it. Blur off made no consistent difference, so there is no "Reduce transparency" setting. Numbers: plan.md R5-4
+- [x] **Record on-device query timings** and close the rollup-table decision. **Closed 2026-09-19: rollup tables not needed.** The 24-month trend takes 19.5 ms on the phone at 50k rows (≤ 50 ms), indexed. Two queries are over 50 ms for other reasons; they are the follow-up below. Table: plan.md R5-5
+- [ ] **Follow-up from the timings:** "top category (24 months)" 99.7 ms (TEMP B-TREE) and "biggest expense (24 months)" 67.9 ms are both over 50 ms. Check their plans for a missing covering index (this is not a rollup problem)
 
 **Exit criterion:** Perf Monitor shows no dropped frames scrolling the 50k DB end to end and while saving from the ledger.
 
@@ -372,7 +373,7 @@ with a fresh dev build (several need one: backup rules, splash colours). Tick he
 | Groups: recurring group expenses; copy your share into the ledger | 1–2 d each | Groups stay separate from the ledger by decision                      |
 | Component tests (`jest-expo` + Testing Library) for forms         | 2 d        | Logic is covered in Node; UI is verified on device                    |
 | Multi-device sync                                                 | weeks      | No server by design; `uid` columns already exist                      |
-| Rollup tables                                                     | 2 d        | Only if on-device timings exceed 50 ms at 50k                         |
+| Rollup tables                                                     | 2 d        | Closed 2026-09-19: phone trend 19.5 ms at 50k (see Decisions)         |
 | Multi-currency                                                    | 3 d        | The web app is INR-only                                               |
 | Receipt photos                                                    | 3 d        | Storage and the 25 MB backup quota                                    |
 | Live Google Sheets sync · bank SMS capture                        | —          | Need `INTERNET` / `READ_SMS`; break the privacy promise               |
@@ -385,6 +386,8 @@ Newest first. Full reasoning for older rows: `docs/history/`.
 
 | Date       | Decision                                                                                                            | Reason                                                                                                        |
 | ---------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| 2026-09-19 | **No rollup tables**                                                                                                | Phone, 50k rows: the 24-month trend takes 19.5 ms, indexed, against a 50 ms bar (plan.md R5-5)                |
+| 2026-09-19 | **Swipeable stays mounted per row; no "Reduce transparency" setting**                                               | Phone A/B scrolling 50k rows: both costs were within run-to-run noise (plan.md R5-4)                          |
 | 2026-09-17 | **Refactor (R0–R4) before Backup and Sheets; Backup (7) before Sheets (6A)**                                        | Durability is the top product risk; the two largest new features should be written once, in the target layout |
 | 2026-09-17 | **Shared `data/` layer below features** for queries 2+ features need                                                | "No sibling imports" without a shared layer produced copied queries that drifted (B1/B2)                      |
 | 2026-09-17 | **One tracker**: TASKS.md; TASKS2.md and the Phase 0–5 detail archived to `docs/history/`                           | Open items were spread across four places                                                                     |

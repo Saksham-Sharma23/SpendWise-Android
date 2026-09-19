@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 
 import { Screen } from '@/components/layout/Screen';
 import { formatCount } from '@/lib/money';
+import { usePerfFlags } from '@/lib/perfFlags';
 import { useColors } from '@/lib/theme';
 import { databaseSizeBytes, countTransactions, runBenchmark } from '@/db/dev/benchmark';
 import type { BenchResult } from '@/db/dev/benchmark';
@@ -116,6 +117,13 @@ function DevHarness() {
       const worst = Math.max(...r.map((x) => x.ms));
       const scans = r.filter((x) => x.scan || x.tempSort).length;
       say(`Benchmark done — slowest ${worst}ms, ${scans} scan(s)`);
+      // R5-5: the rows for plan.md's timings table, ready to paste from Metro.
+      const day = new Date().toISOString().slice(0, 10);
+      const rows = r.map(
+        (x) => `| ${x.name} | ${x.ms} | ${x.scan ? 'SCAN' : x.tempSort ? 'TEMP B-TREE' : 'indexed'} | ${day} |`,
+      );
+      console.log(['| Query | Median (ms) | Plan flags | Date |', '| --- | --- | --- | --- |', ...rows].join('\n'));
+      say('Timings table printed to the Metro log');
     } catch (e) {
       say(`Benchmark failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -183,6 +191,8 @@ function DevHarness() {
           <Button label="Encrypted backup file round trip" onPress={onEncryptedRoundTrip} busy={busy === 'encrypted'} />
           <Button label="Clear all transactions" onPress={onClear} busy={busy === 'clear'} tone="danger" />
 
+          <PerfSwitches />
+
           {passed !== null ? (
             <View
               className="rounded-3xl border p-4"
@@ -248,5 +258,20 @@ function DevHarness() {
         </View>
       </ScrollView>
     </Screen>
+  );
+}
+
+/**
+ * R5-4: turn one suspected cost off, scroll the 50k ledger with Perf Monitor
+ * open (Dev menu → Perf Monitor), and compare dropped frames against "on".
+ */
+function PerfSwitches() {
+  const { swipeable, blur, toggle } = usePerfFlags();
+  return (
+    <View className="gap-3 rounded-3xl border border-border bg-card p-4">
+      <Text className="text-xs uppercase tracking-wider text-muted-foreground">Scroll cost A/B (R5-4)</Text>
+      <Button label={`Swipeable on every row: ${swipeable ? 'ON' : 'OFF'}`} onPress={() => toggle('swipeable')} />
+      <Button label={`Tab-bar backdrop blur: ${blur ? 'ON' : 'OFF'}`} onPress={() => toggle('blur')} />
+    </View>
   );
 }

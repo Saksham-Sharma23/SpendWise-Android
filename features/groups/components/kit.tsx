@@ -2,10 +2,18 @@ import type { LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { BackHandler, KeyboardAvoidingView, Pressable, ScrollView, Text, View } from 'react-native';
 import { useEffect } from 'react';
-import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  withTiming,
+  type EntryAnimationsValues,
+  type ExitAnimationsValues,
+  type LayoutAnimation,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/ui/PressableScale';
+import { easings } from '@/lib/motion';
 import { fonts, useColors, withAlpha, type Palette } from '@/lib/theme';
 import type { Tone } from '../domain/wording';
 
@@ -145,6 +153,34 @@ export function FloatingAction({
   );
 }
 
+const SHEET_IN = 320;
+const SHEET_OUT = 220;
+
+/**
+ * The sheet rises exactly its own height and eases to rest. It used to spring
+ * up from the bottom of the screen with a damping ratio of about 0.37 (Reanimated
+ * 4's default mass is 4), overshooting by nearly a third of the screen and
+ * wobbling before it settled. A timing curve can't overshoot.
+ */
+function sheetIn(values: EntryAnimationsValues): LayoutAnimation {
+  'worklet';
+  return {
+    initialValues: { transform: [{ translateY: values.targetHeight }] },
+    animations: { transform: [{ translateY: withTiming(0, { duration: SHEET_IN, easing: easings.enter }) }] },
+  };
+}
+
+/** Leaving: drops its own height, quickening as it goes. */
+function sheetOut(values: ExitAnimationsValues): LayoutAnimation {
+  'worklet';
+  return {
+    initialValues: { transform: [{ translateY: 0 }] },
+    animations: {
+      transform: [{ translateY: withTiming(values.currentHeight, { duration: SHEET_OUT, easing: easings.exit }) }],
+    },
+  };
+}
+
 /**
  * A bottom sheet that lives INSIDE a form screen, so a draft never crosses
  * routes: the paid-by and split editors open over the expense form and edit
@@ -180,8 +216,8 @@ export function FormSheet({
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
       <Animated.View
-        entering={FadeIn.duration(180)}
-        exiting={FadeOut.duration(160)}
+        entering={FadeIn.duration(SHEET_IN).easing(easings.enter)}
+        exiting={FadeOut.duration(SHEET_OUT).easing(easings.exit)}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       >
         <Pressable
@@ -193,8 +229,8 @@ export function FormSheet({
       </Animated.View>
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }} pointerEvents="box-none">
         <Animated.View
-          entering={SlideInDown.springify().damping(22).stiffness(220)}
-          exiting={SlideOutDown.duration(180)}
+          entering={sheetIn}
+          exiting={sheetOut}
           style={{
             maxHeight: '88%',
             backgroundColor: colors.background,

@@ -3,7 +3,20 @@ import * as SQLite from 'expo-sqlite';
 export const DATABASE_NAME = 'spendwise.db';
 
 /**
- * The one SQLite connection, behind a handle that can be closed and reopened.
+ * Two SQLite connections to the one file, both behind handles that can be
+ * closed and reopened.
+ *
+ * - The WRITE connection (`sqliteDb`, and `db` built on it): every write, the
+ *   boot steps and tiny synchronous point reads.
+ * - The READ connection (`openReadConnection`), used only by db/read.ts for
+ *   every screen read (B22).
+ *
+ * Why two: SQLite serialises every call on one connection. With reads and
+ * writes sharing it, a synchronous write waited on the JS thread for a long
+ * aggregate to finish, and an async read could step between two statements
+ * of a `writeTx` and see rows that were then rolled back. On its own
+ * connection a read sees only committed data, and WAL lets it run while a
+ * write is in flight.
  *
  * Every module imports `sqliteDb` (and `db`, built on it) once at load time,
  * so the handle itself can never change identity. But boot needs to close the
@@ -11,12 +24,14 @@ export const DATABASE_NAME = 'spendwise.db';
  * and to swap in the converted file when a legacy SQLCipher database is
  * decrypted. `sqliteDb` is therefore a forwarding proxy over whichever
  * connection is currently open, and reopening is invisible to its users.
+ * `closeConnection` closes both; each reopens on its next use.
  *
- * `enableChangeListener: true` feeds lib/db/changeHub: every write reports
- * its table, and live queries re-run from that.
+ * `enableChangeListener: true` (write connection only) feeds lib/db/changeHub:
+ * every write reports its table, and live queries re-run from that.
  */
 
 let current: SQLite.SQLiteDatabase | null = null;
+let reader: SQLite.SQLiteDatabase | null = null;
 
 export function openConnection(): SQLite.SQLiteDatabase {
   if (!current) {
@@ -25,20 +40,46 @@ export function openConnection(): SQLite.SQLiteDatabase {
   return current;
 }
 
+/**
+ * The read connection, opened on first use — after boot, because nothing reads
+ * before boot returns `ready`. By then the file is migrated and in WAL mode
+ * (`journal_mode` is stored in the file, so this connection inherits it).
+ *
+ * `query_only` makes it read-only at the SQLite level: even raw SQL can't
+ * write through it.
+ */
+export function openReadConnection(): SQLite.SQLiteDatabase {
+  if (!reader) {
+    const conn = SQLite.openDatabaseSync(DATABASE_NAME, { useNewConnection: true });
+    try {
+      conn.execSync('PRAGMA busy_timeout = 5000');
+      conn.execSync('PRAGMA query_only = 1');
+    } catch (e) {
+      conn.closeSync();
+      throw e;
+    }
+    reader = conn;
+  }
+  return reader;
+}
+
 const beforeCloseHooks = new Set<() => void>();
 
 /**
- * Run `hook` just before the connection closes — e.g. db/read.ts finalizes its
- * cached prepared statements, which belong to the connection being closed.
+ * Run `hook` just before the connections close — e.g. db/read.ts finalizes its
+ * cached prepared statements, which belong to the read connection.
  */
 export function onBeforeClose(hook: () => void): () => void {
   beforeCloseHooks.add(hook);
   return () => beforeCloseHooks.delete(hook);
 }
 
-/** Close the connection. The next use of `sqliteDb` opens it again. */
+/**
+ * Close both connections, so the file can be moved or replaced. The next use
+ * of `sqliteDb` or `openReadConnection` opens each again.
+ */
 export function closeConnection(): void {
-  if (!current) return;
+  if (!current && !reader) return;
   for (const hook of beforeCloseHooks) {
     try {
       hook();
@@ -47,7 +88,14 @@ export function closeConnection(): void {
     }
   }
   try {
-    current.closeSync();
+    reader?.closeSync();
+  } catch {
+    // The write connection must still close, or the file can't be moved.
+  } finally {
+    reader = null;
+  }
+  try {
+    current?.closeSync();
   } finally {
     current = null;
   }
@@ -71,8 +119,9 @@ export const sqliteDb: SQLite.SQLiteDatabase = new Proxy({} as SQLite.SQLiteData
  * cascade-delete child rows (see db/migrate.ts).
  */
 export function applyConnectionPragmas(): void {
-  // WAL gives concurrent reads while a write is in flight — the async reads
-  // in db/read.ts run on a native thread while the JS thread writes.
+  // WAL lets the read connection (db/read.ts) read while this one writes, and
+  // shows it only committed data. The mode is stored in the file, so the read
+  // connection inherits it.
   sqliteDb.execSync('PRAGMA journal_mode = WAL');
   // Safe with WAL (durable at checkpoint, never corrupt) and much faster than FULL.
   sqliteDb.execSync('PRAGMA synchronous = NORMAL');

@@ -1,8 +1,9 @@
 import type { LucideIcon } from 'lucide-react-native';
 import { Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { fonts, useColors } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { PressableScale } from './PressableScale';
 
 interface Action {
@@ -24,7 +25,7 @@ export function EmptyState({ icon: Icon, title, description, action, secondary, 
   const colors = useColors();
   return (
     <Animated.View
-      entering={FadeInDown.delay(80).duration(420)}
+      entering={rise(80)}
       className="items-center rounded-3xl border border-dashed px-6 py-10"
       style={{ borderColor: colors.borderStrong }}
     >

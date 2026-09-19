@@ -328,3 +328,103 @@ describe('merge keeps soft-deleted budgets (B15)', () => {
     expect(live.n).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// B26 — merge respects the target's kind
+// ---------------------------------------------------------------------------
+
+/**
+ * Categories you create are `both`, but most built-in ones are income-only or
+ * expense-only. Merging a category that held expenses into "Salary" put
+ * expenses on a category the expense form hides and Budgets never offers.
+ */
+describe('merge respects the target’s kind (B26)', () => {
+  function addBuiltIn(sqlite: Database.Database, name: string, kind: 'income' | 'expense'): number {
+    const id = addSystem(sqlite, name);
+    sqlite.prepare('UPDATE categories SET kind = ? WHERE id = ?').run(kind, id);
+    return id;
+  }
+
+  function addTxOfType(sqlite: Database.Database, categoryId: number, type: 'income' | 'expense', deleted = false) {
+    sqlite
+      .prepare(
+        `INSERT INTO transactions (type, amount_paise, date, category_id, created_at, updated_at, deleted_at)
+         VALUES (?, 1000, '2026-09-01', ?, 'now', 'now', ?)`,
+      )
+      .run(type, categoryId, deleted ? '2026-09-02' : null);
+  }
+
+  const inCategory = (sqlite: Database.Database, id: number) =>
+    (sqlite.prepare('SELECT count(*) AS n FROM transactions WHERE category_id = ?').get(id) as { n: number }).n;
+
+  it('refuses to merge expenses into an income-only category, and moves nothing', () => {
+    const { sqlite, db } = freshDb();
+    const salary = addBuiltIn(sqlite, 'Salary', 'income');
+    const freelance = createCategory(db, input('Freelance'));
+    addTxOfType(sqlite, freelance, 'income');
+    addTxOfType(sqlite, freelance, 'expense');
+
+    expect(() => mergeCategory(db, freelance, salary)).toThrow(UserFacingError);
+    expect(() => mergeCategory(db, freelance, salary)).toThrow(
+      '“Salary” is only for income, but “Freelance” has expenses',
+    );
+
+    expect(inCategory(sqlite, freelance)).toBe(2);
+    expect(inCategory(sqlite, salary)).toBe(0);
+    expect(sqlite.prepare('SELECT deleted_at FROM categories WHERE id = ?').get(freelance)).toEqual({
+      deleted_at: null,
+    });
+  });
+
+  it('refuses to merge income into an expense-only category', () => {
+    const { sqlite, db } = freshDb();
+    const food = addBuiltIn(sqlite, 'Food & Dining', 'expense');
+    const misc = createCategory(db, input('Misc'));
+    addTxOfType(sqlite, misc, 'income');
+
+    expect(() => mergeCategory(db, misc, food)).toThrow('“Food & Dining” is only for expenses, but “Misc” has income');
+  });
+
+  it('counts soft-deleted rows, which the merge would move too', () => {
+    const { sqlite, db } = freshDb();
+    const salary = addBuiltIn(sqlite, 'Salary', 'income');
+    const freelance = createCategory(db, input('Freelance'));
+    addTxOfType(sqlite, freelance, 'expense', true);
+
+    expect(() => mergeCategory(db, freelance, salary)).toThrow('has expenses');
+  });
+
+  it('refuses to move a live budget onto an income-only category', () => {
+    const { sqlite, db } = freshDb();
+    const salary = addBuiltIn(sqlite, 'Salary', 'income');
+    const freelance = createCategory(db, input('Freelance'));
+    addBudget(sqlite, freelance);
+
+    expect(() => mergeCategory(db, freelance, salary)).toThrow('has a budget');
+  });
+
+  it('refuses to move a group expense onto an income-only category', () => {
+    const { sqlite, db } = freshDb();
+    const salary = addBuiltIn(sqlite, 'Salary', 'income');
+    const trips = createCategory(db, input('Trips'));
+    addGroupExpense(sqlite, trips);
+
+    expect(() => mergeCategory(db, trips, salary)).toThrow('has group expenses');
+  });
+
+  it('merges when every row fits the target', () => {
+    const { sqlite, db } = freshDb();
+    const salary = addBuiltIn(sqlite, 'Salary', 'income');
+    const food = addBuiltIn(sqlite, 'Food & Dining', 'expense');
+    const bonus = createCategory(db, input('Bonus'));
+    const snacks = createCategory(db, input('Snacks'));
+    addTxOfType(sqlite, bonus, 'income');
+    addTxOfType(sqlite, snacks, 'expense');
+    addBudget(sqlite, snacks);
+
+    expect(mergeCategory(db, bonus, salary)).toEqual({ moved: 1 });
+    expect(mergeCategory(db, snacks, food)).toEqual({ moved: 1 });
+    expect(inCategory(sqlite, salary)).toBe(1);
+    expect(inCategory(sqlite, food)).toBe(1);
+  });
+});

@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, Plus, Trash2, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, ScrollView, Switch, Text, TextInput, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
@@ -11,6 +11,7 @@ import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { addFriend, addGroup, editGroup, removeGroup, undoRemoveGroup } from '../data/actions';
 import { toastWithUndo } from './undoToast';
 import { getFriends, getGroupRow, getMembers } from '../data/hooks';
@@ -147,7 +148,7 @@ export function GroupForm() {
       </View>
 
       <ScrollView className="px-5" contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
-        <Animated.View entering={FadeInDown.duration(320)} className="mt-2 flex-row items-center gap-3">
+        <Animated.View entering={rise()} className="mt-2 flex-row items-center gap-3">
           <CategoryIcon icon={shownIcon} color={tint} size={54} />
           <TextInput
             autoFocus={editingId == null}
@@ -167,7 +168,7 @@ export function GroupForm() {
           />
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(60).duration(320)} className="mt-6">
+        <Animated.View entering={rise(60)} className="mt-6">
           <SectionLabel>Icon</SectionLabel>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {GROUP_ICONS.map((name) => {
@@ -190,7 +191,7 @@ export function GroupForm() {
           </ScrollView>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(120).duration(320)} className="mt-6">
+        <Animated.View entering={rise(120)} className="mt-6">
           <SectionLabel>{`Who's in · you + ${memberIds.size}`}</SectionLabel>
           <View className="flex-row flex-wrap gap-2">
             {friends.map((f) => {
@@ -250,7 +251,7 @@ export function GroupForm() {
           </Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(180).duration(320)} className="mt-6">
+        <Animated.View entering={rise(180)} className="mt-6">
           <View
             className="flex-row items-center gap-3 rounded-2xl border p-4"
             style={{ backgroundColor: colors.card, borderColor: colors.border }}

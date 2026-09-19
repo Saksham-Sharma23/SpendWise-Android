@@ -41,11 +41,22 @@ const PILL_HEIGHT = BAR_HEIGHT - PAD * 2;
  * How far the droplet may stretch, as a fraction of one slot. Module scope so
  * the worklets that read it capture a constant rather than a component value.
  */
-const MAX_STRETCH = 0.5;
+const MAX_STRETCH = 0.2;
 
-/** The droplet's two springs: a quick leading edge and a lazy trailing one. */
-const LEAD = { damping: 22, stiffness: 420, mass: 0.8 };
-const TRAIL = { damping: 20, stiffness: 150, mass: 1 };
+/**
+ * How much the droplet thins at full stretch. Kept small: a droplet that
+ * narrows sharply and then springs back to full height reads as jelly.
+ */
+const MAX_THIN = 0.06;
+
+/**
+ * The droplet's two edges: the trailing one lands just a beat after the
+ * leading one, so it lengthens a little in flight and settles as one piece.
+ * Both are critically damped (no overshoot) and close together, so the
+ * slide reads as a glide rather than a stretch and snap.
+ */
+const LEAD = { dampingRatio: 1, duration: 320 } as const;
+const TRAIL = { dampingRatio: 1, duration: 380 } as const;
 
 /**
  * A liquid glass tab bar.
@@ -56,8 +67,8 @@ const TRAIL = { damping: 20, stiffness: 150, mass: 1 };
  * underneath. See GlassSurface for the layers.
  *
  * The selection is one "droplet" rather than a pill per tab. Its two edges
- * run on different springs, so as it travels it stretches out and thins,
- * then snaps back into shape when it lands. Drag along the bar and the
+ * run on slightly different springs, so as it travels it lengthens a touch
+ * and settles back into shape when it lands. Drag along the bar and the
  * droplet follows your finger, swelling like a lens, and selects the tab you
  * release on.
  */
@@ -152,12 +163,12 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
   /**
    * How far the trailing edge lags the leading one.
    *
-   * CAPPED at half a slot. A fast flick can put `lead` several slots ahead of
-   * the spring-damped `trail`, and the raw difference then stretched the
-   * droplet into a long bar: past 2 × radius its middle is a straight edge, so
-   * it stopped reading as a capsule and appeared as a box with square inner
-   * corners. Half a slot keeps ~50px of flat edge at the extreme — visibly
-   * stretched, still unmistakably a droplet.
+   * CAPPED at a fifth of a slot. A fast flick can put `lead` several slots
+   * ahead of the spring-damped `trail`, and the raw difference then stretched
+   * the droplet into a long bar: past 2 × radius its middle is a straight edge,
+   * so it stopped reading as a capsule and appeared as a box with square inner
+   * corners. The cap was half a slot, which read as a rubbery stretch-and-snap
+   * on every tab change; a fifth keeps it a subtle lengthening in flight.
    */
   const stretch = useDerivedValue(() => Math.min(Math.abs(lead.value - trail.value), slotWidth * MAX_STRETCH));
 
@@ -166,7 +177,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
     // Normalised against the CAP, not the slot, so a fully stretched droplet
     // still reaches the full thinning — the cap must not also halve the squash.
     const s = slotWidth > 0 ? stretch.value / (slotWidth * MAX_STRETCH) : 0;
-    const scaleY = 1 - Math.min(0.22, s * 0.28) + dragging.value * 0.1;
+    const scaleY = 1 - Math.min(1, s) * MAX_THIN + dragging.value * 0.1;
     return {
       opacity: ready.value,
       width: pillWidth + stretch.value,

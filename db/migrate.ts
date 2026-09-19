@@ -86,6 +86,23 @@ export function snapshotsToDelete(names: readonly string[], keep = 2): string[] 
   return snaps.slice(0, Math.max(0, snaps.length - keep));
 }
 
+/**
+ * Copies the boot-failure screen shares: `spendwise-share-20260919T101112.db`,
+ * sometimes with a `.db-wal` beside it. Each is a whole database, so they are
+ * pruned rather than left to pile up (B27).
+ */
+export const SHARE_PREFIX = 'spendwise-share-';
+
+/** Which share copies to delete so only the newest `keep` remain; a copy's `-wal` goes with it. */
+export function shareCopiesToDelete(names: readonly string[], keep: number): string[] {
+  const COPY = /\.db(-wal)?$/;
+  const stampOf = (n: string) => n.slice(SHARE_PREFIX.length).replace(COPY, '');
+  const ours = names.filter((n) => n.startsWith(SHARE_PREFIX) && COPY.test(n));
+  const stamps = [...new Set(ours.map(stampOf))].sort();
+  const doomed = new Set(stamps.slice(0, Math.max(0, stamps.length - keep)));
+  return ours.filter((n) => doomed.has(stampOf(n)));
+}
+
 // ---------------------------------------------------------------------------
 // "Is there anything worth protecting?" — decides the pre-migration snapshot
 // ---------------------------------------------------------------------------

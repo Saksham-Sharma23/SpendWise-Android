@@ -1,6 +1,6 @@
 import { Alert, Text, View } from 'react-native';
 import { RotateCcw, Trash2 } from 'lucide-react-native';
-import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { toast } from 'sonner-native';
 
 import { RETENTION_DAYS, daysLeft } from '@/db/retention';
@@ -11,10 +11,16 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { colorForName } from '@/lib/categoryColor';
 import { formatDayMonth } from '@/lib/dates';
-import { formatINR } from '@/lib/money';
+import { formatCount, formatINR } from '@/lib/money';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
 import { useToday } from '@/lib/today';
-import { deleteTransactionsForever, restoreTransactions, softDeleteTransactions } from '../data/actions';
+import { leave, reflow, rise } from '@/lib/motion';
+import {
+  deleteTransactionsForever,
+  emptyRecentlyDeleted,
+  restoreTransactions,
+  softDeleteTransactions,
+} from '../data/actions';
 import { useDeletedTransactions } from '../data/hooks';
 import { type DeletedTransactionRow } from '../data/sql';
 
@@ -31,7 +37,10 @@ import { type DeletedTransactionRow } from '../data/sql';
 export function RecentlyDeleted() {
   const colors = useColors();
   const today = useToday();
-  const { data: rows, status } = useDeletedTransactions();
+  const {
+    data: { rows, total },
+    status,
+  } = useDeletedTransactions();
 
   const restore = (row: DeletedTransactionRow) => {
     if (!restoreTransactions([row.id]).ok) return;
@@ -58,9 +67,11 @@ export function RecentlyDeleted() {
     );
   };
 
+  // Every row Recently deleted holds, not just the ones listed (B24): the list
+  // stops at the newest few hundred, and the dialog promises "everything".
   const emptyAll = () => {
     Alert.alert(
-      `Delete all ${rows.length} permanently?`,
+      `Delete all ${formatCount(total)} permanently?`,
       'Everything in Recently deleted will be gone for good. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -68,7 +79,7 @@ export function RecentlyDeleted() {
           text: 'Delete all',
           style: 'destructive',
           onPress: () => {
-            if (deleteTransactionsForever(rows.map((r) => r.id)).ok) toast.success('Recently deleted emptied');
+            if (emptyRecentlyDeleted().ok) toast.success('Recently deleted emptied');
           },
         },
       ],
@@ -81,7 +92,7 @@ export function RecentlyDeleted() {
       title="Recently deleted"
       subtitle={`Kept for ${RETENTION_DAYS} days, then removed for good`}
       right={
-        rows.length > 1 ? (
+        total > 1 ? (
           <PressableScale accessibilityRole="button" onPress={emptyAll} className="px-2 py-2">
             <Text style={{ color: colors.expense, fontFamily: fonts.semibold, fontSize: 14 }}>Empty</Text>
           </PressableScale>
@@ -98,12 +109,7 @@ export function RecentlyDeleted() {
         ) : (
           <Card>
             {rows.map((row, i) => (
-              <Animated.View
-                key={row.id}
-                entering={FadeInDown.delay(Math.min(i, 8) * 30).duration(280)}
-                exiting={FadeOut.duration(160)}
-                layout={LinearTransition}
-              >
+              <Animated.View key={row.id} entering={rise(Math.min(i, 8) * 30)} exiting={leave()} layout={reflow()}>
                 <DeletedRow
                   row={row}
                   first={i === 0}
@@ -115,6 +121,19 @@ export function RecentlyDeleted() {
             ))}
           </Card>
         )}
+        {status === 'ok' && total > rows.length ? (
+          <Text
+            style={{
+              color: colors.subtle,
+              fontFamily: fonts.regular,
+              fontSize: 12,
+              marginTop: 12,
+              textAlign: 'center',
+            }}
+          >
+            {`Showing the newest ${formatCount(rows.length)} of ${formatCount(total)}. Empty removes all of them.`}
+          </Text>
+        ) : null}
       </View>
     </Screen>
   );

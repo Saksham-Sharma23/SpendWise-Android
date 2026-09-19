@@ -2,13 +2,14 @@ import { Appearance } from '@/features/settings';
 import { useRouter } from 'expo-router';
 import { Bell, ChevronRight, Fingerprint, Info, Trash2 } from 'lucide-react-native';
 import { Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { RETENTION_DAYS } from '@/db/retention';
 import { Screen } from '@/components/layout/Screen';
 import { Card } from '@/components/ui/Card';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 
 function SectionLabel({ children }: { children: string }) {
   const colors = useColors();
@@ -34,11 +35,11 @@ export default function SettingsScreen() {
   return (
     <Screen back title="Settings" subtitle="Appearance, notifications, security">
       <View className="gap-6 px-5">
-        <Animated.View entering={FadeInDown.duration(320)}>
+        <Animated.View entering={rise()}>
           <Appearance />
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(30).duration(320)} className="gap-3">
+        <Animated.View entering={rise(30)} className="gap-3">
           <SectionLabel>Your data</SectionLabel>
           <Card className="p-1">
             <PressableScale
@@ -66,7 +67,7 @@ export default function SettingsScreen() {
           </Card>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(60).duration(320)} className="gap-3">
+        <Animated.View entering={rise(60)} className="gap-3">
           <Text
             style={{
               color: colors.muted,
@@ -96,7 +97,7 @@ export default function SettingsScreen() {
           </Card>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(120).duration(320)}>
+        <Animated.View entering={rise(120)}>
           <View
             className="flex-row items-center gap-3 rounded-2xl border p-4"
             style={{ backgroundColor: colors.primarySoft, borderColor: colors.primaryBorder }}

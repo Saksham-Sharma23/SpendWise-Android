@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { PiggyBank, Plus, TriangleAlert } from 'lucide-react-native';
 import { Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { toast } from 'sonner-native';
 
 import { MiniDonut, softToneFor, toneFor } from '@/components/charts/MiniDonut';
@@ -11,10 +11,11 @@ import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { colorForName } from '@/lib/categoryColor';
-import { formatDayMonth } from '@/lib/dates';
+import { addDays, formatDayMonth } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
 import { useToday } from '@/lib/today';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { budgetTotals, daysLeftLabel, type BudgetProgress } from '../domain/progress';
 import { restoreBudget, softDeleteBudget } from '../data/actions';
 import { useBudgetsWithSpend } from '../data/hooks';
@@ -74,7 +75,7 @@ export function BudgetList() {
         <View className="gap-3 px-5">
           {/* Over-budget first: it is the one thing worth interrupting for. */}
           {overBudget.length > 0 ? (
-            <Animated.View entering={FadeInDown.duration(320)}>
+            <Animated.View entering={rise()}>
               <View
                 className="flex-row items-center gap-3 rounded-2xl border p-4"
                 style={{ backgroundColor: colors.expenseSoft, borderColor: withAlpha(colors.expense, 0.3) }}
@@ -89,7 +90,7 @@ export function BudgetList() {
             </Animated.View>
           ) : null}
 
-          <Animated.View entering={FadeInDown.delay(40).duration(320)}>
+          <Animated.View entering={rise(40)}>
             <Card className="flex-row p-5">
               <Figure label="Budgeted" value={formatINR(totals.limitPaise, { whole: true })} />
               <Figure label="Spent" value={formatINR(totals.spentPaise, { whole: true })} />
@@ -103,7 +104,7 @@ export function BudgetList() {
           </Animated.View>
 
           {rows.map((b, i) => (
-            <Animated.View key={b.id} entering={FadeInDown.delay(80 + i * 45).duration(320)}>
+            <Animated.View key={b.id} entering={rise(80 + i * 45)}>
               <BudgetCard
                 budget={b}
                 onPress={() => router.push({ pathname: '/(modals)/budget', params: { id: String(b.id) } })}
@@ -196,7 +197,8 @@ function BudgetCard({
 
             <View className="mt-2 flex-row items-center justify-between">
               <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11 }}>
-                {daysLeftLabel(budget.daysLeft)} · resets {formatDayMonth(budget.cycleEnd)}
+                {/* cycleEnd is the cycle's last day; the reset is the day after (B23). */}
+                {daysLeftLabel(budget.daysLeft)} · resets {formatDayMonth(addDays(budget.cycleEnd, 1))}
               </Text>
               <Text
                 style={{

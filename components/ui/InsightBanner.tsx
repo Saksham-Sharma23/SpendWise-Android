@@ -8,10 +8,11 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { Text, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import type { Insight, InsightIcon, InsightTone } from '@/lib/insight';
 import { colors, fonts, useColors, withAlpha } from '@/lib/theme';
+import { appear } from '@/lib/motion';
 import { Card } from './Card';
 
 const ICONS: Record<InsightIcon, LucideIcon> = {
@@ -47,7 +48,7 @@ export function InsightBanner({ insight }: { insight: Insight }) {
       >
         <Icon size={20} color={tint} strokeWidth={2.2} />
       </View>
-      <Animated.View key={insight.title} entering={FadeIn.duration(300)} className="flex-1">
+      <Animated.View key={insight.title} entering={appear()} className="flex-1">
         <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>{insight.title}</Text>
         <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, marginTop: 2 }}>
           {insight.body}

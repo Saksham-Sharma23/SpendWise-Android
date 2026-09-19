@@ -15,7 +15,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, StickyNote, Trash2, X } from '
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, ScrollView, Text, TextInput, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
@@ -29,6 +29,7 @@ import { addDays, formatDayMonth } from '@/lib/dates';
 import { useToday } from '@/lib/today';
 import { paiseToDecimalString } from '@/lib/money';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 
 /**
  * Add / edit a transaction.
@@ -182,7 +183,7 @@ export default function TransactionModal() {
         className="px-5"
       >
         {/* Type — first, because it changes what everything below means. */}
-        <Animated.View entering={FadeInDown.duration(350)} className="mt-2">
+        <Animated.View entering={rise()} className="mt-2">
           <Controller
             control={control}
             name="type"
@@ -200,7 +201,7 @@ export default function TransactionModal() {
         </Animated.View>
 
         {/* Amount — the hero of the form. */}
-        <Animated.View entering={FadeInDown.delay(60).duration(350)} className="items-center py-8">
+        <Animated.View entering={rise(60)} className="items-center py-8">
           <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>
             {isIncome ? 'How much came in?' : 'How much did you spend?'}
           </Text>
@@ -239,7 +240,7 @@ export default function TransactionModal() {
           ) : null}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(120).duration(350)}>
+        <Animated.View entering={rise(120)}>
           <View className="flex-row items-center justify-between">
             <Label>Category</Label>
             <PressableScale
@@ -290,7 +291,7 @@ export default function TransactionModal() {
           {errors.categoryId?.message ? <ErrorText>{errors.categoryId.message}</ErrorText> : null}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(180).duration(350)} className="mt-6">
+        <Animated.View entering={rise(180)} className="mt-6">
           <Label>Date</Label>
           <View
             className="flex-row items-center rounded-2xl border p-1.5"
@@ -364,7 +365,7 @@ export default function TransactionModal() {
           />
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(240).duration(350)} className="mt-6 gap-3">
+        <Animated.View entering={rise(240)} className="mt-6 gap-3">
           <Label>Details</Label>
           <Controller
             control={control}

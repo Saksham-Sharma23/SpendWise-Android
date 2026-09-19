@@ -112,18 +112,33 @@ export function transactionQuery(db: AnyDb, id: number) {
 }
 
 /**
- * Soft-deleted transactions, newest deletion first. Import-batch rows are left
- * out: they are undone as a batch, never one at a time, and the purge never
- * removes them (db/retention.ts).
+ * What Settings → Recently deleted holds: every soft-deleted transaction
+ * except import-batch rows, which are undone as a batch, never one at a time,
+ * and which the purge never removes (db/retention.ts). The list, its count and
+ * "Empty" all use this one predicate.
  */
-export function deletedTransactionsQuery(db: AnyDb, limit = 500) {
+export const recentlyDeletedWhere = () => and(isNotNull(transactions.deletedAt), isNull(transactions.importBatchId));
+
+/** How many rows Recently deleted lists; the rest are counted, not drawn. */
+export const DELETED_LIST_LIMIT = 500;
+
+/** Soft-deleted transactions, newest deletion first. */
+export function deletedTransactionsQuery(db: AnyDb, limit = DELETED_LIST_LIMIT) {
   return db
     .select({ ...listColumns, deletedAt: transactions.deletedAt })
     .from(transactions)
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(and(isNotNull(transactions.deletedAt), isNull(transactions.importBatchId)))
+    .where(recentlyDeletedWhere())
     .orderBy(desc(transactions.deletedAt), desc(transactions.id))
     .limit(limit);
+}
+
+/** How many rows Recently deleted holds — all of them, not just the ones listed (B24). */
+export function deletedCountQuery(db: AnyDb) {
+  return db
+    .select({ n: sql<number>`count(*)` })
+    .from(transactions)
+    .where(recentlyDeletedWhere());
 }
 
 /** Which of these dedupe hashes already exist among live rows. One chunk; see writes.existingHashes. */

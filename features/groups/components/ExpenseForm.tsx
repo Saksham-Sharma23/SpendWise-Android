@@ -13,7 +13,7 @@ import {
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, Text, TextInput, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
@@ -28,10 +28,19 @@ import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '@/lib/money';
 import { useToday } from '@/lib/today';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { draftFromExpense, emptyDraft, evaluate, type Draft } from '../domain/draft';
 import { directGroupFor, removeExpense, saveSplitExpense, undoRemoveExpense } from '../data/actions';
 import { toastWithUndo } from './undoToast';
-import { getExpenseForEdit, getFriends, getGroupRow, getMembers, getSelfId, useGroupsHub } from '../data/hooks';
+import {
+  getExpenseForEdit,
+  getFriends,
+  getGroupRow,
+  getMembers,
+  getPersonName,
+  getSelfId,
+  useGroupsHub,
+} from '../data/hooks';
 import { formatPercent } from '../domain/split';
 import { FormSheet, RoundButton, SectionLabel } from './kit';
 
@@ -79,19 +88,36 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
 
   const [selfId] = useState(getSelfId);
   const [existing] = useState(() => (editingId != null ? getExpenseForEdit(editingId) : undefined));
+  // Read once, when the form opens — never during a render (B28).
+  const [initialGroup] = useState(() => {
+    const groupId = existing?.groupId ?? (params.groupId ? Number(params.groupId) : null);
+    return groupId != null ? getGroupRow(groupId) : undefined;
+  });
 
   const initialTarget = useMemo<Target | null>(() => {
-    const groupId = existing?.groupId ?? (params.groupId ? Number(params.groupId) : null);
-    if (groupId != null) {
-      const row = getGroupRow(groupId);
-      if (row?.directPersonId != null) return { kind: 'friend', personId: row.directPersonId };
-      return row ? { kind: 'group', groupId } : null;
+    if (initialGroup) {
+      if (initialGroup.directPersonId != null) return { kind: 'friend', personId: initialGroup.directPersonId };
+      return { kind: 'group', groupId: initialGroup.id };
     }
+    if (existing || params.groupId) return null;
     if (params.friendId) return { kind: 'friend', personId: Number(params.friendId) };
     return null;
     // Resolved once, from the params the form opened with.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // An expense that names someone who has since left the group can't be
+  // edited or deleted: either would move a balance onto a person who can no
+  // longer settle it (B21). The write refuses too; this explains it up front.
+  const [blocked] = useState<string | null>(() => {
+    if (!existing) return null;
+    if (!initialTarget) return 'That expense no longer exists';
+    const live = new Set(membersFor(initialTarget, selfId).map((m) => m.id));
+    const gone = [...existing.payers, ...existing.shares].find((p) => !live.has(p.personId));
+    if (!gone) return null;
+    const name = getPersonName(gone.personId) ?? 'Someone';
+    return `${name} is no longer in this group, so this expense can’t be changed. Add them back to edit or delete it`;
+  });
 
   const [target, setTarget] = useState<Target | null>(initialTarget);
   const members = useMemo<Member[]>(() => membersFor(target, selfId), [target, selfId]);
@@ -122,8 +148,11 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
     if (editingId != null && !existing) {
       toast.error('That expense no longer exists');
       router.back();
+    } else if (blocked) {
+      toast.error(blocked);
+      router.back();
     }
-  }, [editingId, existing, router]);
+  }, [editingId, existing, blocked, router]);
 
   const result = useMemo(() => evaluate(draft, memberIds), [draft, memberIds]);
   const nameOf = (id: number) => (id === selfId ? 'you' : (members.find((m) => m.id === id)?.name ?? 'someone'));
@@ -202,7 +231,9 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
     target == null
       ? 'Choose a group or friend'
       : target.kind === 'group'
-        ? (hub.groupsById.get(target.groupId)?.name ?? getGroupRow(target.groupId)?.name ?? 'Group')
+        ? (hub.groupsById.get(target.groupId)?.name ??
+          (initialGroup?.id === target.groupId ? initialGroup.name : undefined) ??
+          'Group')
         : (members.find((m) => m.id === target.personId)?.name ?? 'Friend');
 
   const paidLabel =
@@ -229,13 +260,13 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
 
         <ScrollView className="px-5" keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
           {/* With you and: [target] */}
-          <Animated.View entering={FadeInDown.duration(300)} className="flex-row flex-wrap items-center gap-2">
+          <Animated.View entering={rise()} className="flex-row flex-wrap items-center gap-2">
             <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14 }}>With you and:</Text>
             <Pill label={targetLabel} onPress={() => setSheet('target')} disabled={editingId != null} />
           </Animated.View>
 
           {/* Description + amount */}
-          <Animated.View entering={FadeInDown.delay(50).duration(300)} className="mt-6 flex-row items-center gap-3">
+          <Animated.View entering={rise(50)} className="mt-6 flex-row items-center gap-3">
             <CategoryIcon icon={icon} color={tint} size={52} />
             <TextInput
               autoFocus={editingId == null && target != null}
@@ -253,7 +284,7 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
               }}
             />
           </Animated.View>
-          <Animated.View entering={FadeInDown.delay(100).duration(300)} className="mt-3 flex-row items-center gap-3">
+          <Animated.View entering={rise(100)} className="mt-3 flex-row items-center gap-3">
             <View style={{ width: 52 }} className="items-center">
               <Text style={{ color: colors.primary, fontFamily: fonts.bold, fontSize: 30 }}>₹</Text>
             </View>
@@ -278,7 +309,7 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
 
           {/* Paid by [x] and split [y] */}
           {target != null ? (
-            <Animated.View entering={FadeInDown.delay(150).duration(300)} className="mt-7 items-center">
+            <Animated.View entering={rise(150)} className="mt-7 items-center">
               <View className="flex-row flex-wrap items-center justify-center gap-2">
                 <Text style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 15 }}>Paid by</Text>
                 <Pill label={paidLabel} onPress={() => setSheet('paid')} />
@@ -290,7 +321,7 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
           ) : null}
 
           {/* Date, category, note */}
-          <Animated.View entering={FadeInDown.delay(200).duration(300)} className="mt-8">
+          <Animated.View entering={rise(200)} className="mt-8">
             <SectionLabel>Date</SectionLabel>
             <View className="flex-row items-center gap-2">
               {[
@@ -316,7 +347,7 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
             </View>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(250).duration(300)} className="mt-6">
+          <Animated.View entering={rise(250)} className="mt-6">
             <SectionLabel>Category (for group totals)</SectionLabel>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {categories.map((c) => {

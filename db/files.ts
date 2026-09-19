@@ -10,7 +10,9 @@ import { DATABASE_NAME } from './connection';
  *   files/legacy/               encrypted originals after the  — excluded from auto-backup
  *                               one-time SQLCipher conversion
  *   files/unreadable/           databases moved aside by       — excluded from auto-backup
- *                               "Start fresh"
+ *                               "Start fresh", and the copies
+ *                               the boot-failure screen shares
+ *                               (removed at the next good boot)
  *
  * The exclusions live in plugins/withBackupRules.js. Keep the two in step.
  */

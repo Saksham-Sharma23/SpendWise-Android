@@ -13,12 +13,13 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { Screen } from '@/components/layout/Screen';
 import { Card } from '@/components/ui/Card';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { accent, fonts, useColors, withAlpha, type AccentHue } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 
 type Row = {
   icon: LucideIcon;
@@ -91,7 +92,7 @@ export default function MoreScreen() {
   return (
     <Screen title="More" subtitle="Everything else SpendWise can do">
       <View className="gap-6 px-5">
-        <Animated.View entering={FadeInDown.delay(40).duration(420)}>
+        <Animated.View entering={rise(40)}>
           <Card glow={colors.income} className="flex-row items-center gap-4 p-5">
             <View
               className="h-12 w-12 items-center justify-center rounded-2xl"
@@ -111,7 +112,7 @@ export default function MoreScreen() {
         </Animated.View>
 
         {GROUPS.map((group, gi) => (
-          <Animated.View key={group.title} entering={FadeInDown.delay(110 + gi * 70).duration(420)}>
+          <Animated.View key={group.title} entering={rise(110 + gi * 70)}>
             <Text
               style={{
                 color: colors.muted,

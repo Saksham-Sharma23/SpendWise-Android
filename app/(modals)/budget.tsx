@@ -4,7 +4,7 @@ import { Pause, Play, Trash2, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, ScrollView, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
@@ -28,6 +28,7 @@ import { getCycleWindow, formatDayMonth } from '@/lib/dates';
 import { paiseToDecimalString } from '@/lib/money';
 import { useToday } from '@/lib/today';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 
 /**
  * Set or edit a budget.
@@ -142,7 +143,7 @@ export default function BudgetModal() {
         showsVerticalScrollIndicator={false}
         className="px-5"
       >
-        <Animated.View entering={FadeInDown.duration(350)} className="py-5">
+        <Animated.View entering={rise()} className="py-5">
           <Controller
             control={control}
             name="limit"
@@ -153,7 +154,7 @@ export default function BudgetModal() {
           {errors.limit?.message ? <ErrorText>{errors.limit.message}</ErrorText> : null}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(60).duration(350)}>
+        <Animated.View entering={rise(60)}>
           <Label>Category</Label>
           <Controller
             control={control}
@@ -200,7 +201,7 @@ export default function BudgetModal() {
           {errors.categoryId?.message ? <ErrorText>{errors.categoryId.message}</ErrorText> : null}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(120).duration(350)} className="mt-6">
+        <Animated.View entering={rise(120)} className="mt-6">
           <Label>Resets on</Label>
           <View className="flex-row flex-wrap gap-2">
             {RESET_DAYS.map((d) => {
@@ -240,7 +241,7 @@ export default function BudgetModal() {
         </Animated.View>
 
         {editingId != null ? (
-          <Animated.View entering={FadeInDown.delay(180).duration(350)} className="mt-6">
+          <Animated.View entering={rise(180)} className="mt-6">
             <Label>Status</Label>
             <PressableScale
               accessibilityRole="switch"

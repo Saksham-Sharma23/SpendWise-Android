@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { ChevronRight, Plus, Receipt, UserPlus, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { Screen } from '@/components/layout/Screen';
 import { Avatar } from '@/components/ui/Avatar';
@@ -15,6 +15,7 @@ import { Swap } from '@/components/ui/Swap';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { formatINR } from '@/lib/money';
 import { fonts, useColors } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { useGroupsHub, type Hub, type HubGroup } from '../data/hooks';
 import { friendShort, friendStatus, yourStatus } from '../domain/wording';
 import { FloatingAction, RoundButton, toneColor } from './kit';
@@ -68,7 +69,7 @@ export function GroupsHub() {
           </View>
         ) : (
           <View className="gap-4 px-5" style={{ paddingBottom: 90 }}>
-            <Animated.View entering={FadeInDown.duration(360)}>
+            <Animated.View entering={rise()}>
               <Card variant="accent" className="p-5">
                 <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>Overall</Text>
                 <Text
@@ -89,7 +90,7 @@ export function GroupsHub() {
               </Card>
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(60).duration(360)}>
+            <Animated.View entering={rise(60)}>
               <Segmented<Tab>
                 value={tab}
                 onChange={setTab}

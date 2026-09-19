@@ -4,6 +4,7 @@ import { useCallback, useRef, type ReactNode, type RefObject } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { create } from 'zustand';
 
+import { usePerfFlags } from '@/lib/perfFlags';
 import { useThemeName } from '@/lib/theme';
 
 /**
@@ -90,7 +91,9 @@ export function BlurTarget({ children, style }: { children: ReactNode; style?: S
 export function GlassBlur({ radius = 12, overlay = 0.45 }: { radius?: number; overlay?: number }) {
   const target = useBlurTargetStore((s) => s.target);
   const theme = useThemeName();
-  if (!blur || !target) return null;
+  // Dev-only A/B for R5-4; always true in release (lib/perfFlags.ts).
+  const on = usePerfFlags((s) => s.blur);
+  if (!blur || !target || !on) return null;
   const BlurView = blur.BlurView;
   // Kept within 1–100: above 100 the native alpha byte overflows, and 0 hits
   // expo-blur's "nativePtr is null" crash.

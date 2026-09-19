@@ -5,6 +5,7 @@ import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeabl
 
 import { LedgerRow } from '@/components/ui/LedgerRow';
 import { PressableScale } from '@/components/ui/PressableScale';
+import { usePerfFlags } from '@/lib/perfFlags';
 import { fonts, useColors } from '@/lib/theme';
 import { type TransactionRow as Row } from '../data/sql';
 
@@ -49,6 +50,8 @@ function RightAction({ onPress }: { onPress: () => void }) {
 
 function TransactionRowBase({ row, onPress, onDelete, selected = false, selectionMode = false, onLongPress }: Props) {
   const colors = useColors();
+  // Dev-only A/B for R5-4; always true in release (lib/perfFlags.ts).
+  const swipeable = usePerfFlags((s) => s.swipeable);
   const body = (
     <PressableScale
       accessibilityRole="button"
@@ -66,7 +69,7 @@ function TransactionRowBase({ row, onPress, onDelete, selected = false, selectio
 
   // Swiping while multi-selecting would fight the selection gesture, so the
   // row is plain until selection mode ends.
-  if (selectionMode) return body;
+  if (selectionMode || !swipeable) return body;
 
   return (
     <ReanimatedSwipeable

@@ -4,7 +4,7 @@ import { transactions, type TransactionType } from '@/db/schema';
 import { allSync, type SyncDb } from '@/db/types';
 import { makeDedupeHash } from '@/lib/dedupe';
 import { nowISO, type ISODate } from '@/lib/dates';
-import { existingHashesQuery } from './sql';
+import { existingHashesQuery, recentlyDeletedWhere } from './sql';
 
 /**
  * The ledger's write cores. They take a sync `db`, so tests run them on
@@ -91,6 +91,17 @@ export function purgeTransactions(db: SyncDb, ids: readonly number[]): void {
       and(inArray(transactions.id, [...ids]), isNotNull(transactions.deletedAt), isNull(transactions.importBatchId)),
     )
     .run();
+}
+
+/**
+ * Empty Recently deleted: every row it holds, however many (B24). "Empty" used
+ * to pass the ids it had listed, and the list stops at DELETED_LIST_LIMIT, so
+ * after a large bulk delete it left the rest behind while saying it had
+ * removed everything. Returns how many rows went.
+ */
+export function purgeAllDeleted(db: SyncDb): number {
+  const result = db.delete(transactions).where(recentlyDeletedWhere()).run();
+  return Number((result as { changes?: number }).changes ?? 0);
 }
 
 /**

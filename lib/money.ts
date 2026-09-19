@@ -57,28 +57,25 @@ export function paiseToDecimalString(paise: number): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Hermes on Android delegates Intl to the platform's ICU, so 'en-IN' lakh
- * grouping normally works. But where ICU is unavailable it falls back to
- * en-US grouping SILENTLY — ₹124,500.00 instead of ₹1,24,500.00 — which is
- * exactly the kind of bug that ships unnoticed.
+ * Lakh/crore grouping of a non-negative whole number: the last three digits,
+ * then pairs. 12345678 -> '1,23,45,678'.
  *
- * So we assert it once, at module load, against a known input, and fall back
- * to manual grouping when the assertion fails.
+ * Plain string slicing, no regex or Intl, so it is a worklet (B18): the same
+ * code groups a figure on the UI thread while AnimatedAmount counts (B16).
  */
-const ICU_PROBE = 124500;
-const ICU_EXPECTED = '1,24,500';
-
-export const HAS_INDIAN_ICU: boolean = (() => {
-  try {
-    const formatted = ICU_PROBE.toLocaleString('en-IN', {
-      maximumFractionDigits: 0,
-    });
-    // Normalise any non-breaking or narrow spaces some ICU builds emit.
-    return formatted.replace(/[  ]/g, '') === ICU_EXPECTED;
-  } catch {
-    return false;
+function groupWhole(whole: number): string {
+  'worklet';
+  const digits = String(whole);
+  if (digits.length <= 3) return digits;
+  let out = digits.slice(-3);
+  let i = digits.length - 3;
+  while (i > 0) {
+    const from = Math.max(0, i - 2);
+    out = `${digits.slice(from, i)},${out}`;
+    i = from;
   }
-})();
+  return out;
+}
 
 /**
  * Manual lakh/crore grouping: last three digits, then pairs.
@@ -88,20 +85,8 @@ export function groupIndianManually(value: number, fractionDigits = 2): string {
   const negative = value < 0;
   const fixed = Math.abs(value).toFixed(fractionDigits);
   const parts = fixed.split('.');
-  const whole = parts[0] ?? '0';
+  const grouped = groupWhole(Number(parts[0] ?? '0'));
   const frac = parts[1];
-
-  let grouped: string;
-  if (whole.length <= 3) {
-    grouped = whole;
-  } else {
-    const lastThree = whole.slice(-3);
-    const rest = whole.slice(0, -3);
-    // Group the remaining digits in pairs, right to left.
-    const pairs = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',');
-    grouped = `${pairs},${lastThree}`;
-  }
-
   const body = frac ? `${grouped}.${frac}` : grouped;
   return negative ? `-${body}` : body;
 }
@@ -132,33 +117,36 @@ export interface FormatOptions {
  *
  *   formatINR(12450000)                 -> '₹1,24,500.00'
  *   formatINR(12450000, { whole: true }) -> '₹1,24,500'
+ *
+ * Always the manual grouping, on integers only (B18). It used to call
+ * `toLocaleString('en-IN')` whenever a start-up probe found ICU: slow on
+ * Hermes, not callable from a worklet, and a silent fallback to US grouping
+ * where ICU is missing. The probe now lives in lib/__tests__/money.test.ts,
+ * which checks this against ICU for 10,000 values.
+ *
+ * `whole` rounds half up, as `toLocaleString` did. A worklet: AnimatedAmount
+ * formats every frame of its count on the UI thread (B16).
  */
-export function formatINR(paise: number, opts: FormatOptions = {}): string {
-  const { whole = false, bare = false, signed = false } = opts;
+export function formatINR(paise: number, opts?: FormatOptions): string {
+  'worklet';
+  const whole = opts?.whole ?? false;
+  const bare = opts?.bare ?? false;
+  const signed = opts?.signed ?? false;
 
-  if (!Number.isFinite(paise)) paise = 0;
-
-  const rupees = fromPaise(Math.abs(Math.trunc(paise)));
-  const fractionDigits = whole ? 0 : 2;
+  const p = Number.isFinite(paise) ? Math.trunc(paise) : 0;
+  const abs = Math.abs(p);
 
   let body: string;
-  if (HAS_INDIAN_ICU) {
-    body = rupees.toLocaleString('en-IN', {
-      minimumFractionDigits: fractionDigits,
-      maximumFractionDigits: fractionDigits,
-    });
+  if (whole) {
+    body = groupWhole(Math.floor((abs + 50) / 100));
   } else {
-    body = groupIndianManually(rupees, fractionDigits);
+    const frac = abs % 100;
+    body = `${groupWhole(Math.floor(abs / 100))}.${frac < 10 ? '0' : ''}${frac}`;
   }
 
   const symbol = bare ? '' : '₹';
-  const isNegative = paise < 0;
-
-  if (signed) {
-    const sign = isNegative ? '-' : '+';
-    return `${sign}${symbol}${body}`;
-  }
-  return isNegative ? `-${symbol}${body}` : `${symbol}${body}`;
+  if (signed) return `${p < 0 ? '-' : '+'}${symbol}${body}`;
+  return p < 0 ? `-${symbol}${body}` : `${symbol}${body}`;
 }
 
 /**

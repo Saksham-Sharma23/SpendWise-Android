@@ -1,18 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
-import Animated, {
-  FadeIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 
 import { MONTHS_SHORT, formatMonthYear } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
 import { fonts, useColors } from '@/lib/theme';
+import { appear } from '@/lib/motion';
 import { smoothPath } from './geometry';
 
 export { smoothPath } from './geometry';
@@ -59,7 +53,7 @@ export function TrendChart({ points, mode, selectedIndex, onSelect, height = 150
     <View>
       <View style={{ height }} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
         {/* Re-keyed on mode so switching cross-fades instead of snapping. */}
-        <Animated.View key={mode} entering={FadeIn.duration(260)} style={{ flex: 1 }}>
+        <Animated.View key={mode} entering={appear()} style={{ flex: 1 }}>
           {mode === 'bar' ? (
             <View className="flex-1 flex-row items-end">
               {points.map((p, i) => (

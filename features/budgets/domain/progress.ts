@@ -93,9 +93,13 @@ export function budgetTotals(rows: BudgetProgress[]): BudgetTotals {
   return { limitPaise, spentPaise, remainingPaise: limitPaise - spentPaise, overCount, warningCount };
 }
 
-/** "Resets today" · "1 day left" · "12 days left". */
+/**
+ * "Last day" · "1 day left" · "12 days left". Zero days left is the cycle's
+ * last day — `cycleEnd` is inclusive and the budget resets the day after
+ * (B23), so it never "resets today".
+ */
 export function daysLeftLabel(daysLeft: number): string {
-  if (daysLeft <= 0) return 'Resets today';
+  if (daysLeft <= 0) return 'Last day';
   if (daysLeft === 1) return '1 day left';
   return `${daysLeft} days left`;
 }

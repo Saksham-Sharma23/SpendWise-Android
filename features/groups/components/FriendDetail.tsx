@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { ChevronRight, Handshake, Pencil, Receipt, UserX } from 'lucide-react-native';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { Screen } from '@/components/layout/Screen';
 import { Avatar } from '@/components/ui/Avatar';
@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { fonts, useColors } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { useGroupActivity, useGroupsHub } from '../data/hooks';
 import { friendShort, friendStatus } from '../domain/wording';
 import { ActivityList } from './ActivityList';
@@ -78,7 +79,7 @@ export function FriendDetail({ personId }: { personId: number }) {
       }
     >
       <View className="gap-4 px-5" style={{ paddingBottom: 32 }}>
-        <Animated.View entering={FadeInDown.duration(340)}>
+        <Animated.View entering={rise()}>
           <Card variant="accent" className="flex-row items-center gap-4 p-5">
             <Avatar name={person.name} size={56} />
             <View className="flex-1">
@@ -101,7 +102,7 @@ export function FriendDetail({ personId }: { personId: number }) {
           </Card>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(60).duration(340)} className="flex-row gap-2">
+        <Animated.View entering={rise(60)} className="flex-row gap-2">
           <ActionPill
             icon={Handshake}
             label="Settle up"
@@ -112,7 +113,7 @@ export function FriendDetail({ personId }: { personId: number }) {
         </Animated.View>
 
         {shared.length > 0 ? (
-          <Animated.View entering={FadeInDown.delay(120).duration(340)}>
+          <Animated.View entering={rise(120)}>
             <SectionLabel>Groups</SectionLabel>
             <Card>
               {shared.map((g, i) => {
@@ -157,7 +158,7 @@ export function FriendDetail({ personId }: { personId: number }) {
           </Animated.View>
         ) : null}
 
-        <Animated.View entering={FadeInDown.delay(180).duration(340)}>
+        <Animated.View entering={rise(180)}>
           <SectionLabel>Just the two of you</SectionLabel>
           {direct && activity.data.length > 0 ? (
             <ActivityList

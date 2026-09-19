@@ -1,11 +1,12 @@
 import { Check, Moon, Smartphone, Sun } from 'lucide-react-native';
 import { Text, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { Card } from '@/components/ui/Card';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { fonts, PALETTES, useColors, withAlpha, type ThemeName } from '@/lib/theme';
 import { useThemeStore, type ThemePreference } from '@/lib/themeStore';
+import { appear } from '@/lib/motion';
 
 /**
  * The appearance chooser: System, Light or Dark.
@@ -93,7 +94,7 @@ function ThemeChoice({
 
       <View className="mt-2.5 flex-row items-center gap-1">
         {selected ? (
-          <Animated.View entering={FadeIn.duration(150)}>
+          <Animated.View entering={appear()}>
             <Check size={12} color={colors.primary} strokeWidth={3} />
           </Animated.View>
         ) : (

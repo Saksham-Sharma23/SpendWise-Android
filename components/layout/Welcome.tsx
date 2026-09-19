@@ -1,8 +1,9 @@
 import { DatabaseBackup, FileSpreadsheet, Plus, ShieldCheck, type LucideIcon } from 'lucide-react-native';
 import { Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { Card } from '../ui/Card';
 import { PressableScale } from '../ui/PressableScale';
 
@@ -22,7 +23,7 @@ export function Welcome({ onAdd, onImport, onRestore, onSkip }: Props) {
   const colors = useColors();
   return (
     <View className="gap-3 px-5">
-      <Animated.View entering={FadeInDown.delay(40).duration(450)}>
+      <Animated.View entering={rise(40)}>
         <Card variant="accent" className="p-6">
           <View
             className="h-14 w-14 items-center justify-center rounded-2xl"
@@ -73,7 +74,7 @@ export function Welcome({ onAdd, onImport, onRestore, onSkip }: Props) {
         onPress={onRestore}
       />
 
-      <Animated.View entering={FadeInDown.delay(320).duration(400)} className="items-center">
+      <Animated.View entering={rise(320)} className="items-center">
         <PressableScale accessibilityRole="button" onPress={onSkip} className="px-4 py-3">
           <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>Skip for now</Text>
         </PressableScale>
@@ -101,7 +102,7 @@ function Door({
 }) {
   const colors = useColors();
   return (
-    <Animated.View entering={FadeInDown.delay(60 + index * 70).duration(420)}>
+    <Animated.View entering={rise(60 + index * 70)}>
       <PressableScale
         accessibilityRole="button"
         onPress={onPress}

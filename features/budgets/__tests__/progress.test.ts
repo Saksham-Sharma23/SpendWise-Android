@@ -1,4 +1,4 @@
-import { getCycleWindow } from '@/lib/dates';
+import { addDays, getCycleWindow } from '@/lib/dates';
 import { budgetStatus, budgetTotals, daysLeftLabel, WARNING_RATIO, type BudgetRow } from '../domain/progress';
 
 /**
@@ -118,8 +118,30 @@ describe('budgetTotals', () => {
 
 describe('daysLeftLabel', () => {
   it('reads naturally at the edges', () => {
-    expect(daysLeftLabel(0)).toBe('Resets today');
+    // Zero days left is the cycle's LAST day; the reset is tomorrow (B23).
+    expect(daysLeftLabel(0)).toBe('Last day');
     expect(daysLeftLabel(1)).toBe('1 day left');
     expect(daysLeftLabel(12)).toBe('12 days left');
+  });
+});
+
+describe('the reset date (B23)', () => {
+  it('is the day after the cycle ends, which is the next cycle’s first day', () => {
+    // Resets on the 1st: the September cycle ends on the 30th and resets on 1 Oct.
+    const sep = getCycleWindow(1, '2026-09-19');
+    expect(sep.end).toBe('2026-09-30');
+    expect(addDays(sep.end, 1)).toBe('2026-10-01');
+    expect(getCycleWindow(1, addDays(sep.end, 1)).start).toBe(addDays(sep.end, 1));
+
+    // Resets on the 15th: 15 Sep → 14 Oct, resetting on 15 Oct.
+    const mid = getCycleWindow(15, '2026-09-19');
+    expect(addDays(mid.end, 1)).toBe('2026-10-15');
+    expect(getCycleWindow(15, addDays(mid.end, 1)).start).toBe('2026-10-15');
+  });
+
+  it('shows "Last day" on the cycle’s last day, not "Resets today"', () => {
+    const last = getCycleWindow(1, '2026-09-30');
+    expect(last.daysLeft).toBe(0);
+    expect(daysLeftLabel(last.daysLeft)).toBe('Last day');
   });
 });

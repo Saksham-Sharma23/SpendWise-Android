@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, GitMerge, Trash2, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, ScrollView, Text, TextInput, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
@@ -10,6 +10,7 @@ import { CATEGORY_COLORS, CATEGORY_ICON_NAMES, CategoryIcon } from '@/components
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatCount } from '@/lib/money';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { appear, leave, reflow, rise } from '@/lib/motion';
 import { createCategory, deleteCategory, getCategory, mergeCategory, updateCategory } from '../data/actions';
 import { useCategoriesWithUsage } from '../data/hooks';
 import { MAX_CATEGORY_NAME } from '../data/writes';
@@ -132,8 +133,8 @@ export function CategoryEditor() {
         showsVerticalScrollIndicator={false}
       >
         {/* Live preview: exactly how it will look in the ledger. */}
-        <Animated.View entering={FadeInDown.duration(350)} className="items-center py-6">
-          <Animated.View layout={LinearTransition.springify()}>
+        <Animated.View entering={rise()} className="items-center py-6">
+          <Animated.View layout={reflow()}>
             <CategoryIcon icon={icon} color={color} size={76} />
           </Animated.View>
           <Text
@@ -227,7 +228,7 @@ export function CategoryEditor() {
               />
             ) : null}
             {merging ? (
-              <Animated.View entering={FadeIn} exiting={FadeOut} className="flex-row flex-wrap gap-2">
+              <Animated.View entering={appear()} exiting={leave()} className="flex-row flex-wrap gap-2">
                 {others.map((c) => (
                   <PressableScale
                     key={c.id}

@@ -1,6 +1,13 @@
 import Database from 'better-sqlite3';
 
-import { lastAppliedMillis, pendingMigrations, snapshotName, snapshotsToDelete } from '../migrate';
+import {
+  lastAppliedMillis,
+  pendingMigrations,
+  SHARE_PREFIX,
+  shareCopiesToDelete,
+  snapshotName,
+  snapshotsToDelete,
+} from '../migrate';
 import { connectionOf, journal, migrateSafely, migrateWithForeignKeysOn } from './support';
 
 /**
@@ -346,5 +353,26 @@ describe('pending detection and snapshot retention', () => {
     ];
     expect(snapshotsToDelete(names)).toEqual(['pre-migration-0003-20260901T000000.db']);
     expect(snapshotsToDelete(names.slice(0, 2))).toEqual([]);
+  });
+
+  // B27: every share from the boot-failure screen left a whole database behind.
+  it('prunes share copies to the newest, taking each copy’s -wal with it', () => {
+    const names = [
+      'spendwise-share-20260919T101500.db',
+      'spendwise-share-20260919T100000.db',
+      'spendwise-share-20260919T100000.db-wal',
+      'spendwise-share-20260918T090000.db',
+      'spendwise-unreadable-20260918T090000.db',
+      'spendwise-unreadable-20260918T090000.db-wal',
+    ];
+    expect(shareCopiesToDelete(names, 1).sort()).toEqual([
+      'spendwise-share-20260918T090000.db',
+      'spendwise-share-20260919T100000.db',
+      'spendwise-share-20260919T100000.db-wal',
+    ]);
+    // At a successful boot every share copy goes, but never a database moved aside by "Start fresh".
+    expect(shareCopiesToDelete(names, 0)).toHaveLength(4);
+    expect(shareCopiesToDelete(names, 0).every((n) => n.startsWith(SHARE_PREFIX))).toBe(true);
+    expect(shareCopiesToDelete(names, 5)).toEqual([]);
   });
 });

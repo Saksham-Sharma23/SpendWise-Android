@@ -1,10 +1,11 @@
 import { X } from 'lucide-react-native';
 import { ScrollView, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatDayMonth } from '@/lib/dates';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { appear, leave, reflow } from '@/lib/motion';
 import { DATE_PRESETS, NO_DATES, type TransactionFilters } from '../data/filters';
 
 interface Props {
@@ -75,7 +76,7 @@ export function FilterChips({ filters, categories, onChange, onClearSearch, onCl
   if (chips.length === 0) return null;
 
   return (
-    <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+    <Animated.View entering={appear()} exiting={leave()}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -83,7 +84,7 @@ export function FilterChips({ filters, categories, onChange, onClearSearch, onCl
         keyboardShouldPersistTaps="handled"
       >
         {chips.map((chip) => (
-          <Animated.View key={chip.key} layout={LinearTransition.springify()} entering={FadeIn} exiting={FadeOut}>
+          <Animated.View key={chip.key} layout={reflow()} entering={appear()} exiting={leave()}>
             <PressableScale
               accessibilityRole="button"
               accessibilityLabel={`Remove filter ${chip.label}`}

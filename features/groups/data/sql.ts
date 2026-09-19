@@ -80,33 +80,63 @@ export function pairwiseQuery(db: AnyDb, groupId: number | null) {
     .orderBy(sql`x.group_id, x.from_id, x.to_id`);
 }
 
+/** A group row with its member count and the date of its latest activity. */
+const groupColumns = {
+  id: splitGroups.id,
+  name: splitGroups.name,
+  icon: splitGroups.icon,
+  simplifyDebts: splitGroups.simplifyDebts,
+  directPersonId: splitGroups.directPersonId,
+  createdAt: splitGroups.createdAt,
+  // Written as `split_groups.id`, NOT ${splitGroups.id}: in a single-table
+  // select Drizzle renders a column unqualified ("id"), and inside these
+  // subqueries SQLite binds that to the INNER table's id — counting
+  // group_members whose own id equals their group_id.
+  memberCount: sql<number>`(SELECT count(*) FROM group_members m WHERE m.group_id = split_groups.id AND m.deleted_at IS NULL)`,
+  lastActivity: sql<string | null>`max(
+    coalesce((SELECT max(date) FROM split_expenses e WHERE e.group_id = split_groups.id AND e.deleted_at IS NULL), ''),
+    coalesce((SELECT max(date) FROM settlements s WHERE s.group_id = split_groups.id AND s.deleted_at IS NULL), '')
+  )`,
+};
+
 /**
  * Every live group with its member count and the date of its latest activity.
  * Includes the hidden 1:1 groups (`directPersonId` set) — the hub filters
  * them out of the Groups list but needs them for friend balances.
  */
 export function groupsQuery(db: AnyDb) {
+  return db.select(groupColumns).from(splitGroups).where(isNull(splitGroups.deletedAt)).orderBy(asc(splitGroups.name));
+}
+
+/** One live group, the same columns as `groupsQuery`. Empty if it doesn't exist or was deleted. */
+export function groupQuery(db: AnyDb, groupId: number) {
   return db
-    .select({
-      id: splitGroups.id,
-      name: splitGroups.name,
-      icon: splitGroups.icon,
-      simplifyDebts: splitGroups.simplifyDebts,
-      directPersonId: splitGroups.directPersonId,
-      createdAt: splitGroups.createdAt,
-      // Written as `split_groups.id`, NOT ${splitGroups.id}: in a single-table
-      // select Drizzle renders a column unqualified ("id"), and inside these
-      // subqueries SQLite binds that to the INNER table's id — counting
-      // group_members whose own id equals their group_id.
-      memberCount: sql<number>`(SELECT count(*) FROM group_members m WHERE m.group_id = split_groups.id AND m.deleted_at IS NULL)`,
-      lastActivity: sql<string | null>`max(
-        coalesce((SELECT max(date) FROM split_expenses e WHERE e.group_id = split_groups.id AND e.deleted_at IS NULL), ''),
-        coalesce((SELECT max(date) FROM settlements s WHERE s.group_id = split_groups.id AND s.deleted_at IS NULL), '')
-      )`,
-    })
+    .select(groupColumns)
     .from(splitGroups)
-    .where(isNull(splitGroups.deletedAt))
-    .orderBy(asc(splitGroups.name));
+    .where(and(eq(splitGroups.id, groupId), isNull(splitGroups.deletedAt)))
+    .limit(1);
+}
+
+/**
+ * Everyone who has ever been in a group, removed members and removed friends
+ * included: the names its activity and balances can mention. Only members can
+ * be on an expense or a settlement, so nobody else can appear there.
+ */
+export function groupPeopleQuery(db: AnyDb, groupId: number) {
+  return db
+    .selectDistinct({ id: people.id, name: people.name, isSelf: people.isSelf, deletedAt: people.deletedAt })
+    .from(groupMembers)
+    .innerJoin(people, eq(people.id, groupMembers.personId))
+    .where(eq(groupMembers.groupId, groupId));
+}
+
+/** One person by id, removed friends included. */
+export function personQuery(db: AnyDb, personId: number) {
+  return db
+    .select({ id: people.id, name: people.name, isSelf: people.isSelf, deletedAt: people.deletedAt })
+    .from(people)
+    .where(eq(people.id, personId))
+    .limit(1);
 }
 
 /** Everyone, including you and removed friends — names for any id a balance mentions. */

@@ -28,6 +28,13 @@ import { useColors, useThemeName } from '@/lib/theme';
 void SplashScreen.preventAutoHideAsync();
 
 /**
+ * Full-screen forms rise from the bottom, as iOS modals do, rather than
+ * pushing in from the side: a form is a task you step into and dismiss, not a
+ * place further along. (The screen default is the sideways iOS push.)
+ */
+const MODAL = { presentation: 'modal', animation: 'slide_from_bottom' } as const;
+
+/**
  * The root. The ONE place in app/ allowed to touch db/ (CLAUDE.md #10 exception):
  * nothing else may mount until `bootDatabase()` says the database is ready.
  * Boot order and failure handling live in db/boot.ts.
@@ -95,12 +102,16 @@ function RootLayoutInner() {
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: colors.background },
-            animation: 'fade_from_bottom',
+            // The iOS push: the new screen slides over from the right while the
+            // one beneath drifts left and dims, so you can see where you came
+            // from. Android's default fade-from-bottom read as screens
+            // appearing out of nowhere.
+            animation: 'ios_from_right',
           }}
         >
           <Stack.Screen name="(tabs)" />
           {/* A group is not a route: each modal is registered by its full name. */}
-          <Stack.Screen name="(modals)/transaction" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="(modals)/transaction" options={MODAL} />
           {/* A native bottom sheet: it slides over the ledger, so the list you
               are filtering stays visible behind it. */}
           <Stack.Screen
@@ -114,14 +125,14 @@ function RootLayoutInner() {
               contentStyle: { backgroundColor: colors.card },
             }}
           />
-          <Stack.Screen name="(modals)/category" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="(modals)/budget" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="(modals)/subscription" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="(modals)/category" options={MODAL} />
+          <Stack.Screen name="(modals)/budget" options={MODAL} />
+          <Stack.Screen name="(modals)/subscription" options={MODAL} />
           {/* Groups: full-screen forms, and who-owes-whom as a sheet over the group. */}
-          <Stack.Screen name="(modals)/group" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="(modals)/friend" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="(modals)/split-expense" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="(modals)/settle-up" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="(modals)/group" options={MODAL} />
+          <Stack.Screen name="(modals)/friend" options={MODAL} />
+          <Stack.Screen name="(modals)/split-expense" options={MODAL} />
+          <Stack.Screen name="(modals)/settle-up" options={MODAL} />
           <Stack.Screen
             name="(modals)/balances"
             options={{

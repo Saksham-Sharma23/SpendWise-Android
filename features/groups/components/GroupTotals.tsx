@@ -1,7 +1,7 @@
 import { ChartPie } from 'lucide-react-native';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { Donut } from '@/components/charts/Donut';
 import { Screen } from '@/components/layout/Screen';
@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { categoryColor } from '@/lib/categoryColor';
 import { formatINR } from '@/lib/money';
 import { fonts, useColors } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { useGroup, useGroupStats } from '../data/hooks';
 import { SectionLabel } from './kit';
 
@@ -61,7 +62,7 @@ export function GroupTotals({ groupId }: { groupId: number }) {
   return (
     <Screen back title="Totals" subtitle={name}>
       <View className="gap-4 px-5" style={{ paddingBottom: 32 }}>
-        <Animated.View entering={FadeInDown.duration(340)}>
+        <Animated.View entering={rise()}>
           <Card variant="accent" className="p-5">
             <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>Total group spending</Text>
             <Text
@@ -85,7 +86,7 @@ export function GroupTotals({ groupId }: { groupId: number }) {
           </Card>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(60).duration(340)}>
+        <Animated.View entering={rise(60)}>
           <Card className="items-center p-5">
             <View className="w-full">
               <SectionLabel>By category</SectionLabel>
@@ -139,7 +140,7 @@ export function GroupTotals({ groupId }: { groupId: number }) {
           </Card>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(120).duration(340)}>
+        <Animated.View entering={rise(120)}>
           <Card className="p-5">
             <SectionLabel>Each person’s share</SectionLabel>
             <View className="gap-3">

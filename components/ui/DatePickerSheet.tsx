@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { WEEKDAY_INITIALS, clampDate, inMonth, monthGrid, monthRange, openingMonth } from '@/lib/calendar';
 import { MONTHS_SHORT, formatDayMonth, type ISODate } from '@/lib/dates';
-import { useMotion } from '@/lib/motion';
+import { appear, leave, rise } from '@/lib/motion';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
 import { PressableScale } from './PressableScale';
 
@@ -40,7 +40,6 @@ const MONTH_CHIP = 78;
  */
 export function DatePickerSheet({ visible, value, today, min, max, title = 'Pick a date', onSelect, onClose }: Props) {
   const colors = useColors();
-  const motion = useMotion();
   const insets = useSafeAreaInsets();
 
   // Whole years, so the bounds are always real dates (29 Feb five years ago
@@ -70,11 +69,7 @@ export function DatePickerSheet({ visible, value, today, min, max, title = 'Pick
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <Animated.View
-        entering={FadeIn.duration(motion.base)}
-        exiting={FadeOut.duration(motion.quick)}
-        style={{ flex: 1 }}
-      >
+      <Animated.View entering={appear()} exiting={leave()} style={{ flex: 1 }}>
         {/* Tapping the scrim dismisses, like every other sheet in the app. */}
         <Pressable
           accessibilityRole="button"
@@ -83,7 +78,7 @@ export function DatePickerSheet({ visible, value, today, min, max, title = 'Pick
           style={{ flex: 1, backgroundColor: withAlpha(colors.background, 0.72) }}
         />
         <Animated.View
-          entering={FadeInDown.duration(motion.swap)}
+          entering={rise()}
           style={{
             position: 'absolute',
             left: 0,

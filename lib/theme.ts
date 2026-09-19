@@ -404,17 +404,41 @@ export function accent(hue: AccentHue): string {
 /** Every decorative hue, for the palette test. */
 export const ACCENTS = ACCENT_HUES;
 
-/** Springs shared by every pressable, so the whole app has one feel. */
+/**
+ * Springs shared across the app, so it has one feel: things move with intent,
+ * arrive and stop. Every one is critically damped (`dampingRatio: 1`), so none
+ * overshoots its target — a spring only keeps what a timing curve can't, the
+ * finger's velocity when a gesture hands over to it.
+ *
+ * Duration-based (Reanimated 4): `duration` is the time the eye reads; the
+ * last imperceptible fraction runs about half as long again.
+ *
+ * These used to be stiffness/damping pairs, and most were tuned for
+ * Reanimated 3, where mass defaulted to 1. Reanimated 4 defaults it to 4, so a
+ * config without a mass became far bouncier than written: `settle` overshot
+ * by about 37%, the group sheets by 29% of the screen.
+ */
 export const springs = {
-  press: { damping: 18, stiffness: 320, mass: 0.6 },
-  settle: { damping: 16, stiffness: 180 },
-  /**
-   * A small element travelling a short, known distance — the segmented
-   * control's pill. Stiffer and better damped than `settle`: it arrives
-   * quickly and stops, because a pill that wobbles under a label reads as
-   * sloppy rather than playful.
-   */
-  pill: { damping: 21, stiffness: 300, mass: 0.7 },
+  /** A finger pressing down and letting go: quick and exact. */
+  press: { dampingRatio: 1, duration: 160 },
+  /** Coming back to rest once a gesture ends. */
+  settle: { dampingRatio: 1, duration: 300 },
+  /** A small element travelling a short, known distance: the segmented control's pill. */
+  pill: { dampingRatio: 1, duration: 280 },
+} as const;
+
+/**
+ * Easing curves as cubic-bezier control points. lib/motion.ts builds them
+ * into Reanimated easings (`easings`); they live here as plain numbers so this
+ * file stays free of React Native.
+ */
+export const curves = {
+  /** Arriving: moves off quickly and settles gently (ease-out quint). The default for anything entering. */
+  enter: [0.22, 1, 0.36, 1],
+  /** Leaving: gathers speed and goes, so the eye isn't asked to follow it out. */
+  exit: [0.3, 0, 0.8, 0.15],
+  /** Changing in place, from one state to another. */
+  standard: [0.4, 0, 0.2, 1],
 } as const;
 
 /**

@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import type { SQLiteStatement } from 'expo-sqlite';
 
-import { onBeforeClose, sqliteDb } from './connection';
+import { onBeforeClose, openReadConnection } from './connection';
 import * as schema from './schema';
 
 /**
@@ -14,8 +14,15 @@ import * as schema from './schema';
  * (`executeForRawResultAsync`), which does the SQL work on a native worker
  * thread. Only the finished rows cross back to JS.
  *
- * Read-only by construction: a write through this handle throws. Writes stay
- * synchronous on db/client.ts inside `writeTx`, where atomicity needs them.
+ * Read-only by construction: a write through this handle throws, and its
+ * connection is `query_only`. Writes stay synchronous on db/client.ts inside
+ * `writeTx`, where atomicity needs them.
+ *
+ * It runs on its OWN connection (db/connection.ts `openReadConnection`), so a
+ * read never waits for a write or makes one wait, and never sees a write that
+ * hasn't committed (B22). Each query is its own snapshot: a load that runs
+ * several queries at once can straddle a commit, and the change event that
+ * commit raises re-runs it a moment later.
  *
  * Prepared statements are cached by SQL text (LRU). A statement is stepped by
  * one query at a time: if two identical queries overlap, the second prepares
@@ -69,10 +76,10 @@ async function execute(sql: string, params: Params): Promise<unknown[][]> {
     cache.delete(sql);
     cache.set(sql, entry);
   } else if (entry?.busy) {
-    entry = { stmt: await sqliteDb.prepareAsync(sql), busy: false };
+    entry = { stmt: await openReadConnection().prepareAsync(sql), busy: false };
     owned = true;
   } else {
-    entry = { stmt: await sqliteDb.prepareAsync(sql), busy: false };
+    entry = { stmt: await openReadConnection().prepareAsync(sql), busy: false };
     cache.set(sql, entry);
     evictOldestIdle();
   }

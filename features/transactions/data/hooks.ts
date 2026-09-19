@@ -10,6 +10,7 @@ import type { LedgerKey, TransactionFilters } from './filters';
 import {
   atOrNewerQuery,
   betweenQuery,
+  deletedCountQuery,
   deletedTransactionsQuery,
   keysForQuery,
   ledgerQuery,
@@ -261,12 +262,22 @@ export function useTransactionSummary(filters: TransactionFilters) {
   );
 }
 
-const EMPTY_DELETED: DeletedTransactionRow[] = [];
+export interface DeletedTransactions {
+  /** The newest DELETED_LIST_LIMIT deletions. */
+  rows: DeletedTransactionRow[];
+  /** Every row Recently deleted holds — what "Empty" removes (B24). */
+  total: number;
+}
+
+const EMPTY_DELETED: DeletedTransactions = { rows: [], total: 0 };
 
 /** Soft-deleted transactions still inside the retention window, for Settings → Recently deleted. */
 export function useDeletedTransactions() {
   return useDbQuery(
-    async () => (await deletedTransactionsQuery(readDb)) as DeletedTransactionRow[],
+    async (): Promise<DeletedTransactions> => {
+      const [rows, [count]] = await Promise.all([deletedTransactionsQuery(readDb), deletedCountQuery(readDb)]);
+      return { rows: rows as DeletedTransactionRow[], total: count?.n ?? 0 };
+    },
     ['transactions', 'categories'],
     [],
     EMPTY_DELETED,

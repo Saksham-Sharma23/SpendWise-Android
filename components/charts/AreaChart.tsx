@@ -3,8 +3,6 @@ import { Text, View, type AccessibilityActionEvent, type LayoutChangeEvent } fro
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
-  FadeIn,
-  FadeOut,
   useAnimatedProps,
   useAnimatedStyle,
   useDerivedValue,
@@ -17,7 +15,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { MONTHS_SHORT, formatMonthYear } from '@/lib/dates';
 import { formatINR, formatINRCompact } from '@/lib/money';
-import { useMotion } from '@/lib/motion';
+import { appear, leave, useMotion } from '@/lib/motion';
 import { fonts, useColors } from '@/lib/theme';
 import { labelStep, niceCeiling, pointX, resample, scrubIndex, smoothPath } from './geometry';
 import type { TrendPoint } from './TrendChart';
@@ -344,8 +342,8 @@ export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Pro
               <View pointerEvents="none" style={{ position: 'absolute', left: PAD_X, top: 0 }}>
                 <Animated.Text
                   key={series.top}
-                  entering={FadeIn.duration(motion.base)}
-                  exiting={FadeOut.duration(motion.quick)}
+                  entering={appear()}
+                  exiting={leave()}
                   style={{ position: 'absolute', color: colors.subtle, fontFamily: fonts.medium, fontSize: 10 }}
                 >
                   {formatINRCompact(series.top)}
@@ -390,8 +388,8 @@ export function AreaChart({ points, selectedIndex, onSelect, height = 190 }: Pro
         {width > 0 ? (
           <Animated.View
             key={n}
-            entering={FadeIn.duration(motion.base)}
-            exiting={FadeOut.duration(motion.quick)}
+            entering={appear()}
+            exiting={leave()}
             style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
           >
             {points.map((p, i) =>

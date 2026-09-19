@@ -2,7 +2,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Plus, Tags } from 'lucide-react-native';
 import { Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Screen } from '@/components/layout/Screen';
@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatCount } from '@/lib/money';
 import { fonts, useColors } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { useCategoriesWithUsageResult } from '../data/hooks';
 import type { CategoryWithUsage } from '../data/sql';
 
@@ -74,7 +75,7 @@ export function CategoryList() {
 function Row({ item, index, onPress }: { item: CategoryWithUsage; index: number; onPress: () => void }) {
   const colors = useColors();
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index, 12) * 30).duration(320)}>
+    <Animated.View entering={rise(Math.min(index, 12) * 30)}>
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`Edit ${item.name}`}

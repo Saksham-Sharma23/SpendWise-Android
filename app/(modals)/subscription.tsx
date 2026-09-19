@@ -4,7 +4,7 @@ import { Bell, CalendarDays, ChevronLeft, ChevronRight, Trash2, X } from 'lucide
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, ScrollView, Text, TextInput, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
@@ -29,6 +29,7 @@ import { addDays, addMonthsClamped, formatDayMonth, getNextRenewal, toMonthlyPai
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '@/lib/money';
 import { useToday } from '@/lib/today';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 
 /**
  * Add / edit a subscription.
@@ -149,7 +150,7 @@ export default function SubscriptionModal() {
       >
         {/* Name and amount together: the icon updates as the name is typed,
             which is the first sign the deterministic look is doing anything. */}
-        <Animated.View entering={FadeInDown.duration(350)} className="mt-2 flex-row items-center gap-3">
+        <Animated.View entering={rise()} className="mt-2 flex-row items-center gap-3">
           <CategoryIcon icon={icon} color={color} size={52} />
           <Controller
             control={control}
@@ -177,7 +178,7 @@ export default function SubscriptionModal() {
         </Animated.View>
         {errors.name?.message ? <ErrorText>{errors.name.message}</ErrorText> : null}
 
-        <Animated.View entering={FadeInDown.delay(60).duration(350)} className="items-center py-7">
+        <Animated.View entering={rise(60)} className="items-center py-7">
           <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>How much per charge?</Text>
           <Controller
             control={control}
@@ -217,7 +218,7 @@ export default function SubscriptionModal() {
           {errors.amount?.message ? <ErrorText>{errors.amount.message}</ErrorText> : null}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(120).duration(350)}>
+        <Animated.View entering={rise(120)}>
           <Label>Billing cycle</Label>
           <Controller
             control={control}
@@ -238,7 +239,7 @@ export default function SubscriptionModal() {
           />
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(180).duration(350)} className="mt-6">
+        <Animated.View entering={rise(180)} className="mt-6">
           <Label>Charged on</Label>
           <View
             className="flex-row items-center rounded-2xl border p-1.5"
@@ -299,7 +300,7 @@ export default function SubscriptionModal() {
           {errors.anchorDate?.message ? <ErrorText>{errors.anchorDate.message}</ErrorText> : null}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(240).duration(350)} className="mt-6">
+        <Animated.View entering={rise(240)} className="mt-6">
           <Label>Category</Label>
           <Controller
             control={control}
@@ -340,7 +341,7 @@ export default function SubscriptionModal() {
           />
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(300).duration(350)} className="mt-6">
+        <Animated.View entering={rise(300)} className="mt-6">
           <Label>Remind me</Label>
           <View className="flex-row flex-wrap gap-2">
             {[0, 1, 2, 3, 7].map((d) => {

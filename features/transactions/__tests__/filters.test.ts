@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { SQLiteSyncDialect } from 'drizzle-orm/sqlite-core';
 import { desc, eq } from 'drizzle-orm';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -160,6 +161,18 @@ describe('transaction filters', () => {
 
   it('searches the category name, not just the note', () => {
     expect(run(db, { search: 'transport' })).toEqual([2]);
+  });
+
+  /** R5-3: case-insensitivity now comes from LIKE itself, not from lower() on every row. */
+  it('ignores ASCII case in mixed-case input, without lower() in the SQL', () => {
+    expect(run(db, { search: 'zOmAtO' })).toEqual([1]);
+    expect(run(db, { search: 'TRANSPORT' })).toEqual([2]);
+    expect(run(db, { search: 'fOOD &' })).toEqual([1]);
+    const where = buildWhere({ search: 'x' });
+    if (!where) throw new Error('a search must produce a WHERE');
+    const text = new SQLiteSyncDialect().sqlToQuery(where).sql;
+    expect(text).not.toMatch(/lower\(/i);
+    expect(text).toMatch(/LIKE \? ESCAPE '\\'/);
   });
 
   it('escapes % so it matches a literal percent, not everything', () => {

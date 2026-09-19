@@ -6,6 +6,8 @@ import { splitEqual } from '../domain/split';
 import {
   activityQuery,
   groupCategoryQuery,
+  groupPeopleQuery,
+  groupQuery,
   groupTotalsQuery,
   groupsQuery,
   memberShareQuery,
@@ -19,10 +21,12 @@ import {
   deleteExpense,
   deleteGroup,
   deletePerson,
+  deleteSettlements,
   getOrCreateDirectGroup,
   recordSettlement,
   recordSettlements,
   restoreExpense,
+  restoreGroup,
   saveExpense,
   selfId,
   updateGroup,
@@ -487,5 +491,153 @@ describe('balances cannot vanish (B14)', () => {
     restoreExpense(ctx.w, wifi!.id);
 
     expect(await netsQuery(ctx.r, group)).toEqual(before);
+  });
+});
+
+/**
+ * B21 — the mirror image of B14: deleting or editing an expense, or deleting
+ * a settlement, must not move a balance onto someone who has left.
+ *
+ * Rahul owes you ₹1,000, pays it back, and at zero is removed from the group.
+ * Deleting the old expense used to leave him owed ₹1,000 — and nothing could
+ * clear it: a settlement needs both people to be members, and he can't be
+ * removed as a friend while he has a balance.
+ */
+describe('balances cannot land on someone who has left (B21)', () => {
+  let ctx: Awaited<ReturnType<typeof setup>>;
+  let group: number;
+  let rahul: number;
+  let expense: number;
+  let payback: number;
+
+  beforeEach(async () => {
+    ctx = await setup();
+    rahul = createPerson(ctx.w, 'Rahul');
+    group = createGroup(ctx.w, { name: 'Flat', icon: 'house', simplifyDebts: true, memberIds: [rahul] });
+    expense = saveExpense(ctx.w, {
+      ...equalExpense(group, ctx.me, 1_000_00, [rahul], 'Wifi'),
+      splitMethod: 'exact',
+      shares: [{ personId: rahul, paise: 1_000_00, input: 1_000_00 }],
+    });
+    payback = recordSettlement(ctx.w, {
+      groupId: group,
+      from: rahul,
+      to: ctx.me,
+      amountPaise: 1_000_00,
+      date: '2026-09-11',
+      note: null,
+    });
+    updateGroup(ctx.w, group, { name: 'Flat', icon: 'house', simplifyDebts: true, memberIds: [] });
+  });
+  afterEach(() => ctx.sqlite.close());
+
+  it('starts square, with Rahul gone', async () => {
+    expect(await netsQuery(ctx.r, group)).toEqual([]);
+    expect((await membersQuery(ctx.r, group)).map((m) => m.id)).toEqual([ctx.me]);
+  });
+
+  it('refuses to delete the expense, and changes nothing', async () => {
+    expect(() => deleteExpense(ctx.w, expense)).toThrow(UserFacingError);
+    expect(() => deleteExpense(ctx.w, expense)).toThrow(
+      /Rahul is no longer in this group, so that expense can’t be deleted/,
+    );
+    expect(await netsQuery(ctx.r, group)).toEqual([]);
+  });
+
+  it('refuses to delete the settlement, and changes nothing', async () => {
+    expect(() => deleteSettlements(ctx.w, [payback])).toThrow(
+      /Rahul is no longer in this group, so that settlement can’t be deleted/,
+    );
+    expect(await netsQuery(ctx.r, group)).toEqual([]);
+  });
+
+  it('refuses to edit the expense, and keeps its payers and shares', async () => {
+    const edit: ExpenseInput = { ...equalExpense(group, ctx.me, 1_000_00, [ctx.me], 'Wifi') };
+    expect(() => saveExpense(ctx.w, edit, expense)).toThrow(/so that expense can’t be changed/);
+
+    const stored = ctx.sqlite.prepare('SELECT person_id, owed_paise FROM split_expense_shares WHERE expense_id = ?');
+    expect(stored.all(expense)).toEqual([{ person_id: rahul, owed_paise: 1_000_00 }]);
+    expect(await netsQuery(ctx.r, group)).toEqual([]);
+  });
+
+  it('still deletes and edits while everyone is present', async () => {
+    updateGroup(ctx.w, group, { name: 'Flat', icon: 'house', simplifyDebts: true, memberIds: [rahul] });
+
+    saveExpense(ctx.w, { ...equalExpense(group, ctx.me, 1_000_00, [ctx.me, rahul], 'Wifi') }, expense);
+    deleteSettlements(ctx.w, [payback]);
+    deleteExpense(ctx.w, expense);
+
+    expect(await netsQuery(ctx.r, group)).toEqual([]);
+  });
+
+  it('refuses to delete an expense twice', () => {
+    updateGroup(ctx.w, group, { name: 'Flat', icon: 'house', simplifyDebts: true, memberIds: [rahul] });
+    deleteExpense(ctx.w, expense);
+    expect(() => deleteExpense(ctx.w, expense)).toThrow(/no longer exists/);
+  });
+});
+
+describe('restoring a group whose member was removed as a friend', () => {
+  it('refuses, naming them, and leaves the group deleted', async () => {
+    const ctx = await setup();
+    const rahul = createPerson(ctx.w, 'Rahul');
+    const group = createGroup(ctx.w, { name: 'Flat', icon: 'house', simplifyDebts: true, memberIds: [rahul] });
+
+    // A square group can be deleted, and then Rahul is in no LIVE group, so he can be removed.
+    deleteGroup(ctx.w, group);
+    deletePerson(ctx.w, rahul);
+
+    expect(() => restoreGroup(ctx.w, group)).toThrow(/Rahul is no longer one of your friends/);
+    expect((await groupsQuery(ctx.r)).find((g) => g.id === group)).toBeUndefined();
+    ctx.sqlite.close();
+  });
+
+  it('restores a group whose members are all still friends', async () => {
+    const ctx = await setup();
+    const rahul = createPerson(ctx.w, 'Rahul');
+    const group = createGroup(ctx.w, { name: 'Flat', icon: 'house', simplifyDebts: true, memberIds: [rahul] });
+
+    deleteGroup(ctx.w, group);
+    restoreGroup(ctx.w, group);
+
+    expect((await groupsQuery(ctx.r)).find((g) => g.id === group)).toBeDefined();
+    ctx.sqlite.close();
+  });
+});
+
+describe('one group, one query (B28)', () => {
+  it('groupQuery returns the same row groupsQuery lists, and nothing once deleted', async () => {
+    const ctx = await setup();
+    const rahul = createPerson(ctx.w, 'Rahul');
+    const group = createGroup(ctx.w, { name: 'Flat', icon: 'house', simplifyDebts: true, memberIds: [rahul] });
+    saveExpense(ctx.w, equalExpense(group, ctx.me, 1_000_00, [ctx.me, rahul], 'Wifi'));
+
+    const fromList = (await groupsQuery(ctx.r)).find((g) => g.id === group);
+    expect(await groupQuery(ctx.r, group)).toEqual([fromList]);
+
+    recordSettlement(ctx.w, {
+      groupId: group,
+      from: rahul,
+      to: ctx.me,
+      amountPaise: 500_00,
+      date: '2026-09-11',
+      note: null,
+    });
+    deleteGroup(ctx.w, group);
+    expect(await groupQuery(ctx.r, group)).toEqual([]);
+    ctx.sqlite.close();
+  });
+
+  it("groupPeopleQuery names everyone the group's history can mention, removed members included", async () => {
+    const ctx = await setup();
+    const rahul = createPerson(ctx.w, 'Rahul');
+    const priya = createPerson(ctx.w, 'Priya');
+    createPerson(ctx.w, 'Stranger');
+    const group = createGroup(ctx.w, { name: 'Flat', icon: 'house', simplifyDebts: true, memberIds: [rahul, priya] });
+    updateGroup(ctx.w, group, { name: 'Flat', icon: 'house', simplifyDebts: true, memberIds: [priya] });
+
+    const names = (await groupPeopleQuery(ctx.r, group)).map((p) => p.name).sort();
+    expect(names).toEqual(['Priya', 'Rahul', 'You'].sort());
+    ctx.sqlite.close();
   });
 });

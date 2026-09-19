@@ -142,7 +142,7 @@ components/
 db/                          the database itself — nothing app-level
   schema.ts                  THE source of truth for every table and type
   types.ts                   SyncDb, AnyDb and allSync(): the one definition of a handle's type
-  connection.ts              the one reopenable connection (proxy), pragmas, WAL checkpoint
+  connection.ts              two reopenable connections: write (proxy) and read (query_only); pragmas, WAL checkpoint
   client.ts                  sync Drizzle handle `db`: writes + tiny point reads; `writeTx`
   read.ts                    async `readDb` (sqlite-proxy on the native thread): every screen read
   tx.ts                      runWriteTx: refuses async callbacks (pure, tested)

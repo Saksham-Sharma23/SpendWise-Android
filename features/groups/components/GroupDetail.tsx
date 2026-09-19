@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { ChartPie, Handshake, Receipt, Scale, Settings2, Users } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { Screen } from '@/components/layout/Screen';
 import { AvatarStack } from '@/components/ui/Avatar';
@@ -11,6 +11,7 @@ import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { fonts, useColors } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { useGroup, useGroupActivity } from '../data/hooks';
 import { friendStatus, yourStatus } from '../domain/wording';
 import { ActivityList } from './ActivityList';
@@ -83,7 +84,7 @@ export function GroupDetail({ groupId }: { groupId: number }) {
         }
       >
         <View className="gap-4 px-5" style={{ paddingBottom: 90 }}>
-          <Animated.View entering={FadeInDown.duration(340)}>
+          <Animated.View entering={rise()}>
             <Card variant="accent" className="p-5">
               <View className="flex-row items-center gap-3">
                 <CategoryIcon
@@ -127,7 +128,7 @@ export function GroupDetail({ groupId }: { groupId: number }) {
             </Card>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(60).duration(340)}>
+          <Animated.View entering={rise(60)}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               <ActionPill
                 icon={Handshake}
@@ -148,7 +149,7 @@ export function GroupDetail({ groupId }: { groupId: number }) {
             </ScrollView>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(120).duration(340)}>
+          <Animated.View entering={rise(120)}>
             {empty ? (
               <EmptyState
                 icon={Receipt}

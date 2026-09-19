@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { CircleAlert, Receipt, Search, SearchX, Share2, SlidersHorizontal, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
@@ -18,6 +18,7 @@ import { categoryColor } from '@/lib/categoryColor';
 import { formatMonthYear } from '@/lib/dates';
 import { formatCount } from '@/lib/money';
 import { fonts, useColors } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { exportTransactionsCsv } from '../data/export';
 import { useFilterStore } from '../filterStore';
 import { hasActiveFilters, type TransactionFilters } from '../data/filters';
@@ -289,7 +290,7 @@ export function Ledger() {
       }
     >
       <View className="gap-3 px-5 pb-2">
-        <Animated.View entering={FadeInDown.delay(40).duration(400)}>
+        <Animated.View entering={rise(40)}>
           <Card className="flex-row py-4">
             <SummaryFigure label="Income" paise={summary?.incomePaise ?? 0} color={colors.income} />
             <View style={{ width: 1, backgroundColor: colors.border }} />
@@ -299,7 +300,7 @@ export function Ledger() {
           </Card>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(90).duration(400)} className="gap-3">
+        <Animated.View entering={rise(90)} className="gap-3">
           <View
             className="flex-row items-center rounded-full border px-4"
             style={{ backgroundColor: colors.card, borderColor: colors.border, height: 48 }}
@@ -446,6 +447,7 @@ function SummaryFigure({ label, paise, color }: { label: string; paise: number; 
       <AnimatedAmount
         paise={paise}
         options={{ whole: true }}
+        align="center"
         style={{ color, fontFamily: fonts.bold, fontSize: 16, marginTop: 4 }}
       />
     </View>

@@ -17,6 +17,8 @@ import {
   expenseQuery,
   expenseSharesQuery,
   groupCategoryQuery,
+  groupPeopleQuery,
+  groupQuery,
   groupTotalsQuery,
   groupsQuery,
   memberShareQuery,
@@ -25,6 +27,7 @@ import {
   netsQuery,
   pairwiseQuery,
   peopleQuery,
+  personQuery,
   selfQuery,
 } from './sql';
 import { allSync, type AnyDb } from '@/db/types';
@@ -176,15 +179,16 @@ const EMPTY_GROUP: GroupScreen = {
 export function useGroup(groupId: number): DbQueryResult<GroupScreen> {
   return useDbQuery(
     async () => {
-      const [[self], groupRows, members, nets, pairs, peopleRows] = await Promise.all([
+      // This group's row and the people it has ever had — not every group
+      // (three correlated subqueries each) and every person, then a find (B28).
+      const [[self], [row], members, nets, pairs, peopleRows] = await Promise.all([
         selfQuery(r),
-        groupsQuery(r),
+        groupQuery(r, groupId),
         membersQuery(r, groupId),
         netsQuery(r, groupId),
         pairwiseQuery(r, groupId),
-        peopleQuery(r),
+        groupPeopleQuery(r, groupId),
       ]);
-      const row = groupRows.find((g) => g.id === groupId);
       if (!row) return EMPTY_GROUP;
       const group: GroupRow = { ...row, lastActivity: row.lastActivity || null };
       const balances = buildGroupBalances([group], nets, pairs).get(groupId)!;
@@ -274,9 +278,13 @@ export function getMembers(groupId: number) {
 }
 
 export function getGroupRow(groupId: number): GroupRow | undefined {
-  const rows = allSync<GroupRow>(groupsQuery(w));
-  const row = rows.find((g) => g.id === groupId);
+  const [row] = allSync<GroupRow>(groupQuery(w, groupId));
   return row ? { ...row, lastActivity: row.lastActivity || null } : undefined;
+}
+
+/** A person's name, removed friends included. */
+export function getPersonName(personId: number): string | undefined {
+  return allSync<PersonRow>(personQuery(w, personId))[0]?.name;
 }
 
 export function getFriends(): PersonRow[] {

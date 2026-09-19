@@ -1,7 +1,7 @@
 import { CirclePause, CirclePlay, EllipsisVertical, Pencil, Trash2, XCircle } from 'lucide-react-native';
 import { memo, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { PressableScale } from '@/components/ui/PressableScale';
@@ -9,6 +9,7 @@ import { formatDayMonth } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
 import { renewalCountdown } from '@/lib/renewals';
 import { colors, fonts, useColors, withAlpha } from '@/lib/theme';
+import { appear, rise } from '@/lib/motion';
 import type { EnrichedSubscription } from '../domain/renewal';
 
 export interface CardActions {
@@ -131,7 +132,7 @@ function ActionSheet({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <Pressable className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={onClose}>
-        <Animated.View entering={FadeInDown.duration(200)}>
+        <Animated.View entering={rise()}>
           <Pressable
             className="rounded-t-3xl border-t p-3 pb-8"
             style={{ backgroundColor: colors.card, borderColor: colors.border }}
@@ -200,7 +201,7 @@ function Row({
 }) {
   const colors = useColors();
   return (
-    <Animated.View entering={FadeIn.duration(160)}>
+    <Animated.View entering={appear()}>
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel={label}

@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { Check, X } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
@@ -15,6 +15,7 @@ import { useCategories } from '@/data/categories';
 import { formatDayMonth } from '@/lib/dates';
 import { useToday } from '@/lib/today';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 
 /**
  * The filter sheet.
@@ -260,7 +261,7 @@ function describe(date?: string): string {
 function Section({ label, index, children }: { label: string; index: number; children: ReactNode }) {
   const colors = useColors();
   return (
-    <Animated.View entering={FadeInDown.delay(index * 60).duration(350)} className="mt-6">
+    <Animated.View entering={rise(index * 60)} className="mt-6">
       <Text
         style={{
           color: colors.muted,

@@ -2,12 +2,13 @@ import { useRouter } from 'expo-router';
 import { ChartColumn } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { Screen } from '@/components/layout/Screen';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Segmented } from '@/components/ui/Segmented';
 import { useToday } from '@/lib/today';
+import { rise } from '@/lib/motion';
 import { RANGES, type RangeMonths } from '../domain/period';
 import { useEarliestDate, usePeriodStats } from '../data/hooks';
 import { CategoryBreakdown } from './CategoryBreakdown';
@@ -17,7 +18,7 @@ import { SpendingTrend } from './SpendingTrend';
 /** Staggered entrance, so the screen assembles rather than pops in. */
 function Section({ index, children }: { index: number; children: ReactNode }) {
   return (
-    <Animated.View entering={FadeInDown.delay(40 + index * 70).duration(420)} className="px-5">
+    <Animated.View entering={rise(40 + index * 70)} className="px-5">
       {children}
     </Animated.View>
   );

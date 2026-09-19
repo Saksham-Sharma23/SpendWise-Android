@@ -1,5 +1,5 @@
 import { migrate } from 'drizzle-orm/expo-sqlite/migrator';
-import { File } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 import { db } from './client';
@@ -8,8 +8,8 @@ import {
   SNAPSHOTS_DIR,
   UNREADABLE_DIR,
   appDir,
-  databaseFile,
   databaseFiles,
+  deleteIfExists,
   moveIfExists,
   quoteSql,
   sqlitePath,
@@ -24,6 +24,8 @@ import {
   migrateWithForeignKeysOff,
   pendingMigrations,
   recheckIntegrity,
+  SHARE_PREFIX,
+  shareCopiesToDelete,
   snapshotName,
   snapshotsToDelete,
   userDataProbeSql,
@@ -182,6 +184,13 @@ export async function bootDatabase(): Promise<BootOutcome> {
     if (__DEV__) console.warn('[boot] could not purge expired deletions', e);
   }
 
+  // Copies shared from the failure screen have done their job once the app opens (B27).
+  try {
+    pruneShareCopies(0);
+  } catch (e) {
+    if (__DEV__) console.warn('[boot] could not remove old share copies', e);
+  }
+
   // A previous launch converted a legacy database and this one booted cleanly: drop the kept original.
   if (!convertedLegacy) {
     void cleanUpLegacyEncryption();
@@ -194,16 +203,68 @@ export async function bootDatabase(): Promise<BootOutcome> {
 // Recovery actions for the boot-failure screen
 // ---------------------------------------------------------------------------
 
-/** Share a copy of the database file (or a snapshot) through the Android share sheet. */
+/**
+ * Share a copy of the database (or a snapshot) through the Android share sheet.
+ *
+ * A snapshot is already one consistent file. The live database is not: after
+ * a failed launch its latest commits can still be in `spendwise.db-wal`, which
+ * a plain copy of `spendwise.db` leaves behind (B27). So the live database is
+ * copied with `VACUUM INTO`, which reads through the WAL into one file, as the
+ * snapshots are. Only when SQLite can't read the file at all is it copied
+ * byte for byte — and then its WAL, if it holds anything, is shared straight
+ * after, named to sit beside it.
+ */
 export async function shareDatabaseCopy(sourceUri?: string): Promise<void> {
-  const source = sourceUri ? new File(sourceUri) : databaseFile();
-  if (!source.exists) throw new Error('There is no database file to share.');
-  const copy = new File(appDir(UNREADABLE_DIR), `spendwise-share-${timestampForFile()}.db`);
-  source.copySync(copy);
+  const dir = appDir(UNREADABLE_DIR);
+  // Keep the previous copy: a receiving app may still be reading it.
+  pruneShareCopies(1);
+  const stamp = timestampForFile();
+  const copy = new File(dir, `${SHARE_PREFIX}${stamp}.db`);
+  deleteIfExists(copy);
+  let wal: File | null = null;
+
+  if (sourceUri) {
+    const source = new File(sourceUri);
+    if (!source.exists) throw new Error('There is no database file to share.');
+    source.copySync(copy);
+  } else {
+    const [main, liveWal] = databaseFiles();
+    if (!main!.exists) throw new Error('There is no database file to share.');
+    try {
+      sqliteDb.execSync(`VACUUM INTO ${quoteSql(sqlitePath(copy))}`);
+    } catch {
+      // Not readable as SQLite (the "unreadable" outcome): copy the bytes as they are.
+      deleteIfExists(copy);
+      main!.copySync(copy);
+      if (liveWal!.exists && liveWal!.size > 0) {
+        wal = new File(dir, `${SHARE_PREFIX}${stamp}.db-wal`);
+        deleteIfExists(wal);
+        liveWal!.copySync(wal);
+      }
+    }
+  }
+
   await Sharing.shareAsync(copy.uri, {
     mimeType: 'application/x-sqlite3',
-    dialogTitle: 'Save a copy of your SpendWise data',
+    dialogTitle: wal ? 'Save a copy of your SpendWise data (1 of 2)' : 'Save a copy of your SpendWise data',
   });
+  if (wal) {
+    await Sharing.shareAsync(wal.uri, {
+      mimeType: 'application/octet-stream',
+      dialogTitle: 'Save its latest changes too (2 of 2). Keep both files together',
+    });
+  }
+}
+
+/** Delete all but the newest `keep` share copies. Never creates the folder. */
+function pruneShareCopies(keep: number): void {
+  const dir = new Directory(Paths.document, UNREADABLE_DIR);
+  if (!dir.exists) return;
+  const names = dir
+    .list()
+    .filter((e): e is File => e instanceof File)
+    .map((f) => f.name);
+  for (const name of shareCopiesToDelete(names, keep)) new File(dir, name).delete();
 }
 
 /**

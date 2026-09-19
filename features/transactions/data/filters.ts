@@ -119,14 +119,15 @@ export function buildWhere(f: TransactionFilters, today: ISODate = todayISO()): 
   if (from) clauses.push(gte(transactions.date, from));
   if (to) clauses.push(lte(transactions.date, to));
 
+  // No lower() (R5-3): SQLite's LIKE already ignores ASCII case, and lower()
+  // cost a function call per row per column. Neither folds non-ASCII case
+  // (SQLite has no ICU here), so the pattern goes in as typed: 'É' finds 'É'.
+  // It used to be lowered in JS only, so 'É' searched for 'é' and missed.
   const q = f.search?.trim();
   if (q) {
-    const pattern = `%${escapeLike(q.toLowerCase())}%`;
+    const pattern = `%${escapeLike(q)}%`;
     clauses.push(
-      or(
-        sql`lower(${transactions.note}) LIKE ${pattern} ESCAPE '\\'`,
-        sql`lower(${categories.name}) LIKE ${pattern} ESCAPE '\\'`,
-      ),
+      or(sql`${transactions.note} LIKE ${pattern} ESCAPE '\\'`, sql`${categories.name} LIKE ${pattern} ESCAPE '\\'`),
     );
   }
 

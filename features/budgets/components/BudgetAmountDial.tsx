@@ -1,12 +1,13 @@
 import { Check } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { AmountDial } from '@/components/ui/AmountDial';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '@/lib/money';
 import { colors, fonts, useColors, withAlpha } from '@/lib/theme';
+import { appear } from '@/lib/motion';
 import { DIAL_SCALES, presetsFor, rescale, scaleFor, turnsOf, type DialScale } from '../domain/dial';
 
 /**
@@ -105,7 +106,7 @@ export function BudgetAmountDial({ value, onChange, autoFocusKeypad = false }: P
             </View>
           ) : (
             <Animated.Text
-              entering={FadeIn.duration(160)}
+              entering={appear()}
               numberOfLines={1}
               adjustsFontSizeToFit
               style={{

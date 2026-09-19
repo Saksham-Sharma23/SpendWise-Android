@@ -3,7 +3,7 @@ import { and, eq, isNull, ne, sql } from 'drizzle-orm';
 import { UserFacingError } from '@/lib/db/errors';
 import { nowISO } from '@/lib/dates';
 import { runWriteTx } from '@/db/tx';
-import { budgets, categories, splitExpenses, subscriptions, transactions } from '@/db/schema';
+import { budgets, categories, splitExpenses, subscriptions, transactions, type CategoryKind } from '@/db/schema';
 import type { SyncDb } from '@/db/types';
 
 /**
@@ -124,10 +124,12 @@ function countTransactions(database: SyncDb, categoryId: number): number {
 export function mergeCategory(database: SyncDb, sourceId: number, targetId: number): { moved: number } {
   if (sourceId === targetId) throw new UserFacingError('Pick a different category to merge into');
   const source = liveCategory(database, sourceId);
-  liveCategory(database, targetId);
+  const target = liveCategory(database, targetId);
   if (source.isSystem) throw new UserFacingError('Built-in categories can be merged into, but not merged away');
 
   return runWriteTx(database, (tx) => {
+    assertRowsFitKind(tx, source, target);
+
     // Includes soft-deleted transactions, so undoing a delete later restores
     // the row into a category that still exists.
     const moved = countTransactions(tx, sourceId);
@@ -161,6 +163,56 @@ export function mergeCategory(database: SyncDb, sourceId: number, targetId: numb
     retire(tx, sourceId, source.name);
     return { moved };
   });
+}
+
+/**
+ * Refuse a merge that would file rows under a category their type can't use
+ * (B26). The categories you create are `both`, but most built-in ones are
+ * `expense` or `income` only. Merging a category that holds expenses into
+ * "Salary" put expenses — and possibly a budget — on an income-only category,
+ * which the expense form then hides and Budgets would never have offered.
+ *
+ * Soft-deleted rows count too: they move with the merge, and Undo would bring
+ * them back under the target. Subscriptions, group expenses and budgets are
+ * all spending, so they need a category that takes expenses.
+ */
+function assertRowsFitKind(
+  tx: SyncDb,
+  source: { id: number; name: string },
+  target: { name: string; kind: CategoryKind },
+): void {
+  if (target.kind === 'both') return;
+
+  const n = sql<number>`count(*)`;
+  const some = (rows: { n: number }[]) => (rows[0]?.n ?? 0) > 0;
+  const hasTransactions = (type: 'income' | 'expense') =>
+    some(
+      tx
+        .select({ n })
+        .from(transactions)
+        .where(and(eq(transactions.categoryId, source.id), eq(transactions.type, type)))
+        .all(),
+    );
+  const hasSpending = (): string | null => {
+    if (hasTransactions('expense')) return 'expenses';
+    if (some(tx.select({ n }).from(subscriptions).where(eq(subscriptions.categoryId, source.id)).all())) {
+      return 'subscriptions';
+    }
+    if (some(tx.select({ n }).from(splitExpenses).where(eq(splitExpenses.categoryId, source.id)).all())) {
+      return 'group expenses';
+    }
+    const liveBudget = and(eq(budgets.categoryId, source.id), isNull(budgets.deletedAt));
+    if (some(tx.select({ n }).from(budgets).where(liveBudget).all())) return 'a budget';
+    return null;
+  };
+
+  const holds = target.kind === 'income' ? hasSpending() : hasTransactions('income') ? 'income' : null;
+  if (holds) {
+    const only = target.kind === 'income' ? 'income' : 'expenses';
+    throw new UserFacingError(
+      `“${target.name}” is only for ${only}, but “${source.name}” has ${holds}. Merge it into a category that isn’t ${target.kind}-only`,
+    );
+  }
 }
 
 /**

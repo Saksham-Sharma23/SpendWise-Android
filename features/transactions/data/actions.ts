@@ -6,6 +6,7 @@ import {
   changeTransaction,
   existingHashes,
   insertTransaction,
+  purgeAllDeleted,
   purgeTransactions,
   retireTransactions,
   unretireTransactions,
@@ -43,6 +44,11 @@ export function restoreTransactions(ids: number[]): WriteResult<void> {
 /** Remove deleted transactions for good, ahead of the 30-day purge. */
 export function deleteTransactionsForever(ids: number[]): WriteResult<void> {
   return safeWrite('delete permanently', () => purgeTransactions(db, ids));
+}
+
+/** Empty Recently deleted — all of it, not only the rows on screen. Returns how many went. */
+export function emptyRecentlyDeleted(): WriteResult<number> {
+  return safeWrite('empty Recently deleted', () => purgeAllDeleted(db));
 }
 
 /** One transaction by id, for the edit form — a point read, so the sync handle. */

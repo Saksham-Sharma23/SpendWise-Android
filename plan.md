@@ -252,11 +252,11 @@ Status: ⬜ not started · 🟡 in progress, or code complete awaiting a full te
 | **8**        | **Native layer**                                                                                                               |            |     | **3–4 d**   |                    |
 | P8-1 … P8-10 | Channels, permission, renewals, budget alerts, backup nudge, reboot, widget, FAB menu, biometric lock, haptics                 | —          | P1  |             | ⬜                 |
 | **R5**       | **Performance**                                                                                                                |            |     | **2 d**     |                    |
-| R5-1         | `AnimatedAmount` off React state                                                                                               | B16        | P2  | 3 h         | ⬜                 |
-| R5-2         | `formatINR` always manual grouping                                                                                             | B18        | P2  | 1 h         | ⬜                 |
-| R5-3         | Search without `lower()`                                                                                                       | —          | P3  | 1 h         | ⬜                 |
-| R5-4         | Measure swipeables and tab-bar blur                                                                                            | —          | P2  | 3 h         | ⬜                 |
-| R5-5         | Record on-device timings; close the rollup decision                                                                            | —          | P2  | 2 h         | ⬜                 |
+| R5-1         | `AnimatedAmount` off React state                                                                                               | B16        | P2  | 3 h         | ✅                 |
+| R5-2         | `formatINR` always manual grouping                                                                                             | B18        | P2  | 1 h         | ✅                 |
+| R5-3         | Search without `lower()`                                                                                                       | —          | P3  | 1 h         | ✅                 |
+| R5-4         | Measure swipeables and tab-bar blur                                                                                            | —          | P2  | 3 h         | ✅                 |
+| R5-5         | Record on-device timings; close the rollup decision                                                                            | —          | P2  | 2 h         | ✅                 |
 | **R6**       | **Observability and release ops**                                                                                              |            |     | **1 d**     |                    |
 | R6-1         | Local crash log                                                                                                                | T9         | P1  | 4 h         | ⬜                 |
 | R6-2         | Release runbook                                                                                                                | —          | P2  | 1 h         | ⬜                 |
@@ -1677,7 +1677,7 @@ Every P8 item that adds a native module is a native change: rebuild and run `ver
 **Already done:** ✅ keyset ledger pages with page 1 live · ✅ row memo on drawn fields and sticky month headers.
 **Exit criterion:** Perf Monitor shows no dropped frames scrolling the 50k DB end to end and while saving from the ledger.
 
-### ⬜ R5-1 — `AnimatedAmount` off React state
+### ✅ R5-1 — `AnimatedAmount` off React state
 
 **Ref:** B16 · **Priority:** P2 · **Est:** 3 h · **Depends on:** R5-2
 
@@ -1693,7 +1693,14 @@ is on (`useMotion()`).
 
 **Done when:** React DevTools shows one render per value change; the digits still animate (DV).
 
-### ⬜ R5-2 — `formatINR` always uses manual Indian grouping
+**Done 2026-09-19.** `components/ui/AnimatedAmount.tsx`. `adjustsFontSizeToFit` does not exist on
+TextInput, so an invisible Text measures the target at full size and the font (and letter spacing)
+scale by `room / natural`, floored at 0.6. Margins move to a wrapper view; the Ledger summary passes
+`align="center"` instead of relying on its parent's `items-center`. `animatedProps` needs no
+whitelisting in Reanimated 4. **DV:** Home after an add; a crore-scale total still fits; TalkBack reads
+the final figure once.
+
+### ✅ R5-2 — `formatINR` always uses manual Indian grouping
 
 **Ref:** B18 · **Priority:** P2 · **Est:** 1 h
 
@@ -1710,7 +1717,12 @@ manual === ICU output in Node.
 
 **Done when:** `formatINR` has no `toLocaleString` call.
 
-### ⬜ R5-3 — Search without `lower()`
+**Done 2026-09-19.** `formatINR` works on integer paise only (`whole` rounds half up, as ICU does) and
+groups by string slicing (`groupWhole`), both `'worklet'`. `HAS_INDIAN_ICU` is gone;
+`lib/__tests__/money.test.ts` compares 10,000 seeded log-uniform amounts plus the edges (0, ₹0.05,
+₹10 crore, negatives) against Node's `en-IN`, and first asserts that Node's ICU really groups in lakhs.
+
+### ✅ R5-3 — Search without `lower()`
 
 **Priority:** P3 · **Est:** 1 h
 **Problem.** Ledger search (`features/transactions/filters.ts:127-128`) wraps note and category name in `lower()` before `LIKE`, which prevents any index
@@ -1719,7 +1731,12 @@ use and costs per row. SQLite `LIKE` is already case-insensitive for ASCII.
 realistic notes (non-ASCII names) show a need; record the measurement.
 **Done when:** search results are unchanged for ASCII (test) and the benchmark row is recorded.
 
-### ⬜ R5-4 — Measure, then decide: swipeables and tab-bar blur
+**Done 2026-09-19.** `features/transactions/data/filters.ts`; a new test checks mixed-case input and
+that the rendered SQL has no `lower(`. The JS `toLowerCase()` went too: SQLite folds only ASCII, so
+lowering `É` in JS made it search for `é` and miss. **FTS5:** not evaluated; the "search page" rows in
+the R5-5 table decide it (reopen only above 50 ms).
+
+### ✅ R5-4 — Measure, then decide: swipeables and tab-bar blur
 
 **Priority:** P2 · **Est:** 3 h
 **Fix.** Measure with Perf Monitor on the 50k DB: (1) swipeable mounted per row vs mounted on touch;
@@ -1727,7 +1744,34 @@ realistic notes (non-ASCII names) show a need; record the measurement.
 Record the numbers in this card **either way**.
 **Done when:** numbers are recorded and a decision is written.
 
-### ⬜ R5-5 — Record on-device query timings; close the rollup decision
+**Tooling (2026-09-19).** Dev harness → _Scroll cost A/B_ flips two in-memory, dev-only switches
+(`lib/perfFlags.ts`): the swipeable on every ledger row, and the tab bar's backdrop blur. "Swipeable off"
+is the ceiling on what mount-on-touch could save, so if it saves nothing, mount-on-touch is not worth
+its gesture hand-off.
+
+**Measured 2026-09-19** on the dev phone (dev build, 50,002 rows, the ledger showing all of them).
+Perf Monitor's FPS cannot be read over adb, so each run used Android's frame stats instead: `dumpsys
+gfxinfo reset`, then 8 flings down and 8 up by `adb shell input swipe`, then `dumpsys gfxinfo`. That is
+about 600 frames per run. A dev build is slower than release, so compare the rows with each other.
+
+| Run | Swipeable | Blur | Janky frames | p50   | p90   | p95   | p99   | Missed vsync |
+| --- | --------- | ---- | ------------ | ----- | ----- | ----- | ----- | ------------ |
+| 1   | on        | on   | 10.1%        | 13 ms | 30 ms | 40 ms | 57 ms | 33           |
+| 4   | on        | on   | 7.0%         | 13 ms | 32 ms | 40 ms | 57 ms | 23           |
+| 2   | off       | on   | 5.7%         | 13 ms | 27 ms | 34 ms | 48 ms | 13           |
+| 5   | off       | on   | 7.1%         | 13 ms | 27 ms | 38 ms | 53 ms | 23           |
+| 3   | on        | off  | 8.7%         | 10 ms | 24 ms | 38 ms | 61 ms | 29           |
+
+**Decision.**
+
+- **Swipeable: keep it mounted per row.** With it off, janky frames averaged 6.4% against 8.5%, and p90
+  was 27 ms against 31 ms. The two baseline runs alone differ by 3 points (10.1% and 7.0%), so the gain
+  is within noise. Mounting it on touch would cost the first swipe's gesture hand-off.
+- **Blur: no "Reduce transparency" setting.** Turning the blur off moved the median and p90 down
+  slightly, but the janky share (8.7%) and p99 (61 ms) were no better than the baseline.
+- **Revisit** only if the R5 exit criterion fails in a **release** build.
+
+### ✅ R5-5 — Record on-device query timings; close the rollup decision
 
 **Priority:** P2 · **Est:** 2 h
 **Fix.** Dev harness benchmark on the phone at 50k rows: median time and plan flags for every shipped builder.
@@ -1735,9 +1779,38 @@ If the 24-month trend ≤ 50 ms (desktop was 3.5 ms; plans verified 2026-09-15),
 **not needed** in the decisions log.
 **Done when:** the timings table is filled in here.
 
-| Query              | Median (ms) | Plan flags | Date |
-| ------------------ | ----------- | ---------- | ---- |
-| _(fill on device)_ |             |            |      |
+**Tooling (2026-09-19).** "Run analytics benchmark" prints this table to the Metro log with every
+shipped builder filled in (the dashboard, analytics and ledger/search queries); paste it here.
+
+Measured on the dev phone, 50,002 rows, with "Run analytics benchmark" (median of the timed runs):
+
+| Query                       | Median (ms) | Rows | Plan flags  | Date       |
+| --------------------------- | ----------- | ---- | ----------- | ---------- |
+| trend (24 months)           | 19.5        | 24   | indexed     | 2026-09-19 |
+| trend (12 months)           | 10.6        | 12   | indexed     | 2026-09-19 |
+| month overview              | 8.4         | 1    | indexed     | 2026-09-19 |
+| top categories (month)      | 4.1         | 4    | TEMP B-TREE | 2026-09-19 |
+| recent (5)                  | 2.8         | 5    | indexed     | 2026-09-19 |
+| analytics trend (24 months) | 21.3        | 24   | indexed     | 2026-09-19 |
+| analytics trend (3 months)  | 4.2         | 3    | indexed     | 2026-09-19 |
+| period totals (24 months)   | 16.4        | 1    | indexed     | 2026-09-19 |
+| earliest date               | 1.9         | 1    | indexed     | 2026-09-19 |
+| biggest expense (24 months) | **67.9**    | 1    | indexed     | 2026-09-19 |
+| top category (24 months)    | **99.7**    | 1    | TEMP B-TREE | 2026-09-19 |
+| category donut (month)      | 4.8         | 17   | TEMP B-TREE | 2026-09-19 |
+| ledger page (40)            | 5.3         | 40   | indexed     | 2026-09-19 |
+| ledger summary (all)        | 45.1        | 1    | SCAN        | 2026-09-19 |
+| search page ("swiggy")      | 8.6         | 40   | indexed     | 2026-09-19 |
+| search summary ("swiggy")   | 49.5        | 1    | SCAN        | 2026-09-19 |
+
+**Decision: rollup tables are not needed (closed 2026-09-19).** The 24-month trend takes 19.5 ms, well
+under 50 ms. **FTS5 is not needed either.** A search page takes 8.6 ms. The search summary (49.5 ms)
+scans because it sums every match with no date bound, and FTS would not change that.
+
+**Follow-ups (not rollups).** Two queries are over 50 ms: "top category (24 months)" (99.7 ms, with a
+temporary B-tree for the GROUP BY) and "biggest expense (24 months)" (67.9 ms). Check their plans for a
+covering index on `(type, month, category_id, amount_paise)` or similar, then re-run. "ledger summary
+(all)" scanning is expected, because it totals every row.
 
 ---
 

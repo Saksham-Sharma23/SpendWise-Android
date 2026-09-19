@@ -2,10 +2,11 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fonts, useColors } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { PressableScale } from '../ui/PressableScale';
 import { BlurTarget } from './glass';
 
@@ -36,7 +37,7 @@ export function Screen({ title, subtitle, eyebrow, children, scroll = true, righ
 
   const header =
     title != null ? (
-      <Animated.View entering={FadeInDown.duration(380)} className="px-5 pb-4 pt-3">
+      <Animated.View entering={rise()} className="px-5 pb-4 pt-3">
         {back ? (
           <PressableScale
             accessibilityRole="button"

@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { ArrowDownWideNarrow, CalendarClock, Plus, Repeat } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { toast } from 'sonner-native';
 
 import { Screen } from '@/components/layout/Screen';
@@ -15,6 +15,7 @@ import { formatINR } from '@/lib/money';
 import { renewalCountdown } from '@/lib/renewals';
 import { useToday } from '@/lib/today';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { rise } from '@/lib/motion';
 import { restoreSubscription, setSubscriptionStatus, softDeleteSubscription } from '../data/actions';
 import { useSubscriptions } from '../data/hooks';
 import {
@@ -120,7 +121,7 @@ export function Tracker() {
         </View>
       ) : rows.length > 0 ? (
         <View className="gap-3 px-5">
-          <Animated.View entering={FadeInDown.duration(320)}>
+          <Animated.View entering={rise()}>
             <Card className="p-5" variant="accent">
               <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 12 }}>Every month</Text>
               <Text
@@ -156,7 +157,7 @@ export function Tracker() {
             </Card>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(50).duration(320)} className="gap-2">
+          <Animated.View entering={rise(50)} className="gap-2">
             <Segmented
               size="sm"
               value={status}
@@ -199,7 +200,7 @@ export function Tracker() {
             </Text>
           ) : (
             visible.map((s, i) => (
-              <Animated.View key={s.id} entering={FadeInDown.delay(Math.min(i, 6) * 40).duration(300)}>
+              <Animated.View key={s.id} entering={rise(Math.min(i, 6) * 40)}>
                 <SubscriptionCard sub={s} actions={actions} />
               </Animated.View>
             ))

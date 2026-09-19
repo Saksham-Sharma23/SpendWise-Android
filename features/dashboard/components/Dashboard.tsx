@@ -11,7 +11,7 @@ import {
 } from 'lucide-react-native';
 import { useEffect, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { Screen } from '@/components/layout/Screen';
 import { Welcome } from '@/components/layout/Welcome';
@@ -29,6 +29,7 @@ import { formatINR } from '@/lib/money';
 import { upcomingRenewals } from '@/lib/renewals';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
 import { useToday } from '@/lib/today';
+import { rise } from '@/lib/motion';
 import {
   dismissOnboarding,
   useActiveSubscriptions,
@@ -61,7 +62,7 @@ function pctChange(current: number, previous: number): number | null {
 /** Staggered entrance, so the dashboard assembles rather than pops in. */
 function Section({ index, children }: { index: number; children: ReactNode }) {
   return (
-    <Animated.View entering={FadeInDown.delay(60 + index * 70).duration(450)} className="px-5">
+    <Animated.View entering={rise(60 + index * 70)} className="px-5">
       {children}
     </Animated.View>
   );
