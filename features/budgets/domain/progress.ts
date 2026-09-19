@@ -1,4 +1,9 @@
+import { budgetRatio, budgetState, type BudgetState } from '@/data/ledger/budgetState';
 import type { CycleWindow, ISODate } from '@/lib/dates';
+
+// One threshold for the whole app; Home's budget card reads the same one (R3-9).
+export { WARNING_RATIO } from '@/data/ledger/budgetState';
+export type { BudgetState };
 
 /**
  * Budget progress — pure, so every threshold is tested without a database.
@@ -19,9 +24,6 @@ export interface BudgetRow {
   categoryColor: string | null;
 }
 
-/** Value names, not colour names — theming must not turn the data into a lie. */
-export type BudgetState = 'under' | 'warning' | 'over' | 'paused';
-
 export interface BudgetProgress extends BudgetRow {
   spentPaise: number;
   /** Negative once the budget is exceeded — the screen shows the magnitude. */
@@ -41,21 +43,10 @@ export interface BudgetProgress extends BudgetRow {
   perDayLeftPaise: number;
 }
 
-export const WARNING_RATIO = 0.75;
-
 export function budgetStatus(budget: BudgetRow, window: CycleWindow, spentPaise: number): BudgetProgress {
-  // A zero limit would divide by zero; treat it as immediately over, which is
-  // the honest reading of "budget nothing, spend something".
-  const ratio = budget.limitPaise > 0 ? spentPaise / budget.limitPaise : spentPaise > 0 ? 1 : 0;
+  const ratio = budgetRatio(spentPaise, budget.limitPaise);
   const remainingPaise = budget.limitPaise - spentPaise;
-
-  const state: BudgetState = !budget.isActive
-    ? 'paused'
-    : ratio >= 1
-      ? 'over'
-      : ratio >= WARNING_RATIO
-        ? 'warning'
-        : 'under';
+  const state = budgetState(ratio, budget.isActive);
 
   // Today still counts as a day you can spend in, hence the +1.
   const daysUsable = Math.max(1, window.daysLeft + 1);

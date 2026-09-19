@@ -1,11 +1,13 @@
-import { and, asc, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
+import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 
 import { categories, transactions } from '@/db/schema';
 import type { AnyDb } from '@/db/types';
 
 /**
- * The Analytics query builders — every figure on the screen, aggregated in
- * SQL (CLAUDE.md #5). At most a couple of dozen rows ever cross into JS.
+ * The two Analytics builders no other screen needs. The trend, the period
+ * totals and the category totals are shared with Home and live in
+ * `@/data/ledger` (R3-8) — Insights and Home used to carry separate copies,
+ * and those copies had drifted apart (B1, B2).
  *
  * Builders take the database as a parameter instead of closing over
  * db/read.ts, so the SAME builder runs on the phone (through readDb, off the
@@ -19,33 +21,6 @@ import type { AnyDb } from '@/db/types';
  */
 
 const live = isNull(transactions.deletedAt);
-const income = sql<number>`coalesce(sum(case when ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`;
-const expense = sql<number>`coalesce(sum(case when ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`;
-
-/**
- * Income and expense per month between `firstMonth` and `lastMonth`
- * ('YYYY-MM') inclusive, oldest first. Months with no rows are absent.
- */
-export function trendQuery(db: AnyDb, firstMonth: string, lastMonth: string) {
-  return db
-    .select({ month: sql<string>`${transactions.month}`, incomePaise: income, expensePaise: expense })
-    .from(transactions)
-    .where(and(live, gte(transactions.month, firstMonth), lte(transactions.month, lastMonth)))
-    .groupBy(transactions.month)
-    .orderBy(asc(transactions.month));
-}
-
-/** Income, expense and transaction count for the whole range in one pass. */
-export function totalsQuery(db: AnyDb, firstMonth: string, lastMonth: string) {
-  return db
-    .select({
-      incomePaise: income,
-      expensePaise: expense,
-      count: sql<number>`count(*)`,
-    })
-    .from(transactions)
-    .where(and(live, gte(transactions.month, firstMonth), lte(transactions.month, lastMonth)));
-}
 
 /**
  * The ledger's first transaction date at or before `lastMonth`, or null when
@@ -91,30 +66,4 @@ export function biggestExpenseQuery(db: AnyDb, firstMonth: string, lastMonth: st
         lte(transactions.month, lastMonth),
       ),
     );
-}
-
-/**
- * Expense per category between two months inclusive, largest first.
- * Uncategorised spend is its own row with a NULL id. The number of groups is
- * bounded by the number of categories, so the GROUP BY / ORDER BY sort
- * handles a few dozen rows however large the ledger grows.
- */
-export function categoryTotalsQuery(db: AnyDb, fromMonth: string, toMonth: string, limit?: number) {
-  const total = sql<number>`sum(${transactions.amountPaise})`;
-  const q = db
-    .select({
-      id: categories.id,
-      name: categories.name,
-      color: categories.color,
-      icon: categories.icon,
-      totalPaise: total,
-    })
-    .from(transactions)
-    .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(
-      and(live, eq(transactions.type, 'expense'), gte(transactions.month, fromMonth), lte(transactions.month, toMonth)),
-    )
-    .groupBy(transactions.categoryId)
-    .orderBy(desc(total), asc(categories.name));
-  return limit == null ? q : q.limit(limit);
 }

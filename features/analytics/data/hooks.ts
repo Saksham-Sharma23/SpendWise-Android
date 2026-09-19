@@ -3,7 +3,8 @@ import type { TrendPoint } from '@/components/charts/TrendChart';
 import { useDbQuery, type DbQueryResult } from '@/lib/db/useDbQuery';
 import type { ISODate } from '@/lib/dates';
 import { activeDays, monthKeys, perDayPaise, periodWindow, savingsRate, type CategoryTotal } from '../domain/period';
-import { biggestExpenseQuery, categoryTotalsQuery, earliestDateQuery, totalsQuery, trendQuery } from './sql';
+import { categoryTotals, fillMonths, incomeExpenseTotals, monthTrend } from '@/data/ledger';
+import { biggestExpenseQuery, earliestDateQuery } from './sql';
 import type { AnyDb } from '@/db/types';
 
 /**
@@ -26,12 +27,11 @@ const db: AnyDb = readDb;
  * dropped it — the same screen disagreeing with itself.
  */
 export const analyticsQueries = {
-  trend: (firstMonth: string, lastMonth: string) => trendQuery(db, firstMonth, lastMonth),
-  totals: (firstMonth: string, lastMonth: string) => totalsQuery(db, firstMonth, lastMonth),
+  trend: (firstMonth: string, lastMonth: string) => monthTrend(db, firstMonth, lastMonth),
+  totals: (firstMonth: string, lastMonth: string) => incomeExpenseTotals(db, firstMonth, lastMonth),
   earliestDate: (lastMonth: string) => earliestDateQuery(db, lastMonth),
   biggestExpense: (firstMonth: string, lastMonth: string) => biggestExpenseQuery(db, firstMonth, lastMonth),
-  categoryTotals: (fromMonth: string, toMonth: string, limit?: number) =>
-    categoryTotalsQuery(db, fromMonth, toMonth, limit),
+  categoryTotals: (fromMonth: string, toMonth: string, limit?: number) => categoryTotals(db, fromMonth, toMonth, limit),
 };
 
 const EMPTY_TREND: TrendPoint[] = [];
@@ -51,13 +51,7 @@ export function useSpendingTrend(months: number, today: ISODate): DbQueryResult<
     EMPTY_TREND,
   );
 
-  const byMonth = new Map(result.data.map((r) => [r.month, r]));
-  const data = monthKeys(firstMonth, months).map((month) => ({
-    month,
-    incomePaise: byMonth.get(month)?.incomePaise ?? 0,
-    expensePaise: byMonth.get(month)?.expensePaise ?? 0,
-  }));
-  return { ...result, data };
+  return { ...result, data: fillMonths(result.data, monthKeys(firstMonth, months)) };
 }
 
 export interface BiggestExpense {

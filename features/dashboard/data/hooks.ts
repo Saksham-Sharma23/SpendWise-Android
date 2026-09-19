@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 
+import { budgetRatio, budgetSpend, budgetState, fillMonths } from '@/data/ledger';
 import { META_KEYS, setMeta, useMeta } from '@/data/meta';
 import { readDb } from '@/db/read';
 import { budgets, categories, subscriptions, transactions } from '@/db/schema';
@@ -101,14 +102,8 @@ export function useMonthlyTrend(months: number, today: ISODate): DbQueryResult<T
 
   const result = useDbQuery(() => dashboardQueries.trend(months, today), ['transactions'], [firstKey], EMPTY_TREND);
 
-  const byMonth = new Map(result.data.map((r) => [r.month, r]));
-  const points: TrendPoint[] = [];
-  for (let i = 0; i < months; i++) {
-    const key = addMonthsClamped(firstMonth, i).slice(0, 7);
-    const row = byMonth.get(key);
-    points.push({ month: key, incomePaise: row?.incomePaise ?? 0, expensePaise: row?.expensePaise ?? 0 });
-  }
-  return { ...result, data: points };
+  const keys = Array.from({ length: months }, (_, i) => addMonthsClamped(firstMonth, i).slice(0, 7));
+  return { ...result, data: fillMonths(result.data, keys) };
 }
 
 export interface CategorySpend {
@@ -315,29 +310,23 @@ export function useDashboardBudgets(today: ISODate, limit = 4): DbQueryResult<Da
 
       if (rows.length === 0) return EMPTY_BUDGETS;
 
-      const windows = rows.map((b) => getCycleWindow(b.resetDay, today));
-      const clauses = rows.map(
-        (b, i) =>
-          sql`(${transactions.categoryId} = ${b.categoryId} and ${transactions.date} >= ${windows[i]!.start} and ${transactions.date} <= ${windows[i]!.end})`,
+      const spend = await budgetSpend(
+        readDb,
+        rows.map((b) => {
+          const w = getCycleWindow(b.resetDay, today);
+          return { categoryId: b.categoryId, start: w.start, end: w.end };
+        }),
       );
-      const spend = await readDb
-        .select({
-          categoryId: sql<number>`${transactions.categoryId}`,
-          spentPaise: sql<number>`coalesce(sum(${transactions.amountPaise}), 0)`,
-        })
-        .from(transactions)
-        .where(
-          and(isNull(transactions.deletedAt), eq(transactions.type, 'expense'), sql`(${sql.join(clauses, sql` or `)})`),
-        )
-        .groupBy(transactions.categoryId);
-
       const byCategory = new Map(spend.map((s) => [s.categoryId, s.spentPaise]));
 
+      // The SAME spend query and threshold as the Budgets screen (R3-8), so
+      // Home's card and the Budgets bar can never disagree. Home used to carry
+      // its own copy of the query and a literal 0.75.
       return (
         rows
           .map((b): DashboardBudget => {
             const spentPaise = byCategory.get(b.categoryId) ?? 0;
-            const ratio = b.limitPaise > 0 ? spentPaise / b.limitPaise : spentPaise > 0 ? 1 : 0;
+            const ratio = budgetRatio(spentPaise, b.limitPaise);
             return {
               id: b.id,
               categoryName: b.categoryName,
@@ -345,7 +334,7 @@ export function useDashboardBudgets(today: ISODate, limit = 4): DbQueryResult<Da
               spentPaise,
               ratio,
               fill: Math.max(0, Math.min(1, ratio)),
-              state: !b.isActive ? 'paused' : ratio >= 1 ? 'over' : ratio >= 0.75 ? 'warning' : 'under',
+              state: budgetState(ratio, b.isActive),
             };
           })
           // Closest to the limit first: that is the one worth a glance.

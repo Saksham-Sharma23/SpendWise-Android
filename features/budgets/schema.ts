@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { MAX_AMOUNT_PAISE, parseAmountToPaise } from '@/lib/money';
-import type { BudgetInput } from './data/queries';
+import type { BudgetInput } from './data/writes';
 
 /**
  * Validation for the budget form.

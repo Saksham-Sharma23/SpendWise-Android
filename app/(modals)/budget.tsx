@@ -18,8 +18,11 @@ import {
   softDeleteBudget,
   updateBudget,
   useBudgetableCategories,
-} from '@/features/budgets/data/queries';
-import { budgetFormSchema, emptyBudgetForm, toBudgetInput, type BudgetFormValues } from '@/features/budgets/schema';
+  budgetFormSchema,
+  emptyBudgetForm,
+  toBudgetInput,
+  type BudgetFormValues,
+} from '@/features/budgets';
 import { colorForName } from '@/lib/categoryColor';
 import { getCycleWindow, formatDayMonth } from '@/lib/dates';
 import { paiseToDecimalString } from '@/lib/money';

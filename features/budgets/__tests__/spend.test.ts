@@ -1,7 +1,7 @@
-import Database from 'better-sqlite3';
-
 import { freshDb } from '@/db/__tests__/support';
 import { getCycleWindow } from '@/lib/dates';
+import { budgetSpend } from '@/data/ledger/sql';
+import { allSync, type SyncDb } from '@/db/types';
 
 /**
  * The cycle-window SQL, against the REAL migrated schema.
@@ -11,9 +11,10 @@ import { getCycleWindow } from '@/lib/dates';
  * window out of one pass, which is the part that would silently produce
  * plausible-but-wrong figures.
  *
- * The SQL mirrors budgetQueries.spend. It is written out here because the
- * shipped builder speaks to expo-sqlite through readDb, which does not exist
- * in Node.
+ * This runs the SHIPPED builder, `budgetSpend` from data/ledger (R3-9). It
+ * used to run a hand-written copy of the SQL, because the shipped one closed
+ * over the native read handle — so a change to the real query could never
+ * have failed this test (CLAUDE.md #18).
  */
 
 interface Key {
@@ -22,21 +23,12 @@ interface Key {
   end: string;
 }
 
-function spendByCategory(sqlite: Database.Database, keys: Key[]) {
-  const clauses = keys.map(() => '(category_id = ? and date >= ? and date <= ?)').join(' or ');
-  const params = keys.flatMap((k) => [k.categoryId, k.start, k.end]);
-  return sqlite
-    .prepare(
-      `SELECT category_id AS categoryId, coalesce(sum(amount_paise), 0) AS spentPaise
-         FROM transactions
-        WHERE deleted_at IS NULL AND type = 'expense' AND (${clauses})
-        GROUP BY category_id`,
-    )
-    .all(...params) as { categoryId: number; spentPaise: number }[];
+function spendByCategory(db: SyncDb, keys: Key[]) {
+  return allSync<{ categoryId: number; spentPaise: number }>(budgetSpend(db, keys));
 }
 
 async function setup() {
-  const { sqlite } = await freshDb();
+  const { sqlite, db } = await freshDb();
   const cat = (name: string) =>
     Number(
       sqlite
@@ -50,12 +42,12 @@ async function setup() {
          VALUES (?, ?, ?, ?, 'now', 'now', ?)`,
       )
       .run(type, paise, date, categoryId, deleted ? '2026-09-20' : null);
-  return { sqlite, cat, tx };
+  return { sqlite, db, cat, tx };
 }
 
 describe('budget spend SQL', () => {
   it('gives each budget its own window in a single pass', async () => {
-    const { sqlite, cat, tx } = await setup();
+    const { sqlite, db, cat, tx } = await setup();
     const food = cat('Food');
     const travel = cat('Travel');
 
@@ -69,7 +61,7 @@ describe('budget spend SQL', () => {
     tx(travel, '2026-10-10', 300_00); // inside Travel's cycle, next calendar month
 
     const today = '2026-09-20';
-    const rows = spendByCategory(sqlite, [
+    const rows = spendByCategory(db, [
       { categoryId: food, ...pick(getCycleWindow(1, today)) },
       { categoryId: travel, ...pick(getCycleWindow(15, today)) },
     ]);
@@ -82,21 +74,21 @@ describe('budget spend SQL', () => {
   });
 
   it('ignores income and soft-deleted rows', async () => {
-    const { sqlite, cat, tx } = await setup();
+    const { sqlite, db, cat, tx } = await setup();
     const food = cat('Food');
     tx(food, '2026-09-02', 100_00);
     tx(food, '2026-09-03', 900_00, 'income');
     tx(food, '2026-09-04', 400_00, 'expense', true);
 
-    const rows = spendByCategory(sqlite, [{ categoryId: food, ...pick(getCycleWindow(1, '2026-09-20')) }]);
+    const rows = spendByCategory(db, [{ categoryId: food, ...pick(getCycleWindow(1, '2026-09-20')) }]);
     expect(rows[0]?.spentPaise).toBe(100_00);
     sqlite.close();
   });
 
   it('returns no row for a budget with no spending, rather than failing', async () => {
-    const { sqlite, cat } = await setup();
+    const { sqlite, db, cat } = await setup();
     const food = cat('Food');
-    const rows = spendByCategory(sqlite, [{ categoryId: food, ...pick(getCycleWindow(1, '2026-09-20')) }]);
+    const rows = spendByCategory(db, [{ categoryId: food, ...pick(getCycleWindow(1, '2026-09-20')) }]);
     expect(rows).toEqual([]);
     sqlite.close();
   });

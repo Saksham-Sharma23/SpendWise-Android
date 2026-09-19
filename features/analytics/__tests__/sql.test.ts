@@ -2,7 +2,14 @@ import type Database from 'better-sqlite3';
 
 import { categories, transactions } from '@/db/schema';
 import { freshDb } from '@/db/__tests__/support';
-import { biggestExpenseQuery, categoryTotalsQuery, earliestDateQuery, totalsQuery, trendQuery } from '../data/sql';
+import {
+  categoryTotals as categoryTotalsQuery,
+  incomeExpenseTotals as totalsQuery,
+  monthTrend as trendQuery,
+} from '@/data/ledger/sql';
+// The trend, totals and category totals are shared with Home and live in
+// data/ledger since R3-8; these tests keep their names so their history reads.
+import { biggestExpenseQuery, earliestDateQuery } from '../data/sql';
 import type { AnyDb } from '@/db/types';
 
 /**
