@@ -2,7 +2,9 @@ import { and, desc, eq } from 'drizzle-orm';
 
 import { categories, transactions } from '@/db/schema';
 import { freshDb } from '@/db/__tests__/support';
-import { atOrNewerThan, buildWhere, olderThan, type LedgerKey, type TransactionFilters } from '../data/filters';
+import { allSync } from '@/db/types';
+import { atOrNewerThan, buildWhere, type LedgerKey, type TransactionFilters } from '../data/filters';
+import { ledgerQuery, olderThanQuery } from '../data/sql';
 
 /**
  * The ledger's keyset queries against the REAL migrated schema: pages built
@@ -32,15 +34,15 @@ async function makeDb() {
 
 type Db = Awaited<ReturnType<typeof makeDb>>['db'];
 
+/**
+ * One page, through the SHIPPED builders — the same pair the CSV export walks
+ * (B17): the first page is `ledgerQuery`, every later one `olderThanQuery`
+ * below the last row. This used to be a hand-written copy of the SQL, so the
+ * real query could change without this test noticing (CLAUDE.md #18).
+ */
 function page(db: Db, filters: TransactionFilters, after: LedgerKey | null, size: number) {
-  return db
-    .select({ id: transactions.id, date: transactions.date })
-    .from(transactions)
-    .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(and(buildWhere(filters), after ? olderThan(after) : undefined))
-    .orderBy(desc(transactions.date), desc(transactions.id))
-    .limit(size)
-    .all();
+  const q = after ? olderThanQuery(db, filters, after, size) : ledgerQuery(db, filters, size);
+  return allSync<{ id: number; date: string }>(q).map((r) => ({ id: r.id, date: r.date }));
 }
 
 function allRows(db: Db, filters: TransactionFilters) {

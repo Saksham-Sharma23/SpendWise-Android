@@ -1,6 +1,6 @@
 import type { BenchQuery } from '@/db/dev/benchmark';
 import { EMPTY_FILTERS } from './data/filters';
-import { transactionQueries } from './data/queries';
+import { transactionQueries } from './data/hooks';
 
 /** The ledger's shipped queries, for the dev harness benchmark. */
 export function transactionBenchQueries(): BenchQuery[] {

@@ -1,9 +1,12 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
+import { readDb } from '@/db/read';
 import { todayISO } from '@/lib/dates';
 import { csvFileName, csvHeader, csvLine } from '../domain/csv';
-import { getTransactionsPage, hasActiveFilters, type TransactionFilters } from './queries';
+import { keyOf } from '../domain/pages';
+import { hasActiveFilters, type TransactionFilters } from './filters';
+import { ledgerQuery, olderThanQuery, type TransactionRow } from './sql';
 
 const PAGE = 2000;
 
@@ -19,10 +22,15 @@ export interface ExportResult {
  * Export every transaction matching `filters` to a CSV and open the share
  * sheet.
  *
- * The file is written to the cache directory page by page with `append`, so
- * memory stays flat whatever the ledger size. Nothing leaves the device
- * unless the user picks a destination in the share sheet — the app itself
- * sends nothing anywhere (CLAUDE.md #1).
+ * Pages by KEYSET through the read handle (B17). The old export paged with
+ * `LIMIT … OFFSET n` on the synchronous handle: every page re-walked all the
+ * rows before it, so a 50k-row export did quadratic work, and did it on the JS
+ * thread. `(date, id) < (last)` is a range scan on tx_ledger_idx, and readDb
+ * runs it on expo-sqlite's native worker.
+ *
+ * The file is written page by page with `append`, so memory stays flat
+ * whatever the ledger size. Nothing leaves the device unless the user picks a
+ * destination in the share sheet (CLAUDE.md #1).
  */
 export async function exportTransactionsCsv(filters: TransactionFilters): Promise<ExportResult> {
   const file = new File(Paths.cache, csvFileName(todayISO(), hasActiveFilters(filters)));
@@ -31,13 +39,13 @@ export async function exportTransactionsCsv(filters: TransactionFilters): Promis
   file.write(csvHeader());
 
   let rows = 0;
-  for (let offset = 0; ; offset += PAGE) {
-    const page = getTransactionsPage(filters, PAGE, offset);
-    if (page.length === 0) break;
+  let page = (await ledgerQuery(readDb, filters, PAGE)) as TransactionRow[];
+  while (page.length > 0) {
     file.write(page.map(csvLine).join(''), { append: true });
     rows += page.length;
     if (page.length < PAGE) break;
     await yieldToUI();
+    page = (await olderThanQuery(readDb, filters, keyOf(page[page.length - 1]!), PAGE)) as TransactionRow[];
   }
 
   if (!(await Sharing.isAvailableAsync())) return { rows, shared: false };

@@ -14,13 +14,9 @@ import { formatDayMonth } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
 import { useToday } from '@/lib/today';
-import {
-  deleteTransactionsForever,
-  restoreTransactions,
-  softDeleteTransactions,
-  useDeletedTransactions,
-  type DeletedTransactionRow,
-} from '../data/queries';
+import { deleteTransactionsForever, restoreTransactions, softDeleteTransactions } from '../data/actions';
+import { useDeletedTransactions } from '../data/hooks';
+import { type DeletedTransactionRow } from '../data/sql';
 
 /**
  * Settings → Recently deleted (TASKS2 5C).

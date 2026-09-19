@@ -1,11 +1,14 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
+import * as schema from '@/db/schema';
 import { categories, transactions } from '@/db/schema';
+import { allSync } from '@/db/types';
 import { buildWhere, hasActiveFilters, resolveDateRange, type TransactionFilters } from '../data/filters';
+import { summaryQuery } from '../data/sql';
 
 /**
  * Drives the REAL filter builder against a REAL database in Node.
@@ -32,7 +35,7 @@ function makeDb() {
       if (t) sqlite.exec(t);
     }
   }
-  return drizzle(sqlite, { schema: { categories, transactions } });
+  return drizzle(sqlite, { schema });
 }
 
 type Db = ReturnType<typeof makeDb>;
@@ -277,17 +280,27 @@ describe('hasActiveFilters', () => {
 });
 
 describe('summary aggregates', () => {
+  /**
+   * Runs the SHIPPED summary query. The old version of this test only counted
+   * rows, despite its title — so swapping the income and expense CASEs, the
+   * bug it was named for, could never have failed it.
+   */
   it('sums income and expense separately, in SQL, ignoring deleted rows', () => {
     const db = makeDb();
     seed(db);
-    const row = db
-      .select({
-        count: transactions.id,
-      })
-      .from(transactions)
-      .where(and(isNull(transactions.deletedAt)))
-      .all();
-    // 4 live rows; the soft-deleted one must not be counted.
-    expect(row).toHaveLength(4);
+    const [row] = allSync<{ count: number; incomePaise: number; expensePaise: number }>(
+      summaryQuery(db, { type: 'all' }),
+    );
+    // 4 live rows; the soft-deleted ₹99 expense must not count anywhere.
+    expect(row).toEqual({ count: 4, incomePaise: 50_000_00, expensePaise: 250_00 + 80_00 + 1_200_00 });
+  });
+
+  it('applies the same filters as the ledger', () => {
+    const db = makeDb();
+    seed(db);
+    const [row] = allSync<{ count: number; incomePaise: number; expensePaise: number }>(
+      summaryQuery(db, { type: 'expense' }),
+    );
+    expect(row).toEqual({ count: 3, incomePaise: 0, expensePaise: 250_00 + 80_00 + 1_200_00 });
   });
 });
