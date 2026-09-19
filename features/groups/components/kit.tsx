@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/ui/PressableScale';
 import { fonts, useColors, withAlpha, type Palette } from '@/lib/theme';
-import type { Tone } from '../wording';
+import type { Tone } from '../domain/wording';
 
 /** The colour for a balance tone: owed to you, you owe, or neither. */
 export function toneColor(tone: Tone, colors: Palette): string {

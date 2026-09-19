@@ -12,7 +12,7 @@ import {
   roundToStep,
   scaleFor,
   turnsOf,
-} from '../dial';
+} from '../domain/dial';
 
 /**
  * The dial's awkward cases. Every one of these is something a user would

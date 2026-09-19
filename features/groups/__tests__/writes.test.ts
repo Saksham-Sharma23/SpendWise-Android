@@ -1,8 +1,8 @@
 import { freshDb } from '@/db/__tests__/support';
 import { UserFacingError } from '@/lib/db/errors';
-import { buildGroupBalances, friendBalances, planFriendSettlement, yourView, type GroupRef } from '../balances';
-import { expenseNets, netsFromEdges, type Contribution } from '../debts';
-import { splitEqual } from '../split';
+import { buildGroupBalances, friendBalances, planFriendSettlement, yourView, type GroupRef } from '../domain/balances';
+import { expenseNets, netsFromEdges, type Contribution } from '../domain/debts';
+import { splitEqual } from '../domain/split';
 import {
   activityQuery,
   groupCategoryQuery,
@@ -12,7 +12,7 @@ import {
   membersQuery,
   netsQuery,
   pairwiseQuery,
-} from '../sql';
+} from '../data/sql';
 import {
   createGroup,
   createPerson,
@@ -27,7 +27,7 @@ import {
   selfId,
   updateGroup,
   type ExpenseInput,
-} from '../writes';
+} from '../data/writes';
 import type { AnyDb } from '@/db/types';
 
 /**

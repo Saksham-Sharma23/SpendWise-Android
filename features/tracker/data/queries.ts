@@ -7,7 +7,7 @@ import type { BillingCycle, SubscriptionStatus } from '@/db/schema';
 import { safeWrite, type WriteResult } from '@/lib/db/safeWrite';
 import { useDbQuery, type DbQueryResult } from '@/lib/db/useDbQuery';
 import { nowISO, todayISO, type ISODate } from '@/lib/dates';
-import { enrich, type EnrichedSubscription, type SubscriptionRow } from './renewal';
+import { enrich, type EnrichedSubscription, type SubscriptionRow } from '../domain/renewal';
 
 /**
  * The Tracker's query boundary.
@@ -18,7 +18,7 @@ import { enrich, type EnrichedSubscription, type SubscriptionRow } from './renew
  * still shows the right next renewal, with no background job to drift.
  */
 
-export type { EnrichedSubscription } from './renewal';
+export type { EnrichedSubscription } from '../domain/renewal';
 
 const EMPTY: EnrichedSubscription[] = [];
 

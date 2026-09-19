@@ -2,7 +2,7 @@ import { and, desc, eq } from 'drizzle-orm';
 
 import { categories, transactions } from '@/db/schema';
 import { freshDb } from '@/db/__tests__/support';
-import { atOrNewerThan, buildWhere, olderThan, type LedgerKey, type TransactionFilters } from '../filters';
+import { atOrNewerThan, buildWhere, olderThan, type LedgerKey, type TransactionFilters } from '../data/filters';
 
 /**
  * The ledger's keyset queries against the REAL migrated schema: pages built

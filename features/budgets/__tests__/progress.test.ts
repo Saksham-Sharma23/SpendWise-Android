@@ -1,5 +1,5 @@
 import { getCycleWindow } from '@/lib/dates';
-import { budgetStatus, budgetTotals, daysLeftLabel, WARNING_RATIO, type BudgetRow } from '../progress';
+import { budgetStatus, budgetTotals, daysLeftLabel, WARNING_RATIO, type BudgetRow } from '../domain/progress';
 
 /**
  * The thresholds a person acts on. These are cheap to test and expensive to

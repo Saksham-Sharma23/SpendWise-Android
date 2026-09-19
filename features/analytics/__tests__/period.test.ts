@@ -8,7 +8,7 @@ import {
   shiftMonth,
   toSlices,
   type CategoryTotal,
-} from '../period';
+} from '../domain/period';
 
 describe('month keys', () => {
   it('shifts across year boundaries both ways', () => {

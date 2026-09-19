@@ -12,7 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { categoryColor } from '@/lib/categoryColor';
 import { formatINR } from '@/lib/money';
 import { fonts, useColors } from '@/lib/theme';
-import { useGroup, useGroupStats } from '../queries';
+import { useGroup, useGroupStats } from '../data/hooks';
 import { SectionLabel } from './kit';
 
 /**

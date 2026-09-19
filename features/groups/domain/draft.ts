@@ -2,7 +2,7 @@ import type { SplitMethod } from '@/db/schema';
 import { parseAmountToPaise } from '@/lib/money';
 import type { Contribution, PersonId } from './debts';
 import { FULL_PERCENT_BP, parsePercent, splitEqual, splitExact, splitPercent, splitShares } from './split';
-import type { ShareInput } from './writes';
+import type { ShareInput } from '../data/writes';
 
 /**
  * The expense form's state as the user typed it, and what it adds up to.

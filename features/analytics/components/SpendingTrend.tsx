@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { formatMonthYear, type ISODate } from '@/lib/dates';
 import { formatINRCompact } from '@/lib/money';
 import { fonts, useColors } from '@/lib/theme';
-import { useSpendingTrend } from '../queries';
+import { useSpendingTrend } from '../data/hooks';
 
 /**
  * The spending-trend card: the scrubbable area chart plus the figures for

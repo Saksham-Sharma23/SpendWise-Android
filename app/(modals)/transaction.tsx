@@ -20,7 +20,7 @@ import {
   restoreTransactions,
   softDeleteTransaction,
   updateTransaction,
-} from '@/features/transactions/queries';
+} from '@/features/transactions/data/queries';
 import {
   emptyTransactionForm,
   toTransactionInput,

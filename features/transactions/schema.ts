@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { fromISODate, toISODate } from '@/lib/dates';
 import { MAX_AMOUNT_PAISE, parseAmountToPaise } from '@/lib/money';
-import type { TransactionInput } from './queries';
+import type { TransactionInput } from './data/queries';
 
 /**
  * Validation for the add/edit transaction form.

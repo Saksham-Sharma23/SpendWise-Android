@@ -15,8 +15,8 @@ import { Swap } from '@/components/ui/Swap';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { formatINR } from '@/lib/money';
 import { fonts, useColors } from '@/lib/theme';
-import { useGroupsHub, type Hub, type HubGroup } from '../queries';
-import { friendShort, friendStatus, yourStatus } from '../wording';
+import { useGroupsHub, type Hub, type HubGroup } from '../data/hooks';
+import { friendShort, friendStatus, yourStatus } from '../domain/wording';
 import { FloatingAction, RoundButton, toneColor } from './kit';
 
 type Tab = 'groups' | 'friends';

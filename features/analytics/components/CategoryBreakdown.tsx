@@ -13,8 +13,8 @@ import { formatMonthYear, type ISODate } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
 import { useMotion } from '@/lib/motion';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
-import { clampMonth, shiftMonth, toSlices, type Slice } from '../period';
-import { useCategoryBreakdown } from '../queries';
+import { clampMonth, shiftMonth, toSlices, type Slice } from '../domain/period';
+import { useCategoryBreakdown } from '../data/hooks';
 
 /**
  * Where one month's spending went: a donut with a month picker and a legend.

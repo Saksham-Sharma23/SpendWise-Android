@@ -5,8 +5,8 @@ import { ScrollView, Text, View } from 'react-native';
 import { Avatar } from '@/components/ui/Avatar';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
-import { useGroup } from '../queries';
-import { memberStatus, simplifiedNote, transferLine } from '../wording';
+import { useGroup } from '../data/hooks';
+import { memberStatus, simplifiedNote, transferLine } from '../domain/wording';
 import { SectionLabel, toneColor } from './kit';
 
 /**

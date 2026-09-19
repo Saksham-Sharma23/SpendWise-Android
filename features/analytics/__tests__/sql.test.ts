@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3';
 
 import { categories, transactions } from '@/db/schema';
 import { freshDb } from '@/db/__tests__/support';
-import { biggestExpenseQuery, categoryTotalsQuery, earliestDateQuery, totalsQuery, trendQuery } from '../sql';
+import { biggestExpenseQuery, categoryTotalsQuery, earliestDateQuery, totalsQuery, trendQuery } from '../data/sql';
 import type { AnyDb } from '@/db/types';
 
 /**

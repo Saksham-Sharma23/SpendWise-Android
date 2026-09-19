@@ -9,7 +9,7 @@ import { formatDayMonth } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
 import { renewalCountdown } from '@/lib/renewals';
 import { colors, fonts, useColors, withAlpha } from '@/lib/theme';
-import type { EnrichedSubscription } from '../renewal';
+import type { EnrichedSubscription } from '../domain/renewal';
 
 export interface CardActions {
   onEdit: (sub: EnrichedSubscription) => void;

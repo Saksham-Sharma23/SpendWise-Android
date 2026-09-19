@@ -12,7 +12,7 @@ import {
   normalizeCategoryName,
   tombstoneName,
   updateCategory,
-} from '../mutations';
+} from '../data/writes';
 
 /**
  * Category writes against the REAL generated migration, so the two unique

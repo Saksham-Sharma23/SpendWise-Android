@@ -2,7 +2,7 @@ import { toast } from 'sonner-native';
 
 import { db } from '@/db/client';
 import { safeWrite, type WriteResult } from '@/lib/db/safeWrite';
-import type { PlannedSettlement } from './balances';
+import type { PlannedSettlement } from '../domain/balances';
 import {
   createGroup,
   createPerson,

@@ -14,9 +14,9 @@ import type { SplitMethod } from '@/db/schema';
 import { runWriteTx } from '@/db/tx';
 import { UserFacingError } from '@/lib/db/errors';
 import { formatINR } from '@/lib/money';
-import type { PlannedSettlement } from './balances';
-import { expenseDebts, type Contribution } from './debts';
-import { MAX_EXPENSE_PAISE } from './split';
+import type { PlannedSettlement } from '../domain/balances';
+import { expenseDebts, type Contribution } from '../domain/debts';
+import { MAX_EXPENSE_PAISE } from '../domain/split';
 import type { SyncDb } from '@/db/types';
 
 /**

@@ -8,8 +8,8 @@ import { toast } from 'sonner-native';
 import { Avatar } from '@/components/ui/Avatar';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { fonts, useColors } from '@/lib/theme';
-import { addFriend, removeFriend, renameFriend } from '../mutations';
-import { getFriends } from '../queries';
+import { addFriend, removeFriend, renameFriend } from '../data/actions';
+import { getFriends } from '../data/hooks';
 import { RoundButton } from './kit';
 
 /** Add a friend by name, or rename / remove one. */

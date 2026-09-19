@@ -11,8 +11,8 @@ import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
-import { addFriend, addGroup, editGroup, removeGroup } from '../mutations';
-import { getFriends, getGroupRow, getMembers } from '../queries';
+import { addFriend, addGroup, editGroup, removeGroup } from '../data/actions';
+import { getFriends, getGroupRow, getMembers } from '../data/hooks';
 import { RoundButton, SectionLabel } from './kit';
 
 const GROUP_ICONS = [

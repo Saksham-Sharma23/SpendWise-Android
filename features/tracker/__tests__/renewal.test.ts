@@ -1,6 +1,6 @@
 import { ICON_NAMES } from '@/lib/icons';
 import { deterministicColor, deterministicIcon, initials } from '@/lib/identity';
-import { arrange, enrich, summarise, type SubscriptionRow } from '../renewal';
+import { arrange, enrich, summarise, type SubscriptionRow } from '../domain/renewal';
 
 /**
  * The renewal port is the code that "looks right and is wrong four months

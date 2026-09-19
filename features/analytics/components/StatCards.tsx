@@ -12,7 +12,7 @@ import type { DbQueryResult } from '@/lib/db/useDbQuery';
 import { formatDayMonth } from '@/lib/dates';
 import { formatCount, formatINR } from '@/lib/money';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
-import type { PeriodStats } from '../queries';
+import type { PeriodStats } from '../data/hooks';
 
 /**
  * The range's headline figures: money in, money out, what is left. The hero

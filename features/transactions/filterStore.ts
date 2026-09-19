@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { EMPTY_FILTERS, type TransactionFilters } from './filters';
+import { EMPTY_FILTERS, type TransactionFilters } from './data/filters';
 
 /**
  * Ledger filter state.

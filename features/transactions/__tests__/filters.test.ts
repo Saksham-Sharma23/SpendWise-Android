@@ -5,7 +5,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { categories, transactions } from '@/db/schema';
-import { buildWhere, hasActiveFilters, resolveDateRange, type TransactionFilters } from '../filters';
+import { buildWhere, hasActiveFilters, resolveDateRange, type TransactionFilters } from '../data/filters';
 
 /**
  * Drives the REAL filter builder against a REAL database in Node.

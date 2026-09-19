@@ -18,7 +18,7 @@ import {
   restoreSubscription,
   softDeleteSubscription,
   updateSubscription,
-} from '@/features/tracker/queries';
+} from '@/features/tracker/data/queries';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import {
   emptySubscriptionForm,

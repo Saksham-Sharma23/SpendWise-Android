@@ -6,7 +6,7 @@ import {
   simplifiedNote,
   transferLine,
   yourStatus,
-} from '../wording';
+} from '../domain/wording';
 
 describe('Groups wording', () => {
   it('your status', () => {

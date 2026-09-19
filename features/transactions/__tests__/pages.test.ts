@@ -1,4 +1,4 @@
-import { idsNotInPages, isOlder, locateKey, stalePages, type OlderPage, type PagedRow } from '../pages';
+import { idsNotInPages, isOlder, locateKey, stalePages, type OlderPage, type PagedRow } from '../domain/pages';
 
 const row = (date: string, id: number, categoryId: number | null = 1): PagedRow => ({ date, id, categoryId });
 

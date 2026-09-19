@@ -4,7 +4,7 @@ import { db } from '@/db/client';
 import { readDb } from '@/db/read';
 import { categories, transactions } from '@/db/schema';
 import { useDbQuery, type DbQueryResult } from '@/lib/db/useDbQuery';
-import * as m from './mutations';
+import * as m from './writes';
 import type { SyncDb } from '@/db/types';
 
 /**
@@ -13,7 +13,7 @@ import type { SyncDb } from '@/db/types';
  * bound to the app's handle.
  */
 
-export { CategoryError, MAX_CATEGORY_NAME, type CategoryInput } from './mutations';
+export { CategoryError, MAX_CATEGORY_NAME, type CategoryInput } from './writes';
 
 export interface CategoryWithUsage {
   id: number;

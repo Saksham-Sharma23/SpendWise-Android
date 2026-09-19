@@ -13,7 +13,7 @@ import { makeDedupeHash } from '@/lib/dedupe';
 import { nowISO, type ISODate } from '@/lib/dates';
 import { useToday } from '@/lib/today';
 import { atOrNewerThan, buildWhere, olderThan, type LedgerKey, type TransactionFilters } from './filters';
-import { idsNotInPages, keyOf, stalePages, type OlderPage } from './pages';
+import { idsNotInPages, keyOf, stalePages, type OlderPage } from '../domain/pages';
 
 /**
  * The transactions query boundary.

@@ -1,7 +1,7 @@
 import type { BenchQuery } from '@/db/dev/benchmark';
 import { todayISO } from '@/lib/dates';
-import { periodWindow } from './period';
-import { analyticsQueries } from './queries';
+import { periodWindow } from './domain/period';
+import { analyticsQueries } from './data/hooks';
 
 /**
  * The Analytics screen's shipped queries, for the dev harness benchmark.

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { fromISODate, toISODate } from '@/lib/dates';
 import { MAX_AMOUNT_PAISE, parseAmountToPaise } from '@/lib/money';
-import type { SubscriptionInput } from './queries';
+import type { SubscriptionInput } from './data/queries';
 
 /**
  * Validation for the subscription form.

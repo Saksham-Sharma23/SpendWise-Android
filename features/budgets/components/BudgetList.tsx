@@ -15,8 +15,8 @@ import { formatDayMonth } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
 import { useToday } from '@/lib/today';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
-import { budgetTotals, daysLeftLabel, type BudgetProgress } from '../progress';
-import { restoreBudget, softDeleteBudget, useBudgetsWithSpend } from '../queries';
+import { budgetTotals, daysLeftLabel, type BudgetProgress } from '../domain/progress';
+import { restoreBudget, softDeleteBudget, useBudgetsWithSpend } from '../data/queries';
 
 /**
  * Budgets: one card per category limit, with this cycle's spend.

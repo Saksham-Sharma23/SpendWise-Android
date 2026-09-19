@@ -15,8 +15,14 @@ import { formatINR } from '@/lib/money';
 import { renewalCountdown } from '@/lib/renewals';
 import { useToday } from '@/lib/today';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
-import { restoreSubscription, setSubscriptionStatus, softDeleteSubscription, useSubscriptions } from '../queries';
-import { arrange, summarise, type EnrichedSubscription, type StatusFilter, type SubscriptionSort } from '../renewal';
+import { restoreSubscription, setSubscriptionStatus, softDeleteSubscription, useSubscriptions } from '../data/queries';
+import {
+  arrange,
+  summarise,
+  type EnrichedSubscription,
+  type StatusFilter,
+  type SubscriptionSort,
+} from '../domain/renewal';
 import { SubscriptionCard, type CardActions } from './SubscriptionCard';
 
 /**

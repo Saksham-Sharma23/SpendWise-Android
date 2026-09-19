@@ -6,7 +6,7 @@ import { budgets, categories, transactions } from '@/db/schema';
 import { safeWrite, type WriteResult } from '@/lib/db/safeWrite';
 import { useDbQuery, type DbQueryResult } from '@/lib/db/useDbQuery';
 import { getCycleWindow, nowISO, todayISO, type ISODate } from '@/lib/dates';
-import { budgetStatus, type BudgetProgress, type BudgetRow } from './progress';
+import { budgetStatus, type BudgetProgress, type BudgetRow } from '../domain/progress';
 
 /**
  * The budgets query boundary.
@@ -22,7 +22,7 @@ import { budgetStatus, type BudgetProgress, type BudgetRow } from './progress';
  * sees a transaction row here (#5).
  */
 
-export type { BudgetProgress } from './progress';
+export type { BudgetProgress } from '../domain/progress';
 
 const EMPTY: BudgetProgress[] = [];
 

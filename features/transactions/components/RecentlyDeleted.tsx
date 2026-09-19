@@ -20,7 +20,7 @@ import {
   softDeleteTransactions,
   useDeletedTransactions,
   type DeletedTransactionRow,
-} from '../queries';
+} from '../data/queries';
 
 /**
  * Settings → Recently deleted (TASKS2 5C).

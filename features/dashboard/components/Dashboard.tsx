@@ -40,7 +40,7 @@ import {
   useTopCategories,
   type CategorySpend,
   type MonthOverview,
-} from '../queries';
+} from '../data/hooks';
 import { TrendChart } from './TrendChart';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

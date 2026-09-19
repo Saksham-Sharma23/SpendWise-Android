@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatCount } from '@/lib/money';
 import { fonts, useColors } from '@/lib/theme';
-import { useCategoriesWithUsageResult, type CategoryWithUsage } from '../queries';
+import { useCategoriesWithUsageResult, type CategoryWithUsage } from '../data/hooks';
 
 /**
  * Category management. The server used to own categories; here the user

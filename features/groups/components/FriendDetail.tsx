@@ -12,8 +12,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { fonts, useColors } from '@/lib/theme';
-import { useGroupActivity, useGroupsHub } from '../queries';
-import { friendShort, friendStatus } from '../wording';
+import { useGroupActivity, useGroupsHub } from '../data/hooks';
+import { friendShort, friendStatus } from '../domain/wording';
 import { ActivityList } from './ActivityList';
 import { ActionPill, RoundButton, SectionLabel, toneColor } from './kit';
 

@@ -1,4 +1,4 @@
-import { CSV_BOM, csvCell, csvFileName, csvHeader, csvLine } from '../csv';
+import { CSV_BOM, csvCell, csvFileName, csvHeader, csvLine } from '../domain/csv';
 
 describe('csvCell', () => {
   it('leaves plain values alone', () => {

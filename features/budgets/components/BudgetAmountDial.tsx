@@ -7,7 +7,7 @@ import { AmountDial } from '@/components/ui/AmountDial';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '@/lib/money';
 import { colors, fonts, useColors, withAlpha } from '@/lib/theme';
-import { DIAL_SCALES, presetsFor, rescale, scaleFor, turnsOf, type DialScale } from '../dial';
+import { DIAL_SCALES, presetsFor, rescale, scaleFor, turnsOf, type DialScale } from '../domain/dial';
 
 /**
  * The budget amount, set the way an alarm is set.

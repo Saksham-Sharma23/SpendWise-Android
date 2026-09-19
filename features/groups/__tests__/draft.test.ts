@@ -1,6 +1,6 @@
 import { paiseToDecimalString } from '@/lib/money';
-import { draftFromExpense, emptyDraft, evaluate } from '../draft';
-import { formatPercent } from '../split';
+import { draftFromExpense, emptyDraft, evaluate } from '../domain/draft';
+import { formatPercent } from '../domain/split';
 
 const ME = 1;
 const RAHUL = 2;

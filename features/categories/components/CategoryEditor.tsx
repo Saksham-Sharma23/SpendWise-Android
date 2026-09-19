@@ -19,7 +19,7 @@ import {
   mergeCategory,
   updateCategory,
   useCategoriesWithUsage,
-} from '../queries';
+} from '../data/hooks';
 
 /** Surface a CategoryError's message; anything else is a bug worth a generic toast. */
 function report(e: unknown, fallback: string) {

@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3';
 
 import { categories, transactions } from '@/db/schema';
 import { freshDb } from '@/db/__tests__/support';
-import { topCategoriesQuery, trendQuery } from '../sql';
+import { topCategoriesQuery, trendQuery } from '../data/sql';
 
 /**
  * The SHIPPED dashboard builders, run against the real migrated schema

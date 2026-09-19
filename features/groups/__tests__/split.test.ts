@@ -8,7 +8,7 @@ import {
   splitExact,
   splitPercent,
   splitShares,
-} from '../split';
+} from '../domain/split';
 
 function lcg(seed: number) {
   let s = seed >>> 0;

@@ -8,7 +8,7 @@ import { formatMonthYear } from '@/lib/dates';
 import { formatINR, formatINRCompact } from '@/lib/money';
 import { fonts, useColors } from '@/lib/theme';
 import { useToday } from '@/lib/today';
-import { useMonthlyTrend } from '../queries';
+import { useMonthlyTrend } from '../data/hooks';
 
 type Range = '6' | '12';
 

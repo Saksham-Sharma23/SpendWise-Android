@@ -1,6 +1,6 @@
 import type { BenchQuery } from '@/db/dev/benchmark';
 import { todayISO } from '@/lib/dates';
-import { dashboardQueries } from './queries';
+import { dashboardQueries } from './data/hooks';
 
 /** The dashboard's shipped queries, for the dev harness benchmark. Local dates, never UTC. */
 export function dashboardBenchQueries(today = todayISO()): BenchQuery[] {

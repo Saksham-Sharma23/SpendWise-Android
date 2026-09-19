@@ -9,8 +9,8 @@ import {
   type GroupBalances,
   type GroupRef,
   type YourView,
-} from './balances';
-import type { PersonId } from './debts';
+} from '../domain/balances';
+import type { PersonId } from '../domain/debts';
 import {
   activityQuery,
   expensePayersQuery,

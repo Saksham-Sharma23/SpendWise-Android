@@ -11,8 +11,8 @@ import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { fonts, useColors } from '@/lib/theme';
-import { useGroup, useGroupActivity } from '../queries';
-import { friendStatus, yourStatus } from '../wording';
+import { useGroup, useGroupActivity } from '../data/hooks';
+import { friendStatus, yourStatus } from '../domain/wording';
 import { ActivityList } from './ActivityList';
 import { ActionPill, FloatingAction, RoundButton, toneColor } from './kit';
 

@@ -11,9 +11,9 @@ import { addDays, formatDayMonth } from '@/lib/dates';
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '@/lib/money';
 import { useToday } from '@/lib/today';
 import { fonts, useColors } from '@/lib/theme';
-import { planFriendSettlement } from '../balances';
-import { settle, settleMany } from '../mutations';
-import { useGroup, useGroupsHub } from '../queries';
+import { planFriendSettlement } from '../domain/balances';
+import { settle, settleMany } from '../data/actions';
+import { useGroup, useGroupsHub } from '../data/hooks';
 import { RoundButton, SectionLabel } from './kit';
 
 /**

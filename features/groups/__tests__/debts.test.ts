@@ -7,8 +7,8 @@ import {
   type Contribution,
   type Edge,
   type PersonId,
-} from '../debts';
-import { splitEqual } from '../split';
+} from '../domain/debts';
+import { splitEqual } from '../domain/split';
 
 function lcg(seed: number) {
   let s = seed >>> 0;

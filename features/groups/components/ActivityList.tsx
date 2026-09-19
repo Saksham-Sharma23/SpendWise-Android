@@ -7,9 +7,9 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { MONTHS_LONG, MONTHS_SHORT } from '@/lib/dates';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
-import { removeSettlements } from '../mutations';
-import type { ActivityRow, PersonRow } from '../queries';
-import { expenseEffect, paidLine, settlementLine } from '../wording';
+import { removeSettlements } from '../data/actions';
+import type { ActivityRow, PersonRow } from '../data/hooks';
+import { expenseEffect, paidLine, settlementLine } from '../domain/wording';
 import { toneColor } from './kit';
 
 /**

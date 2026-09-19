@@ -28,10 +28,10 @@ import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '@/lib/money';
 import { useToday } from '@/lib/today';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
-import { draftFromExpense, emptyDraft, evaluate, type Draft } from '../draft';
-import { directGroupFor, removeExpense, saveSplitExpense } from '../mutations';
-import { getExpenseForEdit, getFriends, getGroupRow, getMembers, getSelfId, useGroupsHub } from '../queries';
-import { formatPercent } from '../split';
+import { draftFromExpense, emptyDraft, evaluate, type Draft } from '../domain/draft';
+import { directGroupFor, removeExpense, saveSplitExpense } from '../data/actions';
+import { getExpenseForEdit, getFriends, getGroupRow, getMembers, getSelfId, useGroupsHub } from '../data/hooks';
+import { formatPercent } from '../domain/split';
 import { FormSheet, RoundButton, SectionLabel } from './kit';
 
 export interface CategoryOption {
