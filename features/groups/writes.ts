@@ -445,12 +445,7 @@ export function restoreExpense(db: SyncDb, id: number): void {
       .all()[0];
     if (!expense) throw new UserFacingError('That expense no longer exists');
 
-    assertPeopleStillMembers(
-      tx,
-      expense.groupId,
-      peopleOnExpense(tx, id),
-      'expense',
-    );
+    assertPeopleStillMembers(tx, expense.groupId, peopleOnExpense(tx, id), 'expense');
 
     tx.update(splitExpenses).set({ deletedAt: null }).where(eq(splitExpenses.id, id)).run();
   });

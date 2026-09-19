@@ -11,7 +11,7 @@ import { toast } from 'sonner-native';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Segmented } from '@/components/ui/Segmented';
-import { useCategories } from '@/features/transactions/queries';
+import { useCategories } from '@/data/categories';
 import {
   createSubscription,
   getSubscription,

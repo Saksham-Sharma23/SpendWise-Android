@@ -5,9 +5,9 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { Screen } from '@/components/layout/Screen';
 import { formatCount } from '@/lib/money';
 import { useColors } from '@/lib/theme';
-import { databaseSizeBytes, countTransactions, runBenchmark } from '@/db/benchmark';
-import type { BenchResult } from '@/db/benchmark';
-import { devClearTransactions, devEncryptedCopyRoundTrip, devSeedTransactions } from '@/db/devSeed';
+import { databaseSizeBytes, countTransactions, runBenchmark } from '@/db/dev/benchmark';
+import type { BenchResult } from '@/db/dev/benchmark';
+import { devClearTransactions, devEncryptedCopyRoundTrip, devSeedTransactions } from '@/db/dev/devSeed';
 import { analyticsBenchQueries } from '@/features/analytics/benchmark';
 import { dashboardBenchQueries } from '@/features/dashboard/benchmark';
 import { transactionBenchQueries } from '@/features/transactions/benchmark';

@@ -1,4 +1,4 @@
-import type { BenchQuery } from '@/db/benchmark';
+import type { BenchQuery } from '@/db/dev/benchmark';
 import { todayISO } from '@/lib/dates';
 import { dashboardQueries } from './queries';
 

@@ -1,8 +1,8 @@
 import { and, asc, desc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 
-import { setMeta } from '@/db/seed';
+import { META_KEYS, setMeta, useMeta } from '@/data/meta';
 import { readDb } from '@/db/read';
-import { appMeta, budgets, categories, META_KEYS, subscriptions, transactions } from '@/db/schema';
+import { budgets, categories, subscriptions, transactions } from '@/db/schema';
 import type { BillingCycle, SubscriptionStatus } from '@/db/schema';
 import { useDbQuery, type DbQueryResult } from '@/lib/db/useDbQuery';
 import { addMonthsClamped, getCycleWindow, startOfMonth, type ISODate } from '@/lib/dates';
@@ -158,7 +158,7 @@ export function useRecentTransactions(limit = 5): DbQueryResult<RecentTransactio
 
 // ---------------------------------------------------------------------------
 // Query builders — shared by the hooks above and the dev benchmark
-// (db/benchmark.ts), so the timed SQL is exactly the shipped SQL.
+// (db/dev/benchmark.ts), so the timed SQL is exactly the shipped SQL.
 //
 // The month-bounded builders TAKE `db`, so features/dashboard/__tests__ can run
 // the shipped SQL on better-sqlite3 (convention #18). The rest still close over
@@ -264,19 +264,8 @@ export function useHasTransactions(): DbQueryResult<boolean> {
 
 /** Whether the user dismissed first-run onboarding (app_meta `onboarding_dismissed`). */
 export function useOnboardingDismissed(): DbQueryResult<boolean> {
-  return useDbQuery(
-    async () => {
-      const rows = await readDb
-        .select({ value: appMeta.value })
-        .from(appMeta)
-        .where(eq(appMeta.key, META_KEYS.ONBOARDING_DISMISSED))
-        .limit(1);
-      return rows[0]?.value === '1';
-    },
-    ['app_meta'],
-    [],
-    false,
-  );
+  const meta = useMeta(META_KEYS.ONBOARDING_DISMISSED);
+  return { ...meta, data: meta.data === '1' };
 }
 
 export function dismissOnboarding(): void {

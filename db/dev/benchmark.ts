@@ -1,4 +1,4 @@
-import { sqliteDb } from './connection';
+import { sqliteDb } from '@/db/connection';
 
 /**
  * Query timing for the dev harness — the instrument behind the Phase 1 exit

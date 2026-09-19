@@ -175,6 +175,11 @@ module.exports = defineConfig([
               group: ['../../*'],
               message: 'Import across folders with the @/ alias (e.g. @/lib/money), not ../../',
             },
+            {
+              // Seeding 50k rows and timing queries is dev-only (CLAUDE.md #17).
+              group: ['@/db/dev/*'],
+              message: 'db/dev is for the dev harness and benchmarks only; production code never imports it.',
+            },
           ],
         },
       ],
@@ -235,6 +240,27 @@ module.exports = defineConfig([
        * imported for its TYPES in pure logic that must not pull the runtime in.
        */
       'import/no-duplicates': 'off',
+    },
+  },
+
+  // The dev harness and the per-feature benchmark lists are the only callers
+  // of db/dev. Same rules as everywhere else, minus that one pattern.
+  {
+    files: ['app/dev.tsx', 'features/*/benchmark.ts', 'db/dev/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'drizzle-orm/expo-sqlite',
+              importNames: ['useLiveQuery'],
+              message: 'Use useDbQuery over readDb (CLAUDE.md #6).',
+            },
+          ],
+          patterns: [{ group: ['../../*'], message: 'Import across folders with the @/ alias, not ../../' }],
+        },
+      ],
     },
   },
 

@@ -304,7 +304,7 @@ export function getTransactionsPage(filters: TransactionFilters, limit: number, 
     .all() as TransactionRow[];
 }
 
-/** Query builders shared by the hooks above and the dev benchmark (db/benchmark.ts). */
+/** Query builders shared by the hooks above and the dev benchmark (db/dev/benchmark.ts). */
 export const transactionQueries = {
   /** The newest `limit` rows: page 1 before any older page is loaded. */
   ledger: (filters: TransactionFilters, limit: number) =>
@@ -375,16 +375,6 @@ export function getTransaction(id: number): TransactionRow | undefined {
     .limit(1)
     .all();
   return rows[0] as TransactionRow | undefined;
-}
-
-/** All live categories, for pickers and the filter sheet. */
-export function useCategories() {
-  return useDbQuery(
-    () => readDb.select().from(categories).where(isNull(categories.deletedAt)).orderBy(categories.name),
-    ['categories'],
-    [],
-    [],
-  );
 }
 
 // ---------------------------------------------------------------------------

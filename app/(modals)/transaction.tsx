@@ -8,6 +8,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
+import { useCategories } from '@/data/categories';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { DatePickerSheet } from '@/components/ui/DatePickerSheet';
 import { PressableScale } from '@/components/ui/PressableScale';
@@ -19,7 +20,6 @@ import {
   restoreTransactions,
   softDeleteTransaction,
   updateTransaction,
-  useCategories,
 } from '@/features/transactions/queries';
 import {
   emptyTransactionForm,

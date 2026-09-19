@@ -86,17 +86,38 @@ function ensureNativeListener() {
  * @param tables   every base table the query reads
  * @param deps     values the query depends on (like useMemo deps)
  * @param fallback what `data` is before the first result, or if it never succeeds
+ * @param options  `entity`: see below
+ *
+ * `deps` versus `options.entity`: a change in `deps` re-runs the query and
+ * keeps showing the previous answer until the new one arrives, which is right
+ * for a filter or a date. A change in `entity` means the query is now about a
+ * DIFFERENT THING — another group, another friend — and the previous answer
+ * must not be shown under the new heading for even a frame. So the result
+ * resets to `pending` + `fallback` in the same render (R3-6). Before this,
+ * opening group B straight after group A drew A's balances under B's name
+ * until the new query answered.
  */
 export function useDbQuery<T>(
   run: () => Promise<T>,
   tables: readonly TableName[],
   deps: DependencyList,
   fallback: T,
+  options?: { entity?: unknown },
 ): DbQueryResult<T> {
   const runRef = useRef(run);
   runRef.current = run;
 
   const [result, setResult] = useState<QueryState<T>>(() => ({ data: fallback, status: 'pending', error: null }));
+
+  // React's "adjust state while rendering" pattern: comparing with the entity
+  // this state belongs to and resetting HERE, not in an effect, means the
+  // stale answer is never painted — an effect would run after one frame of it.
+  const entity = options?.entity;
+  const [entityOfResult, setEntityOfResult] = useState<unknown>(entity);
+  if (!Object.is(entity, entityOfResult)) {
+    setEntityOfResult(entity);
+    setResult({ data: fallback, status: 'pending', error: null });
+  }
   const isFocused = useIsFocused();
   const focusedRef = useRef(isFocused);
   focusedRef.current = isFocused;

@@ -7,6 +7,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
 
+import { useCategories } from '@/data/categories';
 import { Screen, TAB_BAR_CLEARANCE } from '@/components/layout/Screen';
 import { AnimatedAmount } from '@/components/ui/AnimatedAmount';
 import { Card } from '@/components/ui/Card';
@@ -24,7 +25,6 @@ import {
   restoreTransactions,
   softDeleteTransaction,
   softDeleteTransactions,
-  useCategories,
   useTransactionSummary,
   useTransactionPages,
   type TransactionFilters,

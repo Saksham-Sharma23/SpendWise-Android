@@ -1,5 +1,5 @@
 import { ExpenseForm } from '@/features/groups/components/ExpenseForm';
-import { useCategories } from '@/features/transactions/queries';
+import { useCategories } from '@/data/categories';
 
 /**
  * Categories come from the ledger's feature and are handed down: features may

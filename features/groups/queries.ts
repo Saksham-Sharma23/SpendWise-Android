@@ -201,6 +201,8 @@ export function useGroup(groupId: number): DbQueryResult<GroupScreen> {
     BALANCE_TABLES,
     [groupId],
     EMPTY_GROUP,
+    // Another group is another entity: never draw A's balances under B's name.
+    { entity: groupId },
   );
 }
 
@@ -214,6 +216,7 @@ export function useGroupActivity(groupId: number, selfId: number, limit: number)
     ['split_expenses', 'split_expense_payers', 'split_expense_shares', 'settlements', 'categories'],
     [groupId, selfId, limit],
     EMPTY_ACTIVITY,
+    { entity: groupId },
   );
 }
 
@@ -254,6 +257,7 @@ export function useGroupStats(groupId: number, selfId: number): DbQueryResult<Gr
     ['split_expenses', 'split_expense_payers', 'split_expense_shares', 'categories'],
     [groupId, selfId],
     EMPTY_STATS,
+    { entity: groupId },
   );
 }
 
@@ -293,7 +297,9 @@ export interface ExpenseForEdit {
 }
 
 export function getExpenseForEdit(expenseId: number): ExpenseForEdit | undefined {
-  const [row] = allSync<(Omit<ExpenseForEdit, 'payers' | 'shares'> & { deletedAt: string | null })>(expenseQuery(w, expenseId));
+  const [row] = allSync<Omit<ExpenseForEdit, 'payers' | 'shares'> & { deletedAt: string | null }>(
+    expenseQuery(w, expenseId),
+  );
   if (!row || row.deletedAt != null) return undefined;
   const payers = allSync<ExpenseForEdit['payers'][number]>(expensePayersQuery(w, expenseId));
   const shares = allSync<ExpenseForEdit['shares'][number]>(expenseSharesQuery(w, expenseId));

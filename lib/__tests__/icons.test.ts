@@ -1,5 +1,6 @@
 import { deterministicIcon } from '../identity';
 import { ICON_NAMES, isIconName } from '../icons';
+import { SYSTEM_CATEGORIES } from '@/db/seedData';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -48,18 +49,9 @@ describe('the icon vocabulary and the component map agree', () => {
 
 describe('everything that produces an icon name produces a REAL one', () => {
   it('seeded categories only use names that exist', () => {
-    // SYSTEM_CATEGORIES lives in db/seed.ts, which reaches db/client and so
-    // pulls in native expo-sqlite that Jest cannot require. Reading the icon
-    // names out of the source keeps the check without that dependency; R3-2
-    // moves the seed data somewhere importable and this can use it directly.
-    const source = readFileSync(join(__dirname, '..', '..', 'db', 'seed.ts'), 'utf8');
-    const block = /SYSTEM_CATEGORIES: readonly SystemCategory\[\] = \[(.*?)\n\];/s.exec(source);
-    expect(block).not.toBeNull();
-
-    const icons = [...block![1]!.matchAll(/icon: '([^']+)'/g)].map((m) => m[1]!);
-    expect(icons.length).toBeGreaterThan(10);
-    for (const icon of icons) {
-      expect(isIconName(icon)).toBe(true);
+    expect(SYSTEM_CATEGORIES.length).toBeGreaterThan(10);
+    for (const category of SYSTEM_CATEGORIES) {
+      expect(isIconName(category.icon)).toBe(true);
     }
   });
 
