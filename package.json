@@ -24,7 +24,7 @@
     "build:dev": "eas build --profile development --platform android",
     "build:preview": "eas build --profile preview --platform android",
     "build:prod": "eas build --profile production --platform android",
-    "android:local": "node scripts/with-dev-network.js expo run:android --device -- -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2",
+    "android:local": "npm run prebuild:dev && cd android && .\\gradlew installDebug -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2",
     "build:local-apk": "cd android && .\\gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2",
     "verify:apk": "bash scripts/verify-apk.sh",
     "build:release-apk": "cd android && .\\gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a -Pkotlin.compiler.execution.strategy=in-process --max-workers=2 && cd .. && bash scripts/verify-apk.sh",

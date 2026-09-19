@@ -1,0 +1,18 @@
+Package	package.json	node_modules
+date-fns	removed	removed
+@gorhom/bottom-sheet	removed	removed
+expo-crypto	removed	removed
+expo-document-picker	removed	removed
+expo-local-authentication	removed	removed
+
+
+
+You are a senior software developer working in the industry for 30+ years writing efficient and structured code. I want you to read , understand and analyze the complete codebase in detail, find bugs , problems and issues with the codebase, analyze on the basis of -
+Structure of the codebase
+Logic of the code
+archteicture of the project 
+working of the project 
+
+And then rate the project out of 100 giving every suggestions to improve. And also tell if I were to create a prod ready codebase what files can and should I remove and restrucure because in will be moving the md files into docs folder (except readme) so it has a clean look and then I can remove things which are unnecessary for the project build.
+
+
