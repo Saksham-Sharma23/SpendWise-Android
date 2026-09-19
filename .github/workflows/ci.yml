@@ -1,0 +1,60 @@
+# Every rule in CLAUDE.md that a tool can check, run on every change.
+#
+# NOTE: this repository has no remote yet (plan.md R0-1), so this workflow has
+# never run on GitHub. Everything it runs is also run locally by
+# `npm run verify`, which is what to use until a remote exists.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # Types for the app AND the tests (tsconfig.test.json).
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Layer boundaries, no network, money, synchronous writeTx.
+      - name: Lint
+        run: npm run lint
+
+      # A rule that silently stops matching looks enforced but is not.
+      - name: Lint rules still fire
+        run: npm run lint:selftest
+
+      - name: Formatting
+        run: npm run format:check
+
+      # Includes the migrations run on 50k-row fixtures, so this is the slow step.
+      - name: Tests
+        run: npx jest --ci
+
+      # INTERNET blocked and allowBackup on, in the release config. The APK
+      # itself is checked by `npm run verify:apk` in the release runbook.
+      - name: Release permission policy
+        run: node scripts/check-release-policy.js
+
+      # global.css is generated from lib/theme.ts; a stale copy is a bug.
+      - name: Generated theme CSS is up to date
+        run: |
+          npm run theme:css
+          git diff --exit-code global.css
