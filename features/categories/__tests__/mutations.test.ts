@@ -12,7 +12,6 @@ import {
   normalizeCategoryName,
   tombstoneName,
   updateCategory,
-  type SyncDb,
 } from '../mutations';
 
 /**
@@ -33,7 +32,7 @@ function freshDb() {
       if (stmt.trim()) sqlite.exec(stmt);
     }
   }
-  const db = drizzle(sqlite, { schema }) as unknown as SyncDb;
+  const db = drizzle(sqlite, { schema });
   return { sqlite, db };
 }
 

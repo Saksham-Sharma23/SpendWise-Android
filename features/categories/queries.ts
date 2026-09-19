@@ -5,6 +5,7 @@ import { readDb } from '@/db/read';
 import { categories, transactions } from '@/db/schema';
 import { useDbQuery, type DbQueryResult } from '@/lib/db/useDbQuery';
 import * as m from './mutations';
+import type { SyncDb } from '@/db/types';
 
 /**
  * The categories query boundary. Reads are live; writes delegate to
@@ -65,7 +66,7 @@ export function getCategory(id: number) {
     .all()[0];
 }
 
-const handle = db as unknown as m.SyncDb;
+const handle: SyncDb = db;
 
 export const createCategory = (input: m.CategoryInput) => m.createCategory(handle, input);
 export const updateCategory = (id: number, input: m.CategoryInput) => m.updateCategory(handle, id, input);

@@ -1,9 +1,8 @@
 import { and, asc, desc, eq, gte, isNull, lt, lte, sql } from 'drizzle-orm';
-import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
 import { categories, transactions } from '@/db/schema';
-import type * as schema from '@/db/schema';
 import { addMonthsClamped, startOfMonth, type ISODate } from '@/lib/dates';
+import type { AnyDb } from '@/db/types';
 
 /**
  * The dashboard's month-bounded query builders.
@@ -25,8 +24,6 @@ import { addMonthsClamped, startOfMonth, type ISODate } from '@/lib/dates';
  * `nextStart` — excluded it. A category's share could read over 100%.
  */
 
-export type DashboardDb = BaseSQLiteDatabase<'sync' | 'async', any, typeof schema>;
-
 const income = sql<number>`coalesce(sum(case when ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`;
 const expense = sql<number>`coalesce(sum(case when ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`;
 
@@ -36,7 +33,7 @@ const expense = sql<number>`coalesce(sum(case when ${transactions.type} = 'expen
  * Filters and groups on the generated `month` column so SQLite walks
  * tx_month_idx in order with no temporary sort.
  */
-export function trendQuery(db: DashboardDb, months: number, today: ISODate) {
+export function trendQuery(db: AnyDb, months: number, today: ISODate) {
   const firstKey = addMonthsClamped(startOfMonth(today), -(months - 1)).slice(0, 7);
   const lastKey = today.slice(0, 7);
   return db
@@ -48,7 +45,7 @@ export function trendQuery(db: DashboardDb, months: number, today: ISODate) {
 }
 
 /** This month's biggest expense categories, bounded by the same `nextStart` the month overview uses. */
-export function topCategoriesQuery(db: DashboardDb, today: ISODate, limit: number) {
+export function topCategoriesQuery(db: AnyDb, today: ISODate, limit: number) {
   const total = sql<number>`sum(${transactions.amountPaise})`;
   const thisStart = startOfMonth(today);
   const nextStart = addMonthsClamped(thisStart, 1);

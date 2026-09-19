@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
-import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
 import { runWriteTx } from './tx';
 import { appMeta, categories, META_KEYS, type CategoryKind } from './schema';
+import type { SyncDb } from './types';
 
 /**
  * System-category reconciliation, independent of the native handle so Jest
@@ -11,8 +11,6 @@ import { appMeta, categories, META_KEYS, type CategoryKind } from './schema';
  * Identity is the fixed `uid` (`sys:rent`), never the name: a user may rename
  * "Rent" to "House rent", and that must not make the seeder add "Rent" again.
  */
-
-export type SeedDatabase = BaseSQLiteDatabase<'sync', any, any>;
 
 export interface SystemCategory {
   uid: `sys:${string}`;
@@ -23,7 +21,7 @@ export interface SystemCategory {
 }
 
 export function reconcileSystemCategories(
-  database: SeedDatabase,
+  database: SyncDb,
   list: readonly SystemCategory[],
   version: number,
   schemaVersion: string,

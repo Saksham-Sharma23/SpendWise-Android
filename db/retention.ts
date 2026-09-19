@@ -1,9 +1,8 @@
 import { and, isNotNull, isNull, lt } from 'drizzle-orm';
-import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
 import { addDays, todayISO, type ISODate } from '@/lib/dates';
 import { transactions } from './schema';
-import type * as schema from './schema';
+import type { SyncDb } from './types';
 
 /**
  * How long a deleted transaction is kept before it is really gone.
@@ -17,8 +16,6 @@ import type * as schema from './schema';
  * the test runs the SHIPPED predicate against the real migrated schema in
  * Node rather than a copy of it.
  */
-
-export type RetentionDb = BaseSQLiteDatabase<'sync', any, typeof schema>;
 
 export const RETENTION_DAYS = 30;
 
@@ -59,7 +56,7 @@ export function purgeWhere(cutoff: ISODate) {
  * Called once per launch after migrations, and safe to call at any time.
  * Returns how many rows went, for the dev log.
  */
-export function purgeExpired(db: RetentionDb, today: ISODate = todayISO(), days: number = RETENTION_DAYS): number {
+export function purgeExpired(db: SyncDb, today: ISODate = todayISO(), days: number = RETENTION_DAYS): number {
   const result = db
     .delete(transactions)
     .where(purgeWhere(purgeCutoff(today, days)))

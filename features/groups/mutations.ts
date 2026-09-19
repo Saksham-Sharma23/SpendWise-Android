@@ -22,9 +22,9 @@ import {
   updateGroup,
   type ExpenseInput,
   type GroupInput,
-  type GroupsWriteDb,
   type SettlementInput,
 } from './writes';
+import type { SyncDb } from '@/db/types';
 
 /**
  * The Groups writes bound to the app's database, each wrapped in `safeWrite`
@@ -33,7 +33,7 @@ import {
  * soft and offer Undo (#13).
  */
 
-const w = db as unknown as GroupsWriteDb;
+const w: SyncDb = db;
 
 export const addFriend = (name: string): WriteResult<number> =>
   safeWrite('add the friend', () => createPerson(w, name));

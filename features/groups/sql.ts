@@ -1,8 +1,7 @@
 import { and, asc, desc, eq, isNull, sql, type SQL } from 'drizzle-orm';
-import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
 import { categories, groupMembers, people, splitExpenses, splitGroups } from '@/db/schema';
-import type * as schema from '@/db/schema';
+import type { AnyDb } from '@/db/types';
 
 /**
  * The Groups read builders. Like features/analytics/sql.ts they take the
@@ -18,8 +17,6 @@ import type * as schema from '@/db/schema';
  * value arrays with no field names, while a select maps its fields by position.
  */
 
-export type GroupsDb = BaseSQLiteDatabase<'sync' | 'async', any, typeof schema>;
-
 const inGroup = (column: SQL, groupId: number | null) => (groupId == null ? sql`` : sql` AND ${column} = ${groupId}`);
 
 /**
@@ -27,7 +24,7 @@ const inGroup = (column: SQL, groupId: number | null) => (groupId == null ? sql`
  * Positive = the group owes them. Zero nets are omitted; per group they sum to 0.
  * Pass a group id for one group, or null for every live group.
  */
-export function netsQuery(db: GroupsDb, groupId: number | null) {
+export function netsQuery(db: AnyDb, groupId: number | null) {
   const flows = sql`
     SELECT e.group_id AS group_id, p.person_id AS person_id, p.paid_paise AS v
       FROM split_expense_payers p JOIN split_expenses e ON e.id = p.expense_id
@@ -62,7 +59,7 @@ export function netsQuery(db: GroupsDb, groupId: number | null) {
  * Summed per (group, debtor, creditor) so the row count tracks pairs of
  * people, not expenses.
  */
-export function pairwiseQuery(db: GroupsDb, groupId: number | null) {
+export function pairwiseQuery(db: AnyDb, groupId: number | null) {
   const flows = sql`
     SELECT d.group_id AS group_id, d.debtor_id AS from_id, d.creditor_id AS to_id, d.amount_paise AS v
       FROM split_debts d JOIN split_expenses e ON e.id = d.expense_id
@@ -88,7 +85,7 @@ export function pairwiseQuery(db: GroupsDb, groupId: number | null) {
  * Includes the hidden 1:1 groups (`directPersonId` set) — the hub filters
  * them out of the Groups list but needs them for friend balances.
  */
-export function groupsQuery(db: GroupsDb) {
+export function groupsQuery(db: AnyDb) {
   return db
     .select({
       id: splitGroups.id,
@@ -113,7 +110,7 @@ export function groupsQuery(db: GroupsDb) {
 }
 
 /** Everyone, including you and removed friends — names for any id a balance mentions. */
-export function peopleQuery(db: GroupsDb) {
+export function peopleQuery(db: AnyDb) {
   return db
     .select({ id: people.id, name: people.name, isSelf: people.isSelf, deletedAt: people.deletedAt })
     .from(people)
@@ -121,7 +118,7 @@ export function peopleQuery(db: GroupsDb) {
 }
 
 /** Every live membership in a live group — which friends share which groups. */
-export function membershipsQuery(db: GroupsDb) {
+export function membershipsQuery(db: AnyDb) {
   return db
     .select({ groupId: groupMembers.groupId, personId: groupMembers.personId })
     .from(groupMembers)
@@ -130,7 +127,7 @@ export function membershipsQuery(db: GroupsDb) {
 }
 
 /** A group's live members, you first, then by name. */
-export function membersQuery(db: GroupsDb, groupId: number) {
+export function membersQuery(db: AnyDb, groupId: number) {
   return db
     .select({ id: people.id, name: people.name, isSelf: people.isSelf })
     .from(groupMembers)
@@ -147,7 +144,7 @@ export function membersQuery(db: GroupsDb, groupId: number) {
  * Limited, not keyset-paged: a group's activity is a trip's worth of rows,
  * and "show older" raises the limit.
  */
-export function activityQuery(db: GroupsDb, groupId: number, selfId: number, limit: number) {
+export function activityQuery(db: AnyDb, groupId: number, selfId: number, limit: number) {
   const rows = sql`
     SELECT 'expense' AS kind, e.id AS id, e.date AS date, e.created_at AS created_at,
            e.description AS title, e.amount_paise AS amount,
@@ -187,7 +184,7 @@ export function activityQuery(db: GroupsDb, groupId: number, selfId: number, lim
 }
 
 /** Group totals: overall spend, your share and what you paid. One row. */
-export function groupTotalsQuery(db: GroupsDb, groupId: number, selfId: number) {
+export function groupTotalsQuery(db: AnyDb, groupId: number, selfId: number) {
   return db
     .select({
       totalPaise: sql<number>`coalesce(sum(e.amount_paise), 0)`,
@@ -200,7 +197,7 @@ export function groupTotalsQuery(db: GroupsDb, groupId: number, selfId: number) 
 }
 
 /** A group's spend per category, largest first. Uncategorised is a NULL id. */
-export function groupCategoryQuery(db: GroupsDb, groupId: number) {
+export function groupCategoryQuery(db: AnyDb, groupId: number) {
   const total = sql<number>`sum(${splitExpenses.amountPaise})`;
   return db
     .select({
@@ -218,7 +215,7 @@ export function groupCategoryQuery(db: GroupsDb, groupId: number) {
 }
 
 /** What each member's share of the group's spending came to, largest first. */
-export function memberShareQuery(db: GroupsDb, groupId: number) {
+export function memberShareQuery(db: AnyDb, groupId: number) {
   return db
     .select({
       personId: sql<number>`s.person_id`,
@@ -231,7 +228,7 @@ export function memberShareQuery(db: GroupsDb, groupId: number) {
 }
 
 /** One expense with its payers and shares, for the edit form. */
-export function expenseQuery(db: GroupsDb, expenseId: number) {
+export function expenseQuery(db: AnyDb, expenseId: number) {
   return db
     .select({
       id: sql<number>`e.id`,
@@ -248,14 +245,14 @@ export function expenseQuery(db: GroupsDb, expenseId: number) {
     .where(sql`e.id = ${expenseId}`);
 }
 
-export function expensePayersQuery(db: GroupsDb, expenseId: number) {
+export function expensePayersQuery(db: AnyDb, expenseId: number) {
   return db
     .select({ personId: sql<number>`person_id`, paise: sql<number>`paid_paise` })
     .from(sql`split_expense_payers`)
     .where(sql`expense_id = ${expenseId}`);
 }
 
-export function expenseSharesQuery(db: GroupsDb, expenseId: number) {
+export function expenseSharesQuery(db: AnyDb, expenseId: number) {
   return db
     .select({ personId: sql<number>`person_id`, paise: sql<number>`owed_paise`, input: sql<number | null>`input` })
     .from(sql`split_expense_shares`)
@@ -263,6 +260,6 @@ export function expenseSharesQuery(db: GroupsDb, expenseId: number) {
 }
 
 /** Your own `people` id. Exists from migration 0008 on. */
-export function selfQuery(db: GroupsDb) {
+export function selfQuery(db: AnyDb) {
   return db.select({ id: people.id }).from(people).where(eq(people.isSelf, true)).limit(1);
 }

@@ -2,14 +2,8 @@ import type Database from 'better-sqlite3';
 
 import { categories, transactions } from '@/db/schema';
 import { freshDb } from '@/db/__tests__/support';
-import {
-  biggestExpenseQuery,
-  categoryTotalsQuery,
-  earliestDateQuery,
-  totalsQuery,
-  trendQuery,
-  type AnalyticsDb,
-} from '../sql';
+import { biggestExpenseQuery, categoryTotalsQuery, earliestDateQuery, totalsQuery, trendQuery } from '../sql';
+import type { AnyDb } from '@/db/types';
 
 /**
  * The SHIPPED analytics builders, executed against the real migrated schema.
@@ -62,7 +56,7 @@ async function small() {
   tx('expense', 2_000_00, '2026-09-03', 1);
   tx('expense', 30_000_00, '2025-12-24', 2, { note: 'Out of range' });
 
-  return { ...fresh, db: fresh.db as unknown as AnalyticsDb };
+  return { ...fresh, db: fresh.db };
 }
 
 describe('analytics SQL — correctness', () => {
@@ -192,11 +186,11 @@ describe('analytics SQL — every range is bounded at both ends (B2)', () => {
 
 describe('analytics SQL — plans at 50k rows', () => {
   let fresh: Fresh;
-  let db: AnalyticsDb;
+  let db: AnyDb;
 
   beforeAll(async () => {
     fresh = await freshDb();
-    db = fresh.db as unknown as AnalyticsDb;
+    db = fresh.db;
     seed(fresh.sqlite, 50_000);
   }, 120_000);
   afterAll(() => fresh.sqlite.close());

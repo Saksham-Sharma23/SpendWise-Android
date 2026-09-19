@@ -26,8 +26,8 @@ import {
   pairwiseQuery,
   peopleQuery,
   selfQuery,
-  type GroupsDb,
 } from './sql';
+import { allSync, type AnyDb } from '@/db/types';
 
 /**
  * The Groups query boundary. Screens call these hooks and never see SQL.
@@ -36,8 +36,8 @@ import {
  * who-owes-whom maths runs over those rows here — never over expenses.
  */
 
-const r = readDb as unknown as GroupsDb;
-const w = db as unknown as GroupsDb;
+const r: AnyDb = readDb;
+const w: AnyDb = db;
 
 /** Everything a balance depends on — any write to these can move a figure. */
 const BALANCE_TABLES: TableName[] = [
@@ -262,21 +262,21 @@ export function useGroupStats(groupId: number, selfId: number): DbQueryResult<Gr
 // ---------------------------------------------------------------------------
 
 export function getSelfId(): number {
-  return (selfQuery(w) as unknown as { all(): { id: number }[] }).all()[0]?.id ?? 0;
+  return allSync<{ id: number }>(selfQuery(w))[0]?.id ?? 0;
 }
 
 export function getMembers(groupId: number) {
-  return (membersQuery(w, groupId) as unknown as { all(): { id: number; name: string; isSelf: boolean }[] }).all();
+  return allSync<{ id: number; name: string; isSelf: boolean }>(membersQuery(w, groupId));
 }
 
 export function getGroupRow(groupId: number): GroupRow | undefined {
-  const rows = (groupsQuery(w) as unknown as { all(): GroupRow[] }).all();
+  const rows = allSync<GroupRow>(groupsQuery(w));
   const row = rows.find((g) => g.id === groupId);
   return row ? { ...row, lastActivity: row.lastActivity || null } : undefined;
 }
 
 export function getFriends(): PersonRow[] {
-  return (peopleQuery(w) as unknown as { all(): PersonRow[] }).all().filter((p) => !p.isSelf && p.deletedAt == null);
+  return allSync<PersonRow>(peopleQuery(w)).filter((p) => !p.isSelf && p.deletedAt == null);
 }
 
 export interface ExpenseForEdit {
@@ -293,13 +293,9 @@ export interface ExpenseForEdit {
 }
 
 export function getExpenseForEdit(expenseId: number): ExpenseForEdit | undefined {
-  const [row] = (
-    expenseQuery(w, expenseId) as unknown as {
-      all(): (Omit<ExpenseForEdit, 'payers' | 'shares'> & { deletedAt: string | null })[];
-    }
-  ).all();
+  const [row] = allSync<(Omit<ExpenseForEdit, 'payers' | 'shares'> & { deletedAt: string | null })>(expenseQuery(w, expenseId));
   if (!row || row.deletedAt != null) return undefined;
-  const payers = (expensePayersQuery(w, expenseId) as unknown as { all(): ExpenseForEdit['payers'] }).all();
-  const shares = (expenseSharesQuery(w, expenseId) as unknown as { all(): ExpenseForEdit['shares'] }).all();
+  const payers = allSync<ExpenseForEdit['payers'][number]>(expensePayersQuery(w, expenseId));
+  const shares = allSync<ExpenseForEdit['shares'][number]>(expenseSharesQuery(w, expenseId));
   return { ...row, payers, shares };
 }

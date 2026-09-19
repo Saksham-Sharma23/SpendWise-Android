@@ -12,7 +12,6 @@ import {
   membersQuery,
   netsQuery,
   pairwiseQuery,
-  type GroupsDb,
 } from '../sql';
 import {
   createGroup,
@@ -28,8 +27,8 @@ import {
   selfId,
   updateGroup,
   type ExpenseInput,
-  type GroupsWriteDb,
 } from '../writes';
+import type { AnyDb } from '@/db/types';
 
 /**
  * Groups end to end on the REAL migrated schema: the write core, the shipped
@@ -39,8 +38,8 @@ import {
 
 async function setup() {
   const fresh = await freshDb();
-  const w = fresh.db as unknown as GroupsWriteDb;
-  const r = fresh.db as unknown as GroupsDb;
+  const w = fresh.db;
+  const r = fresh.db;
   const me = selfId(w);
   return { ...fresh, w, r, me };
 }
@@ -66,7 +65,7 @@ function equalExpense(
   };
 }
 
-async function balancesOf(r: GroupsDb, groupId: number, simplify: boolean) {
+async function balancesOf(r: AnyDb, groupId: number, simplify: boolean) {
   const groups: GroupRef[] = [{ id: groupId, simplifyDebts: simplify, lastActivity: null, directPersonId: null }];
   const nets = await netsQuery(r, groupId);
   const pairs = await pairwiseQuery(r, groupId);

@@ -18,6 +18,8 @@ import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
  * db/client.ts binds it to the app's handle as `writeTx`.
  */
 
+// Deliberately NOT db/types.ts `SyncDb`: this guard is schema-agnostic, so its
+// test can prove the early-commit bug against a throwaway schema.
 type SyncDatabase = BaseSQLiteDatabase<'sync', any, any>;
 type TxHandle<D extends SyncDatabase> = Parameters<Parameters<D['transaction']>[0]>[0];
 

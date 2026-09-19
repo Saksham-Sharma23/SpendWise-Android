@@ -3,14 +3,8 @@ import type { TrendPoint } from '@/components/charts/TrendChart';
 import { useDbQuery, type DbQueryResult } from '@/lib/db/useDbQuery';
 import type { ISODate } from '@/lib/dates';
 import { activeDays, monthKeys, perDayPaise, periodWindow, savingsRate, type CategoryTotal } from './period';
-import {
-  biggestExpenseQuery,
-  categoryTotalsQuery,
-  earliestDateQuery,
-  totalsQuery,
-  trendQuery,
-  type AnalyticsDb,
-} from './sql';
+import { biggestExpenseQuery, categoryTotalsQuery, earliestDateQuery, totalsQuery, trendQuery } from './sql';
+import type { AnyDb } from '@/db/types';
 
 /**
  * The Analytics screen's query boundary. Screens call these hooks and never
@@ -21,7 +15,7 @@ import {
  */
 
 // sqlite-proxy is the async member of the same Drizzle family the builders accept.
-const db = readDb as unknown as AnalyticsDb;
+const db: AnyDb = readDb;
 
 /**
  * The builders bound to the read handle, shared with the dev benchmark.

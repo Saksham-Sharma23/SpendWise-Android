@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3';
 
 import { categories, transactions } from '@/db/schema';
 import { freshDb } from '@/db/__tests__/support';
-import { topCategoriesQuery, trendQuery, type DashboardDb } from '../sql';
+import { topCategoriesQuery, trendQuery } from '../sql';
 
 /**
  * The SHIPPED dashboard builders, run against the real migrated schema
@@ -64,7 +64,7 @@ describe('topCategoriesQuery', () => {
   afterAll(() => (fresh.sqlite as Database.Database).close());
 
   it('counts only this month: a future-dated expense is excluded', () => {
-    const rows = topCategoriesQuery(fresh.db as unknown as DashboardDb, TODAY, 4).all() as {
+    const rows = topCategoriesQuery(fresh.db, TODAY, 4).all() as {
       id: number | null;
       totalPaise: number;
     }[];
@@ -76,7 +76,7 @@ describe('topCategoriesQuery', () => {
   });
 
   it('never lets the shares sum past the month total', () => {
-    const rows = topCategoriesQuery(fresh.db as unknown as DashboardDb, TODAY, 10).all() as {
+    const rows = topCategoriesQuery(fresh.db, TODAY, 10).all() as {
       totalPaise: number;
     }[];
     const summed = rows.reduce((a, r) => a + r.totalPaise, 0);
@@ -94,7 +94,7 @@ describe('trendQuery', () => {
   afterAll(() => (fresh.sqlite as Database.Database).close());
 
   it('stops at the current month, so the chart and the cards agree', () => {
-    const rows = trendQuery(fresh.db as unknown as DashboardDb, 6, TODAY).all() as {
+    const rows = trendQuery(fresh.db, 6, TODAY).all() as {
       month: string;
       expensePaise: number;
     }[];

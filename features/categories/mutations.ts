@@ -1,10 +1,9 @@
 import { and, eq, isNull, ne, sql } from 'drizzle-orm';
-import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
-import * as schema from '@/db/schema';
 import { nowISO } from '@/lib/dates';
 import { runWriteTx } from '@/db/tx';
 import { budgets, categories, splitExpenses, subscriptions, transactions } from '@/db/schema';
+import type { SyncDb } from '@/db/types';
 
 /**
  * Category writes — create, rename/recolour, merge, delete.
@@ -22,8 +21,6 @@ import { budgets, categories, splitExpenses, subscriptions, transactions } from 
  *   - `budget_cat_unique` is unique on category_id among LIVE budgets since
  *     migration 0001, so a soft-deleted budget no longer blocks moving one in.
  */
-
-export type SyncDb = BaseSQLiteDatabase<'sync', any, typeof schema>;
 
 export class CategoryError extends Error {}
 
@@ -139,7 +136,7 @@ export function mergeCategory(database: SyncDb, sourceId: number, targetId: numb
   return runWriteTx(database, (tx) => {
     // Includes soft-deleted transactions, so undoing a delete later restores
     // the row into a category that still exists.
-    const moved = countTransactions(tx as SyncDb, sourceId);
+    const moved = countTransactions(tx, sourceId);
     tx.update(transactions).set({ categoryId: targetId }).where(eq(transactions.categoryId, sourceId)).run();
     tx.update(subscriptions).set({ categoryId: targetId }).where(eq(subscriptions.categoryId, sourceId)).run();
     // Group expenses too (B4). Groups was built after this file, so it was
@@ -167,7 +164,7 @@ export function mergeCategory(database: SyncDb, sourceId: number, targetId: numb
       tx.update(budgets).set({ categoryId: targetId }).where(eq(budgets.categoryId, sourceId)).run();
     }
 
-    retire(tx as SyncDb, sourceId, source.name);
+    retire(tx, sourceId, source.name);
     return { moved };
   });
 }
@@ -181,7 +178,7 @@ export function deleteCategory(database: SyncDb, id: number): { uncategorised: n
   if (cat.isSystem) throw new CategoryError('Built-in categories cannot be deleted — merge or rename them instead');
 
   return runWriteTx(database, (tx) => {
-    const uncategorised = countTransactions(tx as SyncDb, id);
+    const uncategorised = countTransactions(tx, id);
     tx.update(transactions).set({ categoryId: null }).where(eq(transactions.categoryId, id)).run();
     tx.update(subscriptions).set({ categoryId: null }).where(eq(subscriptions.categoryId, id)).run();
     // Group expenses become uncategorised too (B4), rather than keeping a
@@ -191,7 +188,7 @@ export function deleteCategory(database: SyncDb, id: number): { uncategorised: n
       .set({ deletedAt: now() })
       .where(and(eq(budgets.categoryId, id), isNull(budgets.deletedAt)))
       .run();
-    retire(tx as SyncDb, id, cat.name);
+    retire(tx, id, cat.name);
     return { uncategorised };
   });
 }

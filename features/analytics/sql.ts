@@ -1,8 +1,7 @@
 import { and, asc, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
-import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
 import { categories, transactions } from '@/db/schema';
-import type * as schema from '@/db/schema';
+import type { AnyDb } from '@/db/types';
 
 /**
  * The Analytics query builders — every figure on the screen, aggregated in
@@ -19,8 +18,6 @@ import type * as schema from '@/db/schema';
  * partial, and a query that omits the predicate cannot use it.
  */
 
-export type AnalyticsDb = BaseSQLiteDatabase<'sync' | 'async', any, typeof schema>;
-
 const live = isNull(transactions.deletedAt);
 const income = sql<number>`coalesce(sum(case when ${transactions.type} = 'income' then ${transactions.amountPaise} else 0 end), 0)`;
 const expense = sql<number>`coalesce(sum(case when ${transactions.type} = 'expense' then ${transactions.amountPaise} else 0 end), 0)`;
@@ -29,7 +26,7 @@ const expense = sql<number>`coalesce(sum(case when ${transactions.type} = 'expen
  * Income and expense per month between `firstMonth` and `lastMonth`
  * ('YYYY-MM') inclusive, oldest first. Months with no rows are absent.
  */
-export function trendQuery(db: AnalyticsDb, firstMonth: string, lastMonth: string) {
+export function trendQuery(db: AnyDb, firstMonth: string, lastMonth: string) {
   return db
     .select({ month: sql<string>`${transactions.month}`, incomePaise: income, expensePaise: expense })
     .from(transactions)
@@ -39,7 +36,7 @@ export function trendQuery(db: AnalyticsDb, firstMonth: string, lastMonth: strin
 }
 
 /** Income, expense and transaction count for the whole range in one pass. */
-export function totalsQuery(db: AnalyticsDb, firstMonth: string, lastMonth: string) {
+export function totalsQuery(db: AnyDb, firstMonth: string, lastMonth: string) {
   return db
     .select({
       incomePaise: income,
@@ -58,7 +55,7 @@ export function totalsQuery(db: AnalyticsDb, firstMonth: string, lastMonth: stri
  * Bounded like every other builder here: this date is the denominator of
  * "average per day", so a future-dated row must not stretch the window.
  */
-export function earliestDateQuery(db: AnalyticsDb, lastMonth: string) {
+export function earliestDateQuery(db: AnyDb, lastMonth: string) {
   return db
     .select({ date: sql<string | null>`min(${transactions.date})` })
     .from(transactions)
@@ -73,7 +70,7 @@ export function earliestDateQuery(db: AnalyticsDb, lastMonth: string) {
  * pass with no sort step, where ORDER BY amount DESC LIMIT 1 would ask for a
  * temporary B-tree. On an empty range it returns one row of NULLs.
  */
-export function biggestExpenseQuery(db: AnalyticsDb, firstMonth: string, lastMonth: string) {
+export function biggestExpenseQuery(db: AnyDb, firstMonth: string, lastMonth: string) {
   return db
     .select({
       amountPaise: sql<number | null>`max(${transactions.amountPaise})`,
@@ -102,7 +99,7 @@ export function biggestExpenseQuery(db: AnalyticsDb, firstMonth: string, lastMon
  * bounded by the number of categories, so the GROUP BY / ORDER BY sort
  * handles a few dozen rows however large the ledger grows.
  */
-export function categoryTotalsQuery(db: AnalyticsDb, fromMonth: string, toMonth: string, limit?: number) {
+export function categoryTotalsQuery(db: AnyDb, fromMonth: string, toMonth: string, limit?: number) {
   const total = sql<number>`sum(${transactions.amountPaise})`;
   const q = db
     .select({
