@@ -18,14 +18,12 @@ import {
   restoreSubscription,
   softDeleteSubscription,
   updateSubscription,
-} from '@/features/tracker/data/queries';
-import { deterministicColor, deterministicIcon } from '@/lib/identity';
-import {
   emptySubscriptionForm,
   subscriptionFormSchema,
   toSubscriptionInput,
   type SubscriptionFormValues,
-} from '@/features/tracker/schema';
+} from '@/features/tracker';
+import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { colorForName } from '@/lib/categoryColor';
 import { addDays, addMonthsClamped, formatDayMonth, getNextRenewal, toMonthlyPaise } from '@/lib/dates';
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '@/lib/money';

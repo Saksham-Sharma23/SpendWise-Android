@@ -5,7 +5,6 @@ import { join } from 'node:path';
 
 import * as schema from '@/db/schema';
 import {
-  CategoryError,
   createCategory,
   deleteCategory,
   mergeCategory,
@@ -13,6 +12,7 @@ import {
   tombstoneName,
   updateCategory,
 } from '../data/writes';
+import { UserFacingError } from '@/lib/db/errors';
 
 /**
  * Category writes against the REAL generated migration, so the two unique
@@ -83,7 +83,7 @@ describe('createCategory / updateCategory', () => {
   it('creates, and rejects a case-insensitive duplicate with a friendly error', () => {
     const { db } = freshDb();
     createCategory(db, input('Coffee'));
-    expect(() => createCategory(db, input('  coffee '))).toThrow(CategoryError);
+    expect(() => createCategory(db, input('  coffee '))).toThrow(UserFacingError);
     expect(() => createCategory(db, input('coffee'))).toThrow('already exists');
   });
 

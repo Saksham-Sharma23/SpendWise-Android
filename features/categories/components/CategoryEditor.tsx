@@ -10,21 +10,9 @@ import { CATEGORY_COLORS, CATEGORY_ICON_NAMES, CategoryIcon } from '@/components
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatCount } from '@/lib/money';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
-import {
-  CategoryError,
-  MAX_CATEGORY_NAME,
-  createCategory,
-  deleteCategory,
-  getCategory,
-  mergeCategory,
-  updateCategory,
-  useCategoriesWithUsage,
-} from '../data/hooks';
-
-/** Surface a CategoryError's message; anything else is a bug worth a generic toast. */
-function report(e: unknown, fallback: string) {
-  toast.error(e instanceof CategoryError ? e.message : fallback);
-}
+import { createCategory, deleteCategory, getCategory, mergeCategory, updateCategory } from '../data/actions';
+import { useCategoriesWithUsage } from '../data/hooks';
+import { MAX_CATEGORY_NAME } from '../data/writes';
 
 /**
  * Create or edit a category: name, colour and icon, with a live preview.
@@ -58,20 +46,14 @@ export function CategoryEditor() {
     );
   }
 
+  // On failure safeWrite has already shown why ("A category called Food
+  // already exists"), and the editor stays open so the name can be fixed.
   const onSave = () => {
-    try {
-      if (editingId != null) {
-        updateCategory(editingId, { name, color, icon });
-        toast.success('Category updated');
-      } else {
-        createCategory({ name, color, icon });
-        toast.success(`${name.trim()} created`);
-      }
-      router.back();
-    } catch (e) {
-      // The modal stays open so the user can fix the name (CLAUDE.md #18).
-      report(e, 'Could not save the category');
-    }
+    const input = { name, color, icon };
+    const result = editingId != null ? updateCategory(editingId, input) : createCategory(input);
+    if (!result.ok) return;
+    toast.success(editingId != null ? 'Category updated' : `${name.trim()} created`);
+    router.back();
   };
 
   const confirmMerge = (targetId: number, targetName: string) => {
@@ -85,13 +67,10 @@ export function CategoryEditor() {
           text: 'Merge',
           style: 'destructive',
           onPress: () => {
-            try {
-              const { moved } = mergeCategory(editingId, targetId);
-              toast.success(`Merged — ${formatCount(moved)} moved to ${targetName}`);
-              router.back();
-            } catch (e) {
-              report(e, 'Could not merge');
-            }
+            const result = mergeCategory(editingId, targetId);
+            if (!result.ok) return;
+            toast.success(`Merged — ${formatCount(result.value.moved)} moved to ${targetName}`);
+            router.back();
           },
         },
       ],
@@ -111,13 +90,9 @@ export function CategoryEditor() {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            try {
-              deleteCategory(editingId);
-              toast.success(`${existing.name} deleted`);
-              router.back();
-            } catch (e) {
-              report(e, 'Could not delete');
-            }
+            if (!deleteCategory(editingId).ok) return;
+            toast.success(`${existing.name} deleted`);
+            router.back();
           },
         },
       ],

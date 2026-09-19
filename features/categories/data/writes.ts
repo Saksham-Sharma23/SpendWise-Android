@@ -1,5 +1,6 @@
 import { and, eq, isNull, ne, sql } from 'drizzle-orm';
 
+import { UserFacingError } from '@/lib/db/errors';
 import { nowISO } from '@/lib/dates';
 import { runWriteTx } from '@/db/tx';
 import { budgets, categories, splitExpenses, subscriptions, transactions } from '@/db/schema';
@@ -22,8 +23,6 @@ import type { SyncDb } from '@/db/types';
  *     migration 0001, so a soft-deleted budget no longer blocks moving one in.
  */
 
-export class CategoryError extends Error {}
-
 export interface CategoryInput {
   name: string;
   color: string;
@@ -42,11 +41,6 @@ export function tombstoneName(name: string, id: number): string {
   return `${name} ⟨deleted #${id}⟩`;
 }
 
-/** One timestamp format everywhere — see lib/dates `nowISO`. */
-function now(): string {
-  return nowISO();
-}
-
 function liveCategory(database: SyncDb, id: number) {
   const row = database
     .select()
@@ -54,7 +48,7 @@ function liveCategory(database: SyncDb, id: number) {
     .where(and(eq(categories.id, id), isNull(categories.deletedAt)))
     .limit(1)
     .all()[0];
-  if (!row) throw new CategoryError('That category no longer exists');
+  if (!row) throw new UserFacingError('That category no longer exists');
   return row;
 }
 
@@ -70,13 +64,13 @@ function assertNameFree(database: SyncDb, name: string, excludeId?: number): voi
     )
     .limit(1)
     .all()[0];
-  if (clash) throw new CategoryError(`A category called “${name}” already exists`);
+  if (clash) throw new UserFacingError(`A category called “${name}” already exists`);
 }
 
 function validName(raw: string): string {
   const name = normalizeCategoryName(raw);
-  if (!name) throw new CategoryError('Give the category a name');
-  if (name.length > MAX_CATEGORY_NAME) throw new CategoryError(`Keep the name under ${MAX_CATEGORY_NAME} characters`);
+  if (!name) throw new UserFacingError('Give the category a name');
+  if (name.length > MAX_CATEGORY_NAME) throw new UserFacingError(`Keep the name under ${MAX_CATEGORY_NAME} characters`);
   return name;
 }
 
@@ -85,7 +79,7 @@ export function createCategory(database: SyncDb, input: CategoryInput): number {
   assertNameFree(database, name);
   const row = database
     .insert(categories)
-    .values({ name, color: input.color, icon: input.icon, isSystem: false, createdAt: now() })
+    .values({ name, color: input.color, icon: input.icon, isSystem: false, createdAt: nowISO() })
     .returning({ id: categories.id })
     .all()[0];
   return row!.id;
@@ -103,7 +97,7 @@ export function updateCategory(database: SyncDb, id: number, input: CategoryInpu
 function retire(database: SyncDb, id: number, name: string): void {
   database
     .update(categories)
-    .set({ deletedAt: now(), name: tombstoneName(name, id) })
+    .set({ deletedAt: nowISO(), name: tombstoneName(name, id) })
     .where(eq(categories.id, id))
     .run();
 }
@@ -128,10 +122,10 @@ function countTransactions(database: SyncDb, categoryId: number): number {
  * half-merged category.
  */
 export function mergeCategory(database: SyncDb, sourceId: number, targetId: number): { moved: number } {
-  if (sourceId === targetId) throw new CategoryError('Pick a different category to merge into');
+  if (sourceId === targetId) throw new UserFacingError('Pick a different category to merge into');
   const source = liveCategory(database, sourceId);
   liveCategory(database, targetId);
-  if (source.isSystem) throw new CategoryError('Built-in categories can be merged into, but not merged away');
+  if (source.isSystem) throw new UserFacingError('Built-in categories can be merged into, but not merged away');
 
   return runWriteTx(database, (tx) => {
     // Includes soft-deleted transactions, so undoing a delete later restores
@@ -152,7 +146,7 @@ export function mergeCategory(database: SyncDb, sourceId: number, targetId: numb
 
     if (targetLive) {
       tx.update(budgets)
-        .set({ deletedAt: now() })
+        .set({ deletedAt: nowISO() })
         .where(and(eq(budgets.categoryId, sourceId), isNull(budgets.deletedAt)))
         .run();
     } else {
@@ -175,7 +169,7 @@ export function mergeCategory(database: SyncDb, sourceId: number, targetId: numb
  */
 export function deleteCategory(database: SyncDb, id: number): { uncategorised: number } {
   const cat = liveCategory(database, id);
-  if (cat.isSystem) throw new CategoryError('Built-in categories cannot be deleted — merge or rename them instead');
+  if (cat.isSystem) throw new UserFacingError('Built-in categories cannot be deleted — merge or rename them instead');
 
   return runWriteTx(database, (tx) => {
     const uncategorised = countTransactions(tx, id);
@@ -185,7 +179,7 @@ export function deleteCategory(database: SyncDb, id: number): { uncategorised: n
     // reference to the row this function is about to retire and rename.
     tx.update(splitExpenses).set({ categoryId: null }).where(eq(splitExpenses.categoryId, id)).run();
     tx.update(budgets)
-      .set({ deletedAt: now() })
+      .set({ deletedAt: nowISO() })
       .where(and(eq(budgets.categoryId, id), isNull(budgets.deletedAt)))
       .run();
     retire(tx, id, cat.name);

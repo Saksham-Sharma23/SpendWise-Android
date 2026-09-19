@@ -15,7 +15,8 @@ import { formatINR } from '@/lib/money';
 import { renewalCountdown } from '@/lib/renewals';
 import { useToday } from '@/lib/today';
 import { fonts, useColors, withAlpha } from '@/lib/theme';
-import { restoreSubscription, setSubscriptionStatus, softDeleteSubscription, useSubscriptions } from '../data/queries';
+import { restoreSubscription, setSubscriptionStatus, softDeleteSubscription } from '../data/actions';
+import { useSubscriptions } from '../data/hooks';
 import {
   arrange,
   summarise,
