@@ -127,7 +127,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: 'com.spendwise.android',
     adaptiveIcon: {
-      backgroundColor: '#0B5C4B',
+      // Only a fallback: backgroundImage below wins wherever it is honoured.
+      // Matches the mid-point of that image's gradient (#135B65 -> #012432),
+      // so a launcher that ignores the image still gets the mark's own teal.
+      backgroundColor: '#0A414B',
       foregroundImage: './assets/android-icon-foreground.png',
       backgroundImage: './assets/android-icon-background.png',
       monochromeImage: './assets/android-icon-monochrome.png',

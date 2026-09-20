@@ -30,7 +30,7 @@
 | **R3**    | One data layer                | 3 d   | ✅ done 2026-09-19 (568 tests)                    |
 | **RF**    | Review fixes B21–B30 + motion | —     | ✅ code 2026-09-19 · 🟡 `verify` + phone checks   |
 | **R4**    | UI kit and thin routes        | 3 d   | ✅ done 2026-09-20 (screens verified on phone)    |
-| **7**     | **Backup & restore**          | 3–4 d | ✅ code done · 🟡 recovery path untested on phone |
+| **7**     | **Backup & restore**          | 3–4 d | ✅ done · 🟡 recovery path untested on phone      |
 | 8         | Native layer                  | 3–4 d | ⬜                                                |
 | R5        | Performance (was TASKS2 F4)   | 2 d   | 🟡 7 of 8 done; 2 slow queries to index           |
 | R6        | Observability and release ops | 1 d   | ⬜                                                |
@@ -41,7 +41,7 @@
 **Recommended order:** R0 → R1 → R2 → R3 → R4 → 7 → 8 → R5 → R6 → 6A → 6B → 9.
 _2026-09-19:_ the review fixes (RF) and most of R5 were done early, on branch `fix/review-b21-b28`.
 _2026-09-20:_ R4 done — screens verified on the phone (typecheck clean; jest and lint not yet run).
-_2026-09-20:_ Phase 7 — the first five batches are built: `.db`, passphrase and `.json` exports, and a validate-first restore that stages, checks, snapshots and can roll itself back. `npm run verify` green (630 tests), and **the uninstall-and-restore drill passed on the phone in all three formats** (see the exit criterion in Phase 7). The drill found two bugs that no Node test could have: a restore left every already-mounted query showing the old database, and the confirmation said "17 categorys". Both fixed and re-verified on the device. **Then:** the three remaining items were built the same day — restore from the boot-failure screen, the storage card in Settings, and the backup history. Typecheck clean; **their tests have not been run, and the recovery path has not been exercised on the phone** (it needs a deliberately broken database). **Next: Phase 8.**
+_2026-09-20:_ Phase 7 — the first five batches are built: `.db`, passphrase and `.json` exports, and a validate-first restore that stages, checks, snapshots and can roll itself back. `npm run verify` green (630 tests), and **the uninstall-and-restore drill passed on the phone in all three formats** (see the exit criterion in Phase 7). The drill found two bugs that no Node test could have: a restore left every already-mounted query showing the old database, and the confirmation said "17 categorys". Both fixed and re-verified on the device. **Then:** the three remaining items were built the same day — restore from the boot-failure screen, the storage card in Settings, and the backup history — and `npm run verify` is green over all of it (38 tests in `db/__tests__/backup.test.ts`), pushed as `8b923cf`. **The one thing left is on the phone: the recovery path has never been exercised**, because it needs a deliberately broken database. It is DV "corrupted spendwise.db" in § Device verification, so it closes there rather than here. **Next: Phase 8.**
 _Why this order:_ a factory reset currently loses everything, so Backup (7) comes before any new data
 surface. The refactor (R3/R4) comes before Backup and Sheets so that the two biggest new features are
 written in the target layout, not ported into it afterwards. Guard rails (R2) come before the refactor so
@@ -244,7 +244,7 @@ How to test each fix, and the B22 phone steps: [`docs/review-fixes-b21-b28.md`](
 
 ### Still to do
 
-- [ ] `npm run verify` green on the branch (typecheck, lint, format, jest, release policy)
+- [x] `npm run verify` green on the branch (typecheck, lint, format, jest, release policy) _(2026-09-20, on `main` with Phase 7 complete)_
 - [ ] B22 phone check (steps in `docs/review-fixes-b21-b28.md`)
 - [ ] Look over the motion on the phone: screen pushes, modals, group sheets, tab droplet, Home count-up, a crore-scale total fitting
 - [ ] Commit B29/B30, push the branch, open a PR, CI green, merge
@@ -317,7 +317,7 @@ How to test each fix, and the B22 phone steps: [`docs/review-fixes-b21-b28.md`](
       blurred the two would answer "have I got a copy of this?" wrongly, and reassuringly. Parsing never throws: a
       corrupt log costs the log, never the screen. `backupAge` uses the same 30-day rule Phase 8's nudge will, so the
       screen and the notification cannot disagree
-- [ ] **Tests:** JSON round-trip on the migrated 50k fixture (row counts and paise totals per table identical); restore refuses a newer migration index; a wrong passphrase changes nothing
+- [x] **Tests:** JSON round-trip on the migrated 50k fixture (row counts and paise totals per table identical); restore refuses a newer migration index; a wrong passphrase changes nothing _(2026-09-20, `db/__tests__/backup.test.ts`, 38 tests; `npm run verify` green)_
 - [ ] _(Monthly reminder ships with Phase 8 channels)_
 
 **Phase 7 Discovered:**
@@ -465,7 +465,7 @@ with a fresh dev build (several need one: backup rules, splash colours). Tick he
 
 - [ ] Auto-backup drill: `adb shell bmgr backupnow com.spendwise.android` → uninstall → reinstall → data present _(blocked 2026-09-15 by "Size quota exceeded"; dev bundle now excluded — needs rebuild)_
 - [ ] Dev harness → encrypted backup-file round trip: counts match, header is not `SQLite format 3`
-- [ ] Deliberately corrupted `spendwise.db` → "can't open your data" screen; Share and Start fresh both work
+- [ ] Deliberately corrupted `spendwise.db` → "can't open your data" screen; Share, **Restore from a backup** and Start fresh all work. The restore is the Phase 7 recovery path (`applyRestore(plan, { recovery: true })`) and this is the only check that exercises it
 - [ ] A pending migration leaves a `files/snapshots/pre-migration-*.db` that opens in Drizzle Studio
 - [ ] Forced constraint error keeps a form open with a specific toast (dev and release)
 - [ ] Hammer Save → exactly one row

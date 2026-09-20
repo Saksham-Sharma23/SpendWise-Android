@@ -26,7 +26,7 @@
 - **This app makes zero network requests.** Anything that implies `fetch`, Axios, a base URL, a JWT or
   a token refresh is wrong, and predates the 2026-09-11 decision. The release build does not even declare
   `INTERNET`.
-- **Current phase: Phase 8 (native layer), then Sheets (6A).** Backup (7) is code complete and its uninstall→restore drill passed on the phone in all three formats; the only part not exercised on a device is the boot-failure recovery path, which needs a deliberately broken database. R0–R4 are done: every feature is on the standard layout in
+- **Current phase: Phase 8 (native layer), then Sheets (6A).** Backup (7) is done — `npm run verify` green, and its uninstall→restore drill passed on the phone in all three formats; the only part not exercised on a device is the boot-failure recovery path, which needs a deliberately broken database. R0–R4 are done: every feature is on the standard layout in
   _Architecture_, every screen is built from the `components/ui` kit, and new code must follow both. One thing R0 could not
   close: removing the unused native packages needs a rebuild + `npm run verify:apk` to confirm the manifest
   shrank.
