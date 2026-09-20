@@ -7,7 +7,7 @@ import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatDayMonth } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
-import { renewalCountdown } from '@/lib/renewals';
+import { renewalCountdown } from '@/lib/subscriptions';
 import { colors, useColors, withAlpha } from '@/lib/theme';
 import { appear, rise } from '@/lib/motion';
 import type { EnrichedSubscription } from '../domain/renewal';
@@ -43,11 +43,7 @@ export const SubscriptionCard = memo(function SubscriptionCard({
   const soon = sub.urgency === 'soon';
 
   const countdown =
-    sub.status === 'cancelled'
-      ? 'Cancelled'
-      : sub.status === 'paused'
-        ? 'Paused'
-        : renewalCountdown(sub.daysUntilRenewal);
+    sub.status === 'cancelled' ? 'Cancelled' : sub.status === 'paused' ? 'Paused' : renewalCountdown(sub.daysUntil);
 
   return (
     <>

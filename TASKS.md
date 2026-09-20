@@ -19,24 +19,24 @@
 
 ## Status — 2026-09-19
 
-| #         | Phase                         | Est.  | Status                                            |
-| --------- | ----------------------------- | ----- | ------------------------------------------------- |
-| 0–5       | Foundations → Analytics       | —     | ✅ Code complete · 🟡 device checks open          |
-| G         | Groups — split expenses       | —     | ✅ Code complete · 🟡 device checks open          |
-| F0–F3, F5 | Fix phases (TASKS2)           | —     | ✅ Code complete · 🟡 device checks open          |
-| **R0**    | Stabilise the repo            | ½ d   | 🟡 all done; GitHub remote added; APK recheck due |
-| **R1**    | Correctness bugs              | 1½ d  | ✅ done 2026-09-17 (550 tests)                    |
-| **R2**    | Guard rails: lint, format, CI | 1½ d  | ✅ done 2026-09-19 (568 tests)                    |
-| **R3**    | One data layer                | 3 d   | ✅ done 2026-09-19 (568 tests)                    |
-| **RF**    | Review fixes B21–B30 + motion | —     | ✅ code 2026-09-19 · 🟡 `verify` + phone checks   |
-| **R4**    | UI kit and thin routes        | 3 d   | ✅ done 2026-09-20 (screens verified on phone)    |
-| **7**     | **Backup & restore**          | 3–4 d | ✅ done · 🟡 recovery path untested on phone      |
-| 8         | Native layer                  | 3–4 d | ⬜                                                |
-| R5        | Performance (was TASKS2 F4)   | 2 d   | ✅ done 2026-09-20 (indexes in 0009)              |
-| R6        | Observability and release ops | 1 d   | ⬜                                                |
-| 6A        | Sheets: import and workspaces | 7–8 d | ⬜ gated on the Sheets readiness gate             |
-| 6B        | Linked sheets                 | 4–5 d | ⬜                                                |
-| 9         | Hardening & Play Store        | 4–5 d | ⬜                                                |
+| #         | Phase                         | Est.  | Status                                          |
+| --------- | ----------------------------- | ----- | ----------------------------------------------- |
+| 0–5       | Foundations → Analytics       | —     | ✅ Code complete · 🟡 device checks open        |
+| G         | Groups — split expenses       | —     | ✅ Code complete · 🟡 device checks open        |
+| F0–F3, F5 | Fix phases (TASKS2)           | —     | ✅ Code complete · 🟡 device checks open        |
+| **R0**    | Stabilise the repo            | ½ d   | ✅ done 2026-09-20 (release APK verified)       |
+| **R1**    | Correctness bugs              | 1½ d  | ✅ done 2026-09-17 (550 tests)                  |
+| **R2**    | Guard rails: lint, format, CI | 1½ d  | ✅ done 2026-09-19 (568 tests)                  |
+| **R3**    | One data layer                | 3 d   | ✅ done 2026-09-19 (568 tests)                  |
+| **RF**    | Review fixes B21–B30 + motion | —     | ✅ code 2026-09-19 · 🟡 `verify` + phone checks |
+| **R4**    | UI kit and thin routes        | 3 d   | ✅ done 2026-09-20 (screens verified on phone)  |
+| **7**     | **Backup & restore**          | 3–4 d | ✅ done · 🟡 recovery path untested on phone    |
+| 8         | Native layer                  | 3–4 d | ⬜                                              |
+| R5        | Performance (was TASKS2 F4)   | 2 d   | ✅ done 2026-09-20 (indexes in 0009)            |
+| R6        | Observability and release ops | 1 d   | ⬜                                              |
+| 6A        | Sheets: import and workspaces | 7–8 d | ⬜ gated on the Sheets readiness gate           |
+| 6B        | Linked sheets                 | 4–5 d | ⬜                                              |
+| 9         | Hardening & Play Store        | 4–5 d | ⬜                                              |
 
 **Recommended order:** R0 → R1 → R2 → R3 → R4 → 7 → 8 → R5 → R6 → 6A → 6B → 9.
 _2026-09-19:_ the review fixes (RF) and most of R5 were done early, on branch `fix/review-b21-b28`.
@@ -250,6 +250,16 @@ How to test each fix, and the B22 phone steps: [`docs/review-fixes-b21-b28.md`](
 - [ ] B22 phone check (steps in `docs/review-fixes-b21-b28.md`)
 - [ ] Look over the motion on the phone: screen pushes, modals, group sheets, tab droplet, Home count-up, a crore-scale total fitting
 - [ ] Commit B29/B30, push the branch, open a PR, CI green, merge
+- [x] **[A10] One renewal domain** _(2026-09-21, `lib/subscriptions.ts`)_. The cycle maths lived in
+      `lib/dates.ts`, and TWO enrichers computed the same fields under different names — `lib/renewals.ts`
+      for Home, `features/tracker/domain/renewal.ts` for the Tracker. Both are now one generic `enrich()`
+      that keeps each caller's own columns. `lib/dates.ts` is back to dates; `lib/renewals.ts` is gone;
+      the Tracker file keeps only `arrange` and `summarise`, which are its own.
+      **Discovered:** the two enrichers had already DRIFTED. An uncategorised subscription drew a generic
+      violet `repeat` icon on Home and a name-derived icon in the Tracker, so one row looked like two
+      different things on two screens. Home now shows the name-derived look too — a visible change, and the
+      reason this task existed. `lib/__tests__/renewals.test.ts` and the four subscription blocks in
+      `dates.test.ts` merged into `lib/__tests__/subscriptions.test.ts`
 - [ ] The rest of the review: T10–T14, A8, A9 and the smaller items (see the review's §5 order)
 
 ---
@@ -412,7 +422,7 @@ native module and no rebuild; after the uninstall the app opened on an empty led
       one is the wrong thing to lead the other. `tx_cat_month_idx (category_id, type, month, amount_paise)`:
       `category_id` first **because the query groups by it**, so SQLite walks group by group
       (`ANY(category_id)`) with type and month as range constraints inside each. `tx_amount_idx
-    (type, amount_paise DESC, month)`: DESC lets `max()` read from the largest row and stop at the first one
+  (type, amount_paise DESC, month)`: DESC lets `max()` read from the largest row and stop at the first one
       in range instead of visiting every match. Both partial on `deleted_at IS NULL`, like the indexes they
       sit beside. Node, 50k rows: top category **54 → 9 ms**, biggest expense **29 → 0.15 ms**, category donut
       1.24 → 0.34 ms, nothing else slower; 2,000 inserts cost 24 → 31 ms (~3.7 µs a row). The plans are

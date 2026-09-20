@@ -7,10 +7,6 @@ import {
   addMonthsClamped,
   monthKey,
   getCycleWindow,
-  getNextRenewal,
-  getUrgency,
-  toMonthlyPaise,
-  toYearlyPaise,
 } from '../dates';
 
 describe('fromISODate — the timezone trap', () => {
@@ -144,108 +140,5 @@ describe('getCycleWindow — budget cycles', () => {
   it('reports daysLeft, never negative', () => {
     expect(getCycleWindow(1, '2026-03-01').daysLeft).toBe(30);
     expect(getCycleWindow(1, '2026-03-31').daysLeft).toBe(0);
-  });
-});
-
-describe('getNextRenewal — the self-correcting calculation', () => {
-  it('returns the anchor when it is still in the future', () => {
-    expect(getNextRenewal('2026-06-15', 'monthly', '2026-03-01')).toBe('2026-06-15');
-  });
-
-  it('returns today when the anchor is today', () => {
-    expect(getNextRenewal('2026-03-15', 'monthly', '2026-03-15')).toBe('2026-03-15');
-  });
-
-  it('advances a monthly cycle past a long-stale anchor', () => {
-    expect(getNextRenewal('2024-01-10', 'monthly', '2026-03-15')).toBe('2026-04-10');
-  });
-
-  it('clamps a 31st anchor into February', () => {
-    expect(getNextRenewal('2026-01-31', 'monthly', '2026-02-01')).toBe('2026-02-28');
-    expect(getNextRenewal('2028-01-31', 'monthly', '2028-02-01')).toBe('2028-02-29');
-  });
-
-  it('recovers the 31st after a clamped month — no permanent drift', () => {
-    // This is the failure the web app's _enrich was written to avoid.
-    expect(getNextRenewal('2026-01-31', 'monthly', '2026-03-01')).toBe('2026-03-31');
-  });
-
-  it('handles quarterly and yearly cycles', () => {
-    expect(getNextRenewal('2026-01-15', 'quarterly', '2026-02-01')).toBe('2026-04-15');
-    expect(getNextRenewal('2026-01-15', 'quarterly', '2026-05-01')).toBe('2026-07-15');
-    expect(getNextRenewal('2024-03-10', 'yearly', '2026-03-15')).toBe('2027-03-10');
-  });
-
-  it('handles a yearly 29 Feb anchor in a non-leap year', () => {
-    expect(getNextRenewal('2028-02-29', 'yearly', '2029-01-01')).toBe('2029-02-28');
-  });
-
-  it('handles weekly cycles', () => {
-    expect(getNextRenewal('2026-03-01', 'weekly', '2026-03-10')).toBe('2026-03-15');
-    expect(getNextRenewal('2026-03-01', 'weekly', '2026-03-08')).toBe('2026-03-08');
-  });
-
-  it('always returns a date on or after today', () => {
-    const anchors = ['2020-01-31', '2023-02-28', '2025-12-31', '2019-06-15'];
-    const cycles = ['weekly', 'monthly', 'quarterly', 'yearly'] as const;
-    for (const anchor of anchors) {
-      for (const cycle of cycles) {
-        const next = getNextRenewal(anchor, cycle, '2026-09-11');
-        expect(daysBetween('2026-09-11', next)).toBeGreaterThanOrEqual(0);
-      }
-    }
-  });
-});
-
-describe('getUrgency', () => {
-  it('mutes inactive subscriptions regardless of date', () => {
-    expect(getUrgency(1, false)).toBe('muted');
-    expect(getUrgency(90, false)).toBe('muted');
-  });
-
-  it('flags the next three days as soon', () => {
-    expect(getUrgency(0, true)).toBe('soon');
-    expect(getUrgency(3, true)).toBe('soon');
-    expect(getUrgency(4, true)).toBe('ok');
-  });
-});
-
-describe('toMonthlyPaise', () => {
-  it('normalises every cycle to a monthly equivalent', () => {
-    expect(toMonthlyPaise(49900, 'monthly')).toBe(49900);
-    expect(toMonthlyPaise(599000, 'yearly')).toBe(49917);
-    expect(toMonthlyPaise(150000, 'quarterly')).toBe(50000);
-    expect(toMonthlyPaise(10000, 'weekly')).toBe(43333);
-  });
-
-  it('returns integers — never a fractional paise', () => {
-    for (const cycle of ['monthly', 'yearly', 'quarterly', 'weekly'] as const) {
-      expect(Number.isInteger(toMonthlyPaise(99999, cycle))).toBe(true);
-    }
-  });
-});
-
-describe('toYearlyPaise', () => {
-  it('multiplies the charge, so a yearly plan costs exactly its price', () => {
-    expect(toYearlyPaise(149900, 'yearly')).toBe(149900);
-    expect(toYearlyPaise(49900, 'monthly')).toBe(49900 * 12);
-    expect(toYearlyPaise(19900, 'quarterly')).toBe(19900 * 4);
-    expect(toYearlyPaise(9900, 'weekly')).toBe(9900 * 52);
-  });
-
-  /**
-   * The B3 bug in one line: the old code went through the rounded monthly
-   * equivalent, which turned ₹1,499 into ₹1,499.04.
-   */
-  it('never round-trips through the monthly equivalent', () => {
-    expect(toMonthlyPaise(149900, 'yearly') * 12).toBe(149904);
-    expect(toYearlyPaise(149900, 'yearly')).toBe(149900);
-  });
-
-  it('is exact for every amount and cycle', () => {
-    for (let paise = 1; paise < 200000; paise += 997) {
-      expect(toYearlyPaise(paise, 'yearly')).toBe(paise);
-      expect(Number.isInteger(toYearlyPaise(paise, 'weekly'))).toBe(true);
-    }
   });
 });

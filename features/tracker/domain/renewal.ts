@@ -1,70 +1,36 @@
+import type { ISODate } from '@/lib/dates';
 import {
-  daysBetween,
-  getNextRenewal,
-  getUrgency,
-  toMonthlyPaise,
-  toYearlyPaise,
-  todayISO,
+  enrich,
   type BillingCycle,
-  type ISODate,
-  type Urgency,
-} from '@/lib/dates';
-import { deterministicColor, deterministicIcon } from '@/lib/identity';
+  type Enriched,
+  type RenewalInput,
+  type SubscriptionStatus,
+} from '@/lib/subscriptions';
 
 /**
- * `_enrich`, ported from the web app's `subscriptions.py`.
+ * The Tracker's own logic: which rows to show, in what order, and the four
+ * summary figures.
  *
- * Nothing here is stored: next renewal, days until, monthly cost and urgency
- * are all derived from `anchorDate` + `billingCycle` on every read. The design
- * is self-correcting — whatever the anchor, the answer is always the next real
- * occurrence — which is why the app needs no background job to keep renewals
- * current, and why this file is pure and exhaustively tested.
+ * The renewal maths is NOT here. Next renewal, days until, monthly and yearly
+ * equivalents and urgency all come from `lib/subscriptions.enrich`, which
+ * Home uses too — this file used to compute them a second time under
+ * different names (A10).
  */
 
-export interface SubscriptionRow {
+export interface SubscriptionRow extends RenewalInput {
   id: number;
-  name: string;
-  amountPaise: number;
   billingCycle: BillingCycle;
-  status: 'active' | 'paused' | 'cancelled';
-  anchorDate: ISODate;
+  status: SubscriptionStatus;
   categoryId: number | null;
   reminderDaysBefore: number;
   categoryName: string | null;
-  categoryIcon: string | null;
-  categoryColor: string | null;
 }
 
-export interface EnrichedSubscription extends SubscriptionRow {
-  nextRenewal: ISODate;
-  daysUntilRenewal: number;
-  /** The cycle amount normalised to a month, so a yearly and a weekly compare. */
-  monthlyCostPaise: number;
-  yearlyCostPaise: number;
-  urgency: Urgency;
-  /** Category look when set, otherwise derived from the name — never persisted. */
-  icon: string;
-  color: string;
-}
+export type EnrichedSubscription = Enriched<SubscriptionRow>;
 
-export function enrich(row: SubscriptionRow, today: ISODate = todayISO()): EnrichedSubscription {
-  const nextRenewal = getNextRenewal(row.anchorDate, row.billingCycle, today);
-  const daysUntilRenewal = daysBetween(today, nextRenewal);
-  const monthlyCostPaise = toMonthlyPaise(row.amountPaise, row.billingCycle);
-
-  return {
-    ...row,
-    nextRenewal,
-    daysUntilRenewal,
-    monthlyCostPaise,
-    // From the CHARGE, never ×12 of the rounded monthly equivalent (B3):
-    // a yearly plan's yearly cost IS the charge, to the paisa.
-    yearlyCostPaise: toYearlyPaise(row.amountPaise, row.billingCycle),
-    // Only an active subscription renews; paused and cancelled read as muted.
-    urgency: getUrgency(daysUntilRenewal, row.status === 'active'),
-    icon: row.categoryIcon ?? deterministicIcon(row.name),
-    color: row.categoryColor ?? deterministicColor(row.name),
-  };
+/** Kept as the Tracker's entry point so callers need not know where enrich lives. */
+export function enrichSubscription(row: SubscriptionRow, today?: ISODate): EnrichedSubscription {
+  return enrich(row, today);
 }
 
 export type SubscriptionSort = 'renewal' | 'amount' | 'name';
@@ -91,7 +57,7 @@ export function arrange(
     }
     switch (sort) {
       case 'renewal': {
-        const d = a.daysUntilRenewal - b.daysUntilRenewal;
+        const d = a.daysUntil - b.daysUntil;
         if (d !== 0) return d;
         break;
       }
@@ -131,7 +97,7 @@ export function summarise(rows: EnrichedSubscription[]): TrackerSummary {
     monthlyTotalPaise += r.monthlyCostPaise;
     yearlyTotalPaise += r.yearlyCostPaise;
     if (r.urgency === 'soon') dueSoonCount += 1;
-    if (!next || r.daysUntilRenewal < next.daysUntilRenewal) next = r;
+    if (!next || r.daysUntil < next.daysUntil) next = r;
   }
 
   return {

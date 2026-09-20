@@ -26,7 +26,7 @@ import { RenewalsCard } from '@/components/ui/RenewalsCard';
 import { MONTHS_LONG, fromISODate, type ISODate } from '@/lib/dates';
 import { buildInsight } from '@/lib/insight';
 import { formatINR } from '@/lib/money';
-import { upcomingRenewals } from '@/lib/renewals';
+import { upcomingRenewals } from '@/lib/subscriptions';
 import { useColors, withAlpha } from '@/lib/theme';
 import { useToday } from '@/lib/today';
 import {
@@ -235,7 +235,7 @@ function Budgets({ today }: { today: ISODate }) {
   );
 }
 
-/** Upcoming renewals, computed on read from active subscriptions (lib/renewals). */
+/** Upcoming renewals, computed on read from active subscriptions (lib/subscriptions). */
 function Renewals({ today }: { today: ISODate }) {
   const router = useRouter();
   const { data: subs, status } = useActiveSubscriptions();

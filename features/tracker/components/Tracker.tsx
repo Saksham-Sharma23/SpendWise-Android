@@ -12,7 +12,7 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { Segmented } from '@/components/ui/Segmented';
 import { formatDayMonth } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
-import { renewalCountdown } from '@/lib/renewals';
+import { renewalCountdown } from '@/lib/subscriptions';
 import { useToday } from '@/lib/today';
 import { useColors, withAlpha } from '@/lib/theme';
 import { rise } from '@/lib/motion';
@@ -141,7 +141,7 @@ export function Tracker() {
                 >
                   <CalendarClock size={17} color={summary.next.urgency === 'soon' ? colors.warning : colors.primary} />
                   <Text variant="body" tone="default" className="flex-1">
-                    {summary.next.name} renews {renewalCountdown(summary.next.daysUntilRenewal).toLowerCase()}
+                    {summary.next.name} renews {renewalCountdown(summary.next.daysUntil).toLowerCase()}
                   </Text>
                   <Text variant="caption" tone="muted">
                     {formatDayMonth(summary.next.nextRenewal)}

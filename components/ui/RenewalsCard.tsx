@@ -3,21 +3,21 @@ import { Text, View } from 'react-native';
 
 import { formatDayMonth } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
-import { renewalCountdown, type UpcomingRenewal } from '@/lib/renewals';
+import { renewalCountdown, type RenewalInput, type Enriched } from '@/lib/subscriptions';
 import { accent, fonts, useColors, withAlpha } from '@/lib/theme';
 import { Card } from './Card';
 import { CategoryIcon } from './CategoryIcon';
 import { PressableScale } from './PressableScale';
 
 interface Props {
-  renewals: UpcomingRenewal[];
+  renewals: (Enriched<RenewalInput> & { id: number })[];
   /** Opens the Tracker — the card is the one-tap route there (CLAUDE.md, navigation). */
   onOpenTracker: () => void;
 }
 
 /**
  * Upcoming renewals on Home. Items come from `upcomingRenewals`
- * (lib/renewals.ts); this component only draws them.
+ * (lib/subscriptions.ts); this component only draws them.
  */
 export function RenewalsCard({ renewals, onOpenTracker }: Props) {
   const colors = useColors();
@@ -65,7 +65,7 @@ export function RenewalsCard({ renewals, onOpenTracker }: Props) {
                 className="flex-row items-center gap-3 py-3"
                 style={i > 0 ? { borderTopWidth: 1, borderTopColor: colors.border } : undefined}
               >
-                <CategoryIcon icon={r.categoryIcon ?? 'repeat'} color={r.categoryColor ?? accent('violet')} size={40} />
+                <CategoryIcon icon={r.icon} color={r.color} size={40} />
                 <View className="flex-1 pr-2">
                   <Text
                     numberOfLines={1}
@@ -74,7 +74,7 @@ export function RenewalsCard({ renewals, onOpenTracker }: Props) {
                     {r.name}
                   </Text>
                   <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
-                    {formatDayMonth(r.nextDate)} · {r.billingCycle}
+                    {formatDayMonth(r.nextRenewal)} · {r.billingCycle}
                   </Text>
                 </View>
                 <View className="items-end">

@@ -1,6 +1,6 @@
 import { ICON_NAMES } from '@/lib/icons';
 import { deterministicColor, deterministicIcon, initials } from '@/lib/identity';
-import { arrange, enrich, summarise, type SubscriptionRow } from '../domain/renewal';
+import { arrange, enrichSubscription, summarise, type SubscriptionRow } from '../domain/renewal';
 
 /**
  * The renewal port is the code that "looks right and is wrong four months
@@ -23,66 +23,68 @@ const sub = (over: Partial<SubscriptionRow> = {}): SubscriptionRow => ({
   ...over,
 });
 
-describe('enrich — renewal computed on read', () => {
+describe('enrichSubscription — renewal computed on read', () => {
   it('advances a stale anchor to the next real occurrence', () => {
-    const e = enrich(sub({ anchorDate: '2025-03-10' }), '2026-09-14');
+    const e = enrichSubscription(sub({ anchorDate: '2025-03-10' }), '2026-09-14');
     expect(e.nextRenewal).toBe('2026-10-10');
-    expect(e.daysUntilRenewal).toBe(26);
+    expect(e.daysUntil).toBe(26);
   });
 
   it('keeps a future anchor as the next renewal', () => {
-    const e = enrich(sub({ anchorDate: '2026-12-01' }), '2026-09-14');
+    const e = enrichSubscription(sub({ anchorDate: '2026-12-01' }), '2026-09-14');
     expect(e.nextRenewal).toBe('2026-12-01');
   });
 
   it('renews today when the anchor is today', () => {
-    const e = enrich(sub({ anchorDate: '2026-09-14' }), '2026-09-14');
+    const e = enrichSubscription(sub({ anchorDate: '2026-09-14' }), '2026-09-14');
     expect(e.nextRenewal).toBe('2026-09-14');
-    expect(e.daysUntilRenewal).toBe(0);
+    expect(e.daysUntil).toBe(0);
     expect(e.urgency).toBe('soon');
   });
 
   it('clamps a 31 Jan anchor into February and recovers in March', () => {
-    expect(enrich(sub({ anchorDate: '2026-01-31' }), '2026-02-15').nextRenewal).toBe('2026-02-28');
+    expect(enrichSubscription(sub({ anchorDate: '2026-01-31' }), '2026-02-15').nextRenewal).toBe('2026-02-28');
     // The month-end date must come back, not stay stuck on the 28th.
-    expect(enrich(sub({ anchorDate: '2026-01-31' }), '2026-03-01').nextRenewal).toBe('2026-03-31');
+    expect(enrichSubscription(sub({ anchorDate: '2026-01-31' }), '2026-03-01').nextRenewal).toBe('2026-03-31');
   });
 
   it('handles a 29 Feb yearly anchor in a non-leap year', () => {
-    const e = enrich(sub({ anchorDate: '2024-02-29', billingCycle: 'yearly' }), '2026-01-01');
+    const e = enrichSubscription(sub({ anchorDate: '2024-02-29', billingCycle: 'yearly' }), '2026-01-01');
     expect(e.nextRenewal).toBe('2026-02-28');
   });
 
   it('recovers 29 Feb at the next leap year', () => {
-    const e = enrich(sub({ anchorDate: '2024-02-29', billingCycle: 'yearly' }), '2028-01-01');
+    const e = enrichSubscription(sub({ anchorDate: '2024-02-29', billingCycle: 'yearly' }), '2028-01-01');
     expect(e.nextRenewal).toBe('2028-02-29');
   });
 
   it('handles quarterly across a year boundary', () => {
-    const e = enrich(sub({ anchorDate: '2025-11-30', billingCycle: 'quarterly' }), '2026-09-14');
+    const e = enrichSubscription(sub({ anchorDate: '2025-11-30', billingCycle: 'quarterly' }), '2026-09-14');
     expect(e.nextRenewal).toBe('2026-11-30');
   });
 
   it('handles weekly cycles', () => {
-    const e = enrich(sub({ anchorDate: '2026-09-01', billingCycle: 'weekly' }), '2026-09-14');
+    const e = enrichSubscription(sub({ anchorDate: '2026-09-01', billingCycle: 'weekly' }), '2026-09-14');
     expect(e.nextRenewal).toBe('2026-09-15');
   });
 });
 
-describe('enrich — cost normalisation', () => {
+describe('enrichSubscription — cost normalisation', () => {
   it('normalises every cycle to a monthly equivalent', () => {
-    expect(enrich(sub({ amountPaise: 199_00 }), '2026-09-14').monthlyCostPaise).toBe(199_00);
-    expect(enrich(sub({ amountPaise: 1_499_00, billingCycle: 'yearly' }), '2026-09-14').monthlyCostPaise).toBe(
-      Math.round(1_499_00 / 12),
-    );
-    expect(enrich(sub({ amountPaise: 900_00, billingCycle: 'quarterly' }), '2026-09-14').monthlyCostPaise).toBe(300_00);
-    expect(enrich(sub({ amountPaise: 100_00, billingCycle: 'weekly' }), '2026-09-14').monthlyCostPaise).toBe(
-      Math.round((100_00 * 52) / 12),
-    );
+    expect(enrichSubscription(sub({ amountPaise: 199_00 }), '2026-09-14').monthlyCostPaise).toBe(199_00);
+    expect(
+      enrichSubscription(sub({ amountPaise: 1_499_00, billingCycle: 'yearly' }), '2026-09-14').monthlyCostPaise,
+    ).toBe(Math.round(1_499_00 / 12));
+    expect(
+      enrichSubscription(sub({ amountPaise: 900_00, billingCycle: 'quarterly' }), '2026-09-14').monthlyCostPaise,
+    ).toBe(300_00);
+    expect(
+      enrichSubscription(sub({ amountPaise: 100_00, billingCycle: 'weekly' }), '2026-09-14').monthlyCostPaise,
+    ).toBe(Math.round((100_00 * 52) / 12));
   });
 
   it('keeps costs as integer paise — a fractional paise cannot exist', () => {
-    const e = enrich(sub({ amountPaise: 1_499_00, billingCycle: 'yearly' }), '2026-09-14');
+    const e = enrichSubscription(sub({ amountPaise: 1_499_00, billingCycle: 'yearly' }), '2026-09-14');
     expect(Number.isInteger(e.monthlyCostPaise)).toBe(true);
     expect(Number.isInteger(e.yearlyCostPaise)).toBe(true);
   });
@@ -94,14 +96,14 @@ describe('enrich — cost normalisation', () => {
    * caught it; every amount here deliberately does not.
    */
   it('a yearly plan costs exactly its charge per year', () => {
-    const e = enrich(sub({ amountPaise: 1_499_00, billingCycle: 'yearly' }), '2026-09-14');
+    const e = enrichSubscription(sub({ amountPaise: 1_499_00, billingCycle: 'yearly' }), '2026-09-14');
     expect(e.yearlyCostPaise).toBe(1_499_00);
     expect(e.yearlyCostPaise).not.toBe(e.monthlyCostPaise * 12);
   });
 
   it('every cycle multiplies the charge, never the rounded monthly figure', () => {
     const yearly = (amountPaise: number, billingCycle: 'monthly' | 'yearly' | 'quarterly' | 'weekly') =>
-      enrich(sub({ amountPaise, billingCycle }), '2026-09-14').yearlyCostPaise;
+      enrichSubscription(sub({ amountPaise, billingCycle }), '2026-09-14').yearlyCostPaise;
 
     expect(yearly(199_00, 'monthly')).toBe(199_00 * 12);
     expect(yearly(1_499_00, 'yearly')).toBe(1_499_00);
@@ -110,27 +112,29 @@ describe('enrich — cost normalisation', () => {
   });
 });
 
-describe('enrich — urgency', () => {
+describe('enrichSubscription — urgency', () => {
   it('flags the next three days as soon', () => {
-    expect(enrich(sub({ anchorDate: '2026-09-17' }), '2026-09-14').urgency).toBe('soon');
-    expect(enrich(sub({ anchorDate: '2026-09-18' }), '2026-09-14').urgency).toBe('ok');
+    expect(enrichSubscription(sub({ anchorDate: '2026-09-17' }), '2026-09-14').urgency).toBe('soon');
+    expect(enrichSubscription(sub({ anchorDate: '2026-09-18' }), '2026-09-14').urgency).toBe('ok');
   });
 
   it('mutes paused and cancelled subscriptions whatever the date', () => {
-    expect(enrich(sub({ status: 'paused', anchorDate: '2026-09-14' }), '2026-09-14').urgency).toBe('muted');
-    expect(enrich(sub({ status: 'cancelled', anchorDate: '2026-09-14' }), '2026-09-14').urgency).toBe('muted');
+    expect(enrichSubscription(sub({ status: 'paused', anchorDate: '2026-09-14' }), '2026-09-14').urgency).toBe('muted');
+    expect(enrichSubscription(sub({ status: 'cancelled', anchorDate: '2026-09-14' }), '2026-09-14').urgency).toBe(
+      'muted',
+    );
   });
 });
 
-describe('enrich — look', () => {
+describe('enrichSubscription — look', () => {
   it('prefers the category icon and colour when there is one', () => {
-    const e = enrich(sub({ categoryIcon: 'utensils', categoryColor: '#123456' }), '2026-09-14');
+    const e = enrichSubscription(sub({ categoryIcon: 'utensils', categoryColor: '#123456' }), '2026-09-14');
     expect(e.icon).toBe('utensils');
     expect(e.color).toBe('#123456');
   });
 
   it('falls back to a deterministic look derived from the name', () => {
-    const e = enrich(sub({ name: 'Netflix' }), '2026-09-14');
+    const e = enrichSubscription(sub({ name: 'Netflix' }), '2026-09-14');
     expect(e.icon).toBe('clapperboard');
     expect(e.color).toBe(deterministicColor('Netflix'));
   });
@@ -139,14 +143,14 @@ describe('enrich — look', () => {
 describe('arrange — status filter and sort', () => {
   const today = '2026-09-14';
   const rows = [
-    enrich(sub({ id: 1, name: 'Spotify', amountPaise: 119_00, anchorDate: '2026-09-20' }), today),
-    enrich(sub({ id: 2, name: 'Netflix', amountPaise: 649_00, anchorDate: '2026-09-16' }), today),
-    enrich(
+    enrichSubscription(sub({ id: 1, name: 'Spotify', amountPaise: 119_00, anchorDate: '2026-09-20' }), today),
+    enrichSubscription(sub({ id: 2, name: 'Netflix', amountPaise: 649_00, anchorDate: '2026-09-16' }), today),
+    enrichSubscription(
       sub({ id: 3, name: 'Gym', amountPaise: 12_000_00, billingCycle: 'yearly', anchorDate: '2026-10-01' }),
       today,
     ),
-    enrich(sub({ id: 4, name: 'Old thing', status: 'cancelled', anchorDate: '2026-09-15' }), today),
-    enrich(sub({ id: 5, name: 'Paused thing', status: 'paused', anchorDate: '2026-09-15' }), today),
+    enrichSubscription(sub({ id: 4, name: 'Old thing', status: 'cancelled', anchorDate: '2026-09-15' }), today),
+    enrichSubscription(sub({ id: 5, name: 'Paused thing', status: 'paused', anchorDate: '2026-09-15' }), today),
   ];
 
   it('filters by status', () => {
@@ -182,9 +186,12 @@ describe('summarise', () => {
 
   it('totals only active subscriptions', () => {
     const rows = [
-      enrich(sub({ id: 1, amountPaise: 200_00, anchorDate: '2026-09-20' }), today),
-      enrich(sub({ id: 2, amountPaise: 1_200_00, billingCycle: 'yearly', anchorDate: '2026-09-15' }), today),
-      enrich(sub({ id: 3, amountPaise: 999_00, status: 'cancelled', anchorDate: '2026-09-15' }), today),
+      enrichSubscription(sub({ id: 1, amountPaise: 200_00, anchorDate: '2026-09-20' }), today),
+      enrichSubscription(
+        sub({ id: 2, amountPaise: 1_200_00, billingCycle: 'yearly', anchorDate: '2026-09-15' }),
+        today,
+      ),
+      enrichSubscription(sub({ id: 3, amountPaise: 999_00, status: 'cancelled', anchorDate: '2026-09-15' }), today),
     ];
     const s = summarise(rows);
     expect(s.monthlyTotalPaise).toBe(200_00 + 100_00);
@@ -198,9 +205,12 @@ describe('summarise', () => {
     // Three plans whose yearly cost is NOT divisible by 12, so rounding the
     // monthly figure first and multiplying back drifts on every one.
     const rows = [
-      enrich(sub({ id: 1, amountPaise: 1_499_00, billingCycle: 'yearly', anchorDate: '2026-09-20' }), today),
-      enrich(sub({ id: 2, amountPaise: 599_00, billingCycle: 'yearly', anchorDate: '2026-09-25' }), today),
-      enrich(sub({ id: 3, amountPaise: 99_00, billingCycle: 'weekly', anchorDate: '2026-09-18' }), today),
+      enrichSubscription(
+        sub({ id: 1, amountPaise: 1_499_00, billingCycle: 'yearly', anchorDate: '2026-09-20' }),
+        today,
+      ),
+      enrichSubscription(sub({ id: 2, amountPaise: 599_00, billingCycle: 'yearly', anchorDate: '2026-09-25' }), today),
+      enrichSubscription(sub({ id: 3, amountPaise: 99_00, billingCycle: 'weekly', anchorDate: '2026-09-18' }), today),
     ];
     const s = summarise(rows);
 

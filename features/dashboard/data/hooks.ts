@@ -170,8 +170,8 @@ const EMPTY_SUBS: ActiveSubscription[] = [];
 
 /**
  * Live, non-deleted ACTIVE subscriptions with their category's look. Renewal
- * dates are computed on read from these (lib/renewals.ts), never stored.
- * Shape matches lib/renewals `SubscriptionLike`.
+ * dates are computed on read from these (lib/subscriptions.ts), never stored.
+ * Shape satisfies lib/subscriptions `RenewalInput`.
  */
 export function useActiveSubscriptions(): DbQueryResult<ActiveSubscription[]> {
   return useDbQuery(
