@@ -1,0 +1,2 @@
+CREATE INDEX `tx_cat_month_idx` ON `transactions` (`category_id`,`type`,`month`,`amount_paise`) WHERE deleted_at IS NULL;--> statement-breakpoint
+CREATE INDEX `tx_amount_idx` ON `transactions` (`type`,"amount_paise" desc,`month`) WHERE deleted_at IS NULL;

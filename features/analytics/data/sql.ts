@@ -18,6 +18,13 @@ import type { AnyDb } from '@/db/types';
  * tx_month_idx (month, type, amount_paise) — the index that serves the
  * trend without a sort. `deleted_at IS NULL` is always present: that index is
  * partial, and a query that omits the predicate cannot use it.
+ *
+ * Two queries here need a DIFFERENT index, because what leads one is the
+ * wrong thing to lead the other (R5, 2026-09-20):
+ *   biggestExpense  → tx_amount_idx    (type, amount_paise DESC, month)
+ *   categoryTotals  → tx_cat_month_idx (category_id, type, month, amount_paise)
+ * Both were over 50 ms on the phone at 50k rows. `__tests__/sql.test.ts`
+ * asserts the plan, since a wrong column order is still correct, only slow.
  */
 
 const live = isNull(transactions.deletedAt);

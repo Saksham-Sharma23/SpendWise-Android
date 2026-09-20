@@ -64,6 +64,13 @@
       "when": 1789477978445,
       "tag": "0008_seed_self_person",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1789920639676,
+      "tag": "0009_analytics_covering_indexes",
+      "breakpoints": true
     }
   ]
 }

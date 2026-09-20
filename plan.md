@@ -1807,10 +1807,29 @@ Measured on the dev phone, 50,002 rows, with "Run analytics benchmark" (median o
 under 50 ms. **FTS5 is not needed either.** A search page takes 8.6 ms. The search summary (49.5 ms)
 scans because it sums every match with no date bound, and FTS would not change that.
 
-**Follow-ups (not rollups).** Two queries are over 50 ms: "top category (24 months)" (99.7 ms, with a
-temporary B-tree for the GROUP BY) and "biggest expense (24 months)" (67.9 ms). Check their plans for a
-covering index on `(type, month, category_id, amount_paise)` or similar, then re-run. "ledger summary
-(all)" scanning is expected, because it totals every row.
+**Follow-ups (not rollups). ✅ Done 2026-09-20 — migration `0009_analytics_covering_indexes`.**
+Two queries were over 50 ms: "top category (24 months)" (99.7 ms, temporary B-tree for the GROUP BY) and
+"biggest expense (24 months)" (67.9 ms). Both are fixed, by two indexes rather than one:
+
+| Index                                                       | Serves                       | Why this order                                                                                                                                                 |
+| ----------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tx_cat_month_idx (category_id, type, month, amount_paise)` | `data/ledger.categoryTotals` | `category_id` leads **because the query groups by it**: SQLite walks group by group (`ANY(category_id)`), with type and month as range constraints inside each |
+| `tx_amount_idx (type, amount_paise DESC, month)`            | `biggestExpenseQuery`        | `DESC` lets `max()` start at the largest row and stop at the first one in range, instead of visiting every match                                               |
+
+Both partial on `deleted_at IS NULL`. Node, 50k rows: top category **54 → 9 ms**, biggest expense
+**29 → 0.15 ms**, category donut 1.24 → 0.34 ms, trend 18 → 15 ms, ledger page unchanged. Write cost:
+2,000 inserts 24 → 31 ms (~3.7 µs a row).
+
+**The guess in the previous version of this note was wrong**, and worth recording: an index on
+`(type, month, category_id, amount_paise)` is **ignored by SQLite entirely** for the top-category query —
+the plan does not change at all. So is `(month, type, category_id, amount_paise)`. The leading column has
+to be the one the query groups by. Measured across five candidates, not reasoned about.
+
+`features/analytics/__tests__/sql.test.ts` asserts the PLANS rather than timings: a wrong column order
+still returns the right answer, only slowly, which no other test would catch.
+
+**Still to do:** re-run the dev harness benchmark on the phone after the next build and update the table
+above with real device numbers. "ledger summary (all)" scanning is expected, because it totals every row.
 
 ---
 

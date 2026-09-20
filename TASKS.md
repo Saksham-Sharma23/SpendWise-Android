@@ -32,7 +32,7 @@
 | **R4**    | UI kit and thin routes        | 3 d   | ✅ done 2026-09-20 (screens verified on phone)    |
 | **7**     | **Backup & restore**          | 3–4 d | ✅ done · 🟡 recovery path untested on phone      |
 | 8         | Native layer                  | 3–4 d | ⬜                                                |
-| R5        | Performance (was TASKS2 F4)   | 2 d   | 🟡 7 of 8 done; 2 slow queries to index           |
+| R5        | Performance (was TASKS2 F4)   | 2 d   | ✅ done 2026-09-20 (indexes in 0009)              |
 | R6        | Observability and release ops | 1 d   | ⬜                                                |
 | 6A        | Sheets: import and workspaces | 7–8 d | ⬜ gated on the Sheets readiness gate             |
 | 6B        | Linked sheets                 | 4–5 d | ⬜                                                |
@@ -40,6 +40,8 @@
 
 **Recommended order:** R0 → R1 → R2 → R3 → R4 → 7 → 8 → R5 → R6 → 6A → 6B → 9.
 _2026-09-19:_ the review fixes (RF) and most of R5 were done early, on branch `fix/review-b21-b28`.
+_2026-09-20:_ R5 closed out of order too — its last item was two indexes and no device work, so it was
+done while the first release build ran on GitHub. **Next: Phase 8**, then R6.
 _2026-09-20:_ R4 done — screens verified on the phone (typecheck clean; jest and lint not yet run).
 _2026-09-20:_ Phase 7 — the first five batches are built: `.db`, passphrase and `.json` exports, and a validate-first restore that stages, checks, snapshots and can roll itself back. `npm run verify` green (630 tests), and **the uninstall-and-restore drill passed on the phone in all three formats** (see the exit criterion in Phase 7). The drill found two bugs that no Node test could have: a restore left every already-mounted query showing the old database, and the confirmation said "17 categorys". Both fixed and re-verified on the device. **Then:** the three remaining items were built the same day — restore from the boot-failure screen, the storage card in Settings, and the backup history — and `npm run verify` is green over all of it (38 tests in `db/__tests__/backup.test.ts`), pushed as `8b923cf`. **The one thing left is on the phone: the recovery path has never been exercised**, because it needs a deliberately broken database. It is DV "corrupted spendwise.db" in § Device verification, so it closes there rather than here. **Next: Phase 8.**
 _Why this order:_ a factory reset currently loses everything, so Backup (7) comes before any new data
@@ -405,7 +407,20 @@ native module and no rebuild; after the uninstall the app opened on an empty led
 - [x] **Search:** `lower()` dropped, `ESCAPE` kept; the pattern is no longer lowered in JS either (it made `É` search for `é`). **FTS5 trigram: not evaluated**, because notes are ASCII-dominant; reopen only if the "search page" row below goes over 50 ms on the phone _(2026-09-19)_
 - [x] **Measure, then decide:** swipeable per row vs on touch; tab-bar blur during ledger scroll. **Decided 2026-09-19: keep both as they are.** Turning the swipeable off cut janky frames from ~8.5% to ~6.4% and p90 from 31 to 27 ms (dev build); that is inside run-to-run noise, and mounting on touch would cost the first swipe, so rows keep it. Blur off made no consistent difference, so there is no "Reduce transparency" setting. Numbers: plan.md R5-4
 - [x] **Record on-device query timings** and close the rollup-table decision. **Closed 2026-09-19: rollup tables not needed.** The 24-month trend takes 19.5 ms on the phone at 50k rows (≤ 50 ms), indexed. Two queries are over 50 ms for other reasons; they are the follow-up below. Table: plan.md R5-5
-- [ ] **Follow-up from the timings:** "top category (24 months)" 99.7 ms (TEMP B-TREE) and "biggest expense (24 months)" 67.9 ms are both over 50 ms. Check their plans for a missing covering index (this is not a rollup problem)
+- [x] **Follow-up from the timings:** "top category (24 months)" 99.7 ms (TEMP B-TREE) and "biggest expense (24 months)" 67.9 ms are both over 50 ms. Check their plans for a missing covering index (this is not a rollup problem)
+      _(done 2026-09-20, migration `0009_analytics_covering_indexes`.)_ Two indexes, because what has to lead
+      one is the wrong thing to lead the other. `tx_cat_month_idx (category_id, type, month, amount_paise)`:
+      `category_id` first **because the query groups by it**, so SQLite walks group by group
+      (`ANY(category_id)`) with type and month as range constraints inside each. `tx_amount_idx
+    (type, amount_paise DESC, month)`: DESC lets `max()` read from the largest row and stop at the first one
+      in range instead of visiting every match. Both partial on `deleted_at IS NULL`, like the indexes they
+      sit beside. Node, 50k rows: top category **54 → 9 ms**, biggest expense **29 → 0.15 ms**, category donut
+      1.24 → 0.34 ms, nothing else slower; 2,000 inserts cost 24 → 31 ms (~3.7 µs a row). The plans are
+      asserted in `features/analytics/__tests__/sql.test.ts`, not the timings — a wrong column order still
+      returns the right answer, only slowly, so no other test would catch it. **Phone numbers not re-measured
+      yet:** re-run the dev harness benchmark after the next build and update the R5-5 table in plan.md.
+      _Discovered:_ plan.md's suggested `(type, month, category_id, amount_paise)` is **ignored by SQLite
+      entirely** for the top-category query — the plan does not change. Column order was the whole problem.
 
 **Exit criterion:** Perf Monitor shows no dropped frames scrolling the 50k DB end to end and while saving from the ledger.
 
@@ -470,8 +485,17 @@ with a fresh dev build (several need one: backup rules, splash colours). Tick he
 - [ ] Forced constraint error keeps a form open with a specific toast (dev and release)
 - [ ] Hammer Save → exactly one row
 - [ ] `npm run build:release-apk` fails if `INTERNET` is present (exercise `verify:apk` on a real release build)
-- [ ] Release build passes the new `verify:apk` allowlist: `rm -rf android` → `npm run prebuild` → `npm run build:release-apk`. Expect exactly `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE` and `…DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`; no `USE_BIOMETRIC`, `USE_FINGERPRINT` or `SYSTEM_ALERT_WINDOW` (all three reached the 2026-09-19 dev APK)
+- [x] Release build passes the new `verify:apk` allowlist _(2026-09-20, built by `.github/workflows/release.yml` on GitHub — the first run of that workflow — and confirmed again on the phone with `dumpsys package`)_. The installed release APK requests **exactly** `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE` and `…DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. No `INTERNET`; **no `USE_BIOMETRIC`, `USE_FINGERPRINT` or `SYSTEM_ALERT_WINDOW`** — all three reached the 2026-09-19 dev APK, so `blockedPermissions` is doing its job on a real release artifact
 - [ ] A row with `deleted_at` 31 days ago is purged at launch; one on its last day survives
+
+**App icon and splash (2026-09-20)**
+
+- [x] The launcher icon renders correctly at real size _(2026-09-20, dev build on the phone)_: the teal tile,
+      leaf and three bars are all legible at ~48dp under the launcher's squircle mask. Confirms the two
+      judgements that synthetic previews could not settle — the 78/108 safe-zone inset (62/108 left the mark
+      at about a third of the circle) and the cutout threshold at the luminance trough, 305, which removed the
+      ground-pixel smudge behind the mark
+- [ ] The splash on a cold start, on the app's own background, handing over invisibly to the first screen
 
 **Review fixes and motion (RF, 2026-09-19)**
 

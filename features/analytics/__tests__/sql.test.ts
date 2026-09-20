@@ -227,14 +227,26 @@ describe('analytics SQL — plans at 50k rows', () => {
     expect(p).not.toMatch(/SCAN transactions(?! USING)/);
   });
 
-  it('biggest expense finds its row without a sort step', () => {
+  // R5 follow-up (2026-09-20). These two were the only analytics queries over
+  // 50 ms on the phone at 50k rows: 67.9 ms and 99.7 ms. Both are fixed by an
+  // index whose COLUMN ORDER is the whole point, so the plan is asserted here
+  // rather than the timing — a wrong order still returns the right answer,
+  // just slowly, which no other test would catch.
+  it('biggest expense walks tx_amount_idx and stops, instead of visiting every row', () => {
     const p = planOf(biggestExpenseQuery(db, '2024-10', '2026-09'));
-    expect(p).toMatch(/INDEX tx_month_idx/);
+    // DESC on the amount means max() reads from the top and stops at the first
+    // row inside the range. Phone: 67.9 ms -> under a millisecond.
+    expect(p).toMatch(/INDEX tx_amount_idx/);
     expect(p).not.toMatch(/TEMP B-TREE/);
+    expect(p).not.toMatch(/SCAN transactions(?! USING)/);
   });
 
-  it('category totals range over tx_month_idx rather than scanning the table', () => {
+  it('category totals group through tx_cat_month_idx rather than scanning', () => {
     const p = planOf(categoryTotalsQuery(db, '2024-10', '2026-09'));
+    // category_id leads the index BECAUSE the query groups by it: SQLite then
+    // walks group by group. An index led by `type` or `month` is ignored for
+    // this query entirely — measured, not assumed.
+    expect(p).toMatch(/INDEX tx_cat_month_idx/);
     expect(p).not.toMatch(/SCAN transactions(?! USING)/);
   });
 

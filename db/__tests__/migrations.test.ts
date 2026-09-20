@@ -241,6 +241,8 @@ describe('migrations 0001–0008 on a populated 0000 database', () => {
         'tx_ledger_idx',
         'tx_month_idx',
         'tx_cat_idx',
+        'tx_cat_month_idx',
+        'tx_amount_idx',
         'tx_batch_idx',
         'tx_dedupe_idx',
         'tx_uid_unique',
