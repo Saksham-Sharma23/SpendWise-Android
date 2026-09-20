@@ -30,7 +30,7 @@
 | **R3**    | One data layer                | 3 d   | ✅ done 2026-09-19 (568 tests)                    |
 | **RF**    | Review fixes B21–B30 + motion | —     | ✅ code 2026-09-19 · 🟡 `verify` + phone checks   |
 | **R4**    | UI kit and thin routes        | 3 d   | ✅ done 2026-09-20 (screens verified on phone)    |
-| **7**     | **Backup & restore**          | 3–4 d | 🟡 export + restore built; phone drill pending    |
+| **7**     | **Backup & restore**          | 3–4 d | ✅ code done · 🟡 recovery path untested on phone |
 | 8         | Native layer                  | 3–4 d | ⬜                                                |
 | R5        | Performance (was TASKS2 F4)   | 2 d   | 🟡 7 of 8 done; 2 slow queries to index           |
 | R6        | Observability and release ops | 1 d   | ⬜                                                |
@@ -41,7 +41,7 @@
 **Recommended order:** R0 → R1 → R2 → R3 → R4 → 7 → 8 → R5 → R6 → 6A → 6B → 9.
 _2026-09-19:_ the review fixes (RF) and most of R5 were done early, on branch `fix/review-b21-b28`.
 _2026-09-20:_ R4 done — screens verified on the phone (typecheck clean; jest and lint not yet run).
-_2026-09-20:_ Phase 7 — the first five batches are built: `.db`, passphrase and `.json` exports, and a validate-first restore that stages, checks, snapshots and can roll itself back. Typecheck clean; **jest and lint not yet run, and none of it has run on the phone**. **Next: the phone drill** (populate → export → uninstall → reinstall → restore), then the remaining Phase 7 items.
+_2026-09-20:_ Phase 7 — the first five batches are built: `.db`, passphrase and `.json` exports, and a validate-first restore that stages, checks, snapshots and can roll itself back. `npm run verify` green (630 tests), and **the uninstall-and-restore drill passed on the phone in all three formats** (see the exit criterion in Phase 7). The drill found two bugs that no Node test could have: a restore left every already-mounted query showing the old database, and the confirmation said "17 categorys". Both fixed and re-verified on the device. **Then:** the three remaining items were built the same day — restore from the boot-failure screen, the storage card in Settings, and the backup history. Typecheck clean; **their tests have not been run, and the recovery path has not been exercised on the phone** (it needs a deliberately broken database). **Next: Phase 8.**
 _Why this order:_ a factory reset currently loses everything, so Backup (7) comes before any new data
 surface. The refactor (R3/R4) comes before Backup and Sheets so that the two biggest new features are
 written in the target layout, not ported into it afterwards. Guard rails (R2) come before the refactor so
@@ -300,13 +300,45 @@ How to test each fix, and the B22 phone steps: [`docs/review-fixes-b21-b28.md`](
       `applyRestore`
 - [x] **Snapshot the current DB before swapping**; `VACUUM INTO` → fold the staged WAL → `closeConnection` → move →
       `bootDatabase()`. If the restored file does not boot, the copy goes back and boots instead
-- [ ] **Restore from the boot-failure screen too** (the recovery path D5 promised)
-- [ ] **Settings: database + WAL size, last backup date, warn near the 25 MB auto-backup quota**
-- [ ] **Backup history** (`app_meta` or a small table) — "did I ever back this up?"
+- [x] **Restore from the boot-failure screen too** (the recovery path D5 promised) — `features/boot/components/RecoveryRestore.tsx`.
+      To make it possible at all, staging and validation moved OFF the live connection: `prepareRestore` now opens the
+      STAGED file directly, so the broken database is never touched. `applyRestore(plan, { recovery: true })` changes two
+      judgements for this path — a `VACUUM INTO` that fails is expected rather than fatal (the broken bytes are moved
+      aside instead), and a restored file that still will not boot is NOT rolled back, because rolling back would
+      reinstate a database that was already failing. Ordered AFTER "share a copy": restoring replaces what is on the
+      phone, and the damaged file may hold the only copy of the last few entries
+- [x] **Settings: database + WAL size, warn near the 25 MB auto-backup quota** — `features/settings/components/Storage.tsx`
+      over `db/backup/size.ts` (pure, tested). Room left is stated in TRANSACTIONS ("roughly 33,000 more entries"), from
+      the per-row size measured on THIS database, because megabytes are not something anyone can act on.
+      _Why it matters:_ the quota fails **silently** — no error, no notification, nothing discoverable until a new phone
+      restores an empty app. Showing the number is the only possible defence
+- [x] **Backup history** — `db/backup/history.ts`, stored as JSON in `app_meta.backup_history`, capped at 25 entries.
+      A restore is logged and displayed DIFFERENTLY from an export, because restoring is not backing up and a log that
+      blurred the two would answer "have I got a copy of this?" wrongly, and reassuringly. Parsing never throws: a
+      corrupt log costs the log, never the screen. `backupAge` uses the same 30-day rule Phase 8's nudge will, so the
+      screen and the notification cannot disagree
 - [ ] **Tests:** JSON round-trip on the migrated 50k fixture (row counts and paise totals per table identical); restore refuses a newer migration index; a wrong passphrase changes nothing
 - [ ] _(Monthly reminder ships with Phase 8 channels)_
 
 **Phase 7 Discovered:**
+
+- **The recovery restore forced a better design.** Staging and validation used to run by ATTACHing the candidate to the
+  LIVE connection — fine from Settings, useless from the boot-failure screen, where the live database is the broken
+  thing. Both now open the STAGED file directly, so nothing in the check path depends on the database being restored
+  over. The encrypted path benefits too: `sqlcipher_export('main', 'src')` decrypts into the staging file's own `main`.
+
+- **A restore fires no change event, so every query already on screen keeps the OLD figures.** Found in the drill:
+  after restoring 50,002 transactions, the Transactions tab (mounted fresh) showed them all while Home (mounted
+  before the restore) still offered to add your first transaction. expo-sqlite announces WRITES; a restore replaces
+  the FILE, so nothing is announced. Fixed with `notifyDatabaseReplaced()` in `lib/db/useDbQuery.ts`, called after a
+  successful `applyRestore`. **A whole class of bug the Node tests could not have caught** — they never mount a screen.
+- **"17 categorys"** in the restore confirmation. `describeBackup` added a blanket `s`; each label now carries its own
+  plural, with a test. A wrong plural in the one dialog that asks permission to replace everything is worse than it
+  looks.
+- **Screenshots fail while the passphrase dialog is open** (`secureTextEntry` makes the window secure), so the drill
+  was driven by `uiautomator dump` instead. Worth knowing for any future device scripting of a form with a password.
+- **A dialog shifts when the keyboard opens**, so coordinates read before typing are stale by the time the button is
+  tapped. Re-read the bounds after every keystroke sequence.
 
 - **No new native module was needed for the file picker.** `expo-file-system` v57 ships `File.pickFileAsync`
   (Storage Access Framework), so restoring a file from a cloud drive costs no rebuild. `expo-document-picker`
@@ -326,7 +358,20 @@ How to test each fix, and the B22 phone steps: [`docs/review-fixes-b21-b28.md`](
   Names now carry their kind, and `backupsToDelete` is pure and tested — like `snapshotsToDelete` in
   `db/migrate.ts`, and for the same reason.
 
-**Exit criterion (on the phone):** populate → export → **uninstall** → reinstall → restore → row counts and totals match exactly. Repeat with an encrypted export and with the JSON export.
+**Exit criterion (on the phone): ✅ PASSED 2026-09-20.** populate (50,002 transactions, 17 categories, 10 people,
+1 group, ₹32,68,09,002.62) → export all three formats → **uninstall** → reinstall → restore → verified by pulling
+the database off the phone and diffing it against the original:
+
+| Path                 | Result                                                                                                                             |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `.db` (14.56 MB)     | every row count and every paise total identical; `integrity_check` ok, `foreign_key_check` clean                                   |
+| `.json` (21.15 MB)   | identical counts and totals, rebuilt row by row into a freshly migrated database; 500 sampled `uid → category uid` links identical |
+| `.enc.db` (14.95 MB) | identical after decryption; the file's own header is random bytes, not `SQLite format 3`                                           |
+
+Also proven on the device: a **wrong passphrase** left no staging file and did not touch the live database; each
+restore wrote its `spendwise-before-restore-*.db` safety copy; the SAF picker (`File.pickFileAsync`) needed no new
+native module and no rebuild; after the uninstall the app opened on an empty ledger, and after the restore showed
+**50,002 entries** with correct income, expense and net.
 
 ---
 

@@ -2,19 +2,26 @@ import { toast } from 'sonner-native';
 
 import { getMeta, META_KEYS, setMeta } from '@/data/meta';
 import {
+  appendHistory,
   applyRestore,
+  backupAge,
   discardRestore,
   exportDatabaseFile,
   exportJsonFile,
   listBackups,
+  parseHistory,
   pickBackupFile,
   prepareRestore,
   RestoreError,
+  serialiseHistory,
   shareBackup,
   type BackupFileInfo,
+  type HistoryEntry,
+  type HistoryEvent,
   type RestorePlan,
 } from '@/db/backup';
 import { nowISO } from '@/lib/dates';
+import { notifyDatabaseReplaced } from '@/lib/db/useDbQuery';
 
 /**
  * What the Backup screen calls.
@@ -30,6 +37,7 @@ import { nowISO } from '@/lib/dates';
  */
 
 export type ExportFormat = 'db' | 'encrypted-db' | 'json';
+type BackupFormat = ExportFormat;
 
 export interface ExportOutcome {
   ok: boolean;
@@ -37,13 +45,22 @@ export interface ExportOutcome {
   message?: string;
 }
 
-function markBackedUp(): void {
+/**
+ * Record that something happened, in both places that ask.
+ *
+ * `last_backup_at` is what Phase 8's monthly nudge reads; the history is what
+ * the screen shows. Neither is allowed to fail the operation it describes — a
+ * backup that succeeded and then failed to write a log entry is a successful
+ * backup, and saying otherwise would send someone to make another one.
+ */
+function record(event: HistoryEvent, format: BackupFormat, bytes: number, transactions: number): void {
   try {
-    setMeta(META_KEYS.LAST_BACKUP_AT, nowISO());
+    const at = nowISO();
+    if (event === 'export') setMeta(META_KEYS.LAST_BACKUP_AT, at);
+    const entry: HistoryEntry = { at, event, format, bytes, transactions };
+    setMeta(META_KEYS.BACKUP_HISTORY, serialiseHistory(appendHistory(readHistory(), entry)));
   } catch (e) {
-    // The backup itself succeeded; failing to write the date is not a reason
-    // to tell someone their backup failed.
-    if (__DEV__) console.warn('[backup] could not record last_backup_at', e);
+    if (__DEV__) console.warn('[backup] could not record history', e);
   }
 }
 
@@ -52,13 +69,27 @@ export function lastBackupAt(): string | null {
   return getMeta(META_KEYS.LAST_BACKUP_AT);
 }
 
+/** The export/restore log, newest first. Never throws: a broken log is not a broken app. */
+export function readHistory(): HistoryEntry[] {
+  try {
+    return parseHistory(getMeta(META_KEYS.BACKUP_HISTORY));
+  } catch {
+    return [];
+  }
+}
+
+/** How long since the last EXPORT, and whether that is long enough to nag about. */
+export function backupFreshness(): { days: number | null; stale: boolean } {
+  return backupAge(readHistory());
+}
+
 export async function runExport(format: ExportFormat, passphrase?: string): Promise<ExportOutcome> {
   try {
     const result =
       format === 'json'
         ? await exportJsonFile()
         : exportDatabaseFile(format === 'encrypted-db' ? passphrase : undefined);
-    markBackedUp();
+    record('export', result.file.format, result.file.size, result.counts?.transactions ?? 0);
     try {
       await shareBackup(result.file);
     } catch (e) {
@@ -131,6 +162,11 @@ export interface RestoreOutcome {
 export async function confirmRestore(plan: RestorePlan): Promise<RestoreOutcome> {
   try {
     const result = await applyRestore(plan);
+    // The file was REPLACED, not written to, so expo-sqlite fired no change
+    // event and every query already on screen is still showing the old
+    // database. Wake them all (see notifyDatabaseReplaced).
+    notifyDatabaseReplaced();
+    record('restore', plan.format, 0, plan.counts.transactions ?? 0);
     return { ok: true, counts: result.counts };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

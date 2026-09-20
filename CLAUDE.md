@@ -26,7 +26,7 @@
 - **This app makes zero network requests.** Anything that implies `fetch`, Axios, a base URL, a JWT or
   a token refresh is wrong, and predates the 2026-09-11 decision. The release build does not even declare
   `INTERNET`.
-- **Current phase: Backup (7) — the engine is written, the phone drill is not done. Then Sheets (6A).** R0–R4 are done: every feature is on the standard layout in
+- **Current phase: Phase 8 (native layer), then Sheets (6A).** Backup (7) is code complete and its uninstall→restore drill passed on the phone in all three formats; the only part not exercised on a device is the boot-failure recovery path, which needs a deliberately broken database. R0–R4 are done: every feature is on the standard layout in
   _Architecture_, every screen is built from the `components/ui` kit, and new code must follow both. One thing R0 could not
   close: removing the unused native packages needs a rebuild + `npm run verify:apk` to confirm the manifest
   shrank.
@@ -49,13 +49,13 @@
 
 ## The locked decisions
 
-| Decision                              | Choice                                                                        | Consequence                                                                                                                                     |
-| ------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Architecture**                      | Standalone, zero network                                                      | No auth, HTTP, server cache or offline queue. Only files cross the boundary: spreadsheets in, backups out                                       |
-| **Storage**                           | SQLite (`expo-sqlite`) + Drizzle ORM                                          | Typed queries, generated migrations. `useDbQuery` + `readDb` replace any server-state library                                                   |
-| **Analytics**                         | Aggregate in SQL on the device                                                | `GROUP BY` in SQLite; never `SELECT` rows you intend to sum                                                                                     |
-| **Durability**                        | Manual export **+** Android auto-backup **+** monthly reminder                | Layers 1 and 2 are built (Phase 7: `.db` / passphrase / `.json` export, validate-first restore). **Not yet run on a phone.** Layer 3 is Phase 8 |
-| **Encryption** _(amended 2026-09-14)_ | Main DB **unkeyed**; SQLCipher only for passphrase-encrypted **backup files** | A Keystore-keyed DB restored by auto-backup could not be opened. FBE + the sandbox protect data at rest                                         |
+| Decision                              | Choice                                                                        | Consequence                                                                                                                                                                                                                 |
+| ------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Architecture**                      | Standalone, zero network                                                      | No auth, HTTP, server cache or offline queue. Only files cross the boundary: spreadsheets in, backups out                                                                                                                   |
+| **Storage**                           | SQLite (`expo-sqlite`) + Drizzle ORM                                          | Typed queries, generated migrations. `useDbQuery` + `readDb` replace any server-state library                                                                                                                               |
+| **Analytics**                         | Aggregate in SQL on the device                                                | `GROUP BY` in SQLite; never `SELECT` rows you intend to sum                                                                                                                                                                 |
+| **Durability**                        | Manual export **+** Android auto-backup **+** monthly reminder                | Layers 1 and 2 ship (Phase 7): `.db` / passphrase / `.json` export, validate-first restore, restore from the boot-failure screen, and a quota warning because auto-backup fails **silently** past 25 MB. Layer 3 is Phase 8 |
+| **Encryption** _(amended 2026-09-14)_ | Main DB **unkeyed**; SQLCipher only for passphrase-encrypted **backup files** | A Keystore-keyed DB restored by auto-backup could not be opened. FBE + the sandbox protect data at rest                                                                                                                     |
 
 ---
 
@@ -154,9 +154,10 @@ db/                          the database itself — nothing app-level
   migrate.ts                 FK-safe migration, user-data probe, integrity flag (pure, tested)
   seed.ts · seedCore.ts · seedData.ts   system categories: binding · reconciliation · the list itself
   retention.ts · files.ts · encryptedCopy.ts (passphrase backup copies) · legacyEncryption.ts (remove in R6)
-  backup/                    Phase 7: tables.ts + json.ts (what a JSON backup holds) · validate.ts + naming.ts
-                             (pure, tested) · version.ts · export.ts (VACUUM INTO / sqlcipher_export / share) ·
-                             restore.ts (stage → validate → snapshot → swap → boot, with a way back)
+  backup/                    Phase 7: tables.ts + json.ts (what a JSON backup holds) · validate.ts, naming.ts,
+                             history.ts, size.ts, version.ts (all PURE and tested) · export.ts (VACUUM INTO /
+                             sqlcipher_export / share / SAF picker / footprint) · restore.ts (stage → validate →
+                             snapshot → swap → boot, with a way back; `recovery` mode for the boot-failure screen)
   dev/                       devSeed.ts · benchmark.ts — dev harness only; lint blocks production imports
   migrations/                generated by drizzle-kit. NEVER hand-edit; custom SQL via `--custom`
 lib/
@@ -192,7 +193,7 @@ complete examples. Build screens from the `components/ui` kit; a new form is a `
 12. **Schema changes:** edit `db/schema.ts` → `npx drizzle-kit generate` → **read the SQL** (three known generator bugs, see Gotchas) → `db/__tests__/migrations.test.ts` on the populated fixture → run on a copy of the phone's database. Data fixes go in `drizzle-kit generate --custom`. Never hand-edit a generated migration.
 13. **Colours come from tokens.** `useColors()` in components (`colors` only where a hook can't run). No hex literals in charts or screens (`components/charts/__tests__/tokens.test.ts`). Change a palette → `npm run theme:css`.
 14. **Use `useToday()` for "today" in anything rendered**, never `todayISO()` at render. Date presets are stored as names and resolved at query time.
-15. **Restore backs up before it overwrites** (Phase 7): validate against a STAGING copy, snapshot the live database with `VACUUM INTO`, then swap — and if the restored file does not boot, put the snapshot back. Nothing live is touched until `applyRestore`. Backup file names carry their kind (`spendwise-`, `spendwise-before-restore-`, `spendwise-failed-restore-`), because pruning must never delete a safety copy.
+15. **Restore backs up before it overwrites** (Phase 7): validate against a STAGING copy — opened on its OWN connection, so a broken database can still be restored over from the boot-failure screen — snapshot the live database with `VACUUM INTO`, then swap; if the restored file does not boot, put the snapshot back. Nothing live is touched until `applyRestore`. Backup file names carry their kind (`spendwise-`, `spendwise-before-restore-`, `spendwise-failed-restore-`), because pruning must never delete a safety copy. **A restore fires no change event** (the file is replaced, not written), so it must call `notifyDatabaseReplaced()` or every mounted query keeps showing the old data.
 16. **Notification channels exist before posting; reminders are rescheduled wholesale** (Phase 8).
 17. **Dev-only code is guarded twice:** the entry point checks `__DEV__`, and the route or function refuses to run otherwise (`app/dev.tsx`, `db/devSeed.ts`).
 18. **Tests run the shipped code.** Pure logic is tested directly; SQL is tested by passing a better-sqlite3 Drizzle handle to the same builders (`db/__tests__/support.ts`). Don't keep a hand-written copy of a query in a test.
@@ -211,7 +212,7 @@ complete examples. Build screens from the `components/ui` kit; a new form is a `
 | `budgets`                                                          | `category_id`, `limit_paise`, `reset_day` 1–31, `is_active`                                                     | One **live** budget per category. The cycle window is computed in TS (`getCycleWindow`) and bound as parameters                                                                                            |
 | `subscriptions`                                                    | name, `amount_paise` per cycle, `billing_cycle`, `status`, `anchor_date`, `category_id`, `reminder_days_before` | Next renewal is computed on read (`getNextRenewal`), never stored. The reminder is unused until Phase 8                                                                                                    |
 | `import_batches`                                                   | source name, counts, `undone_at`                                                                                | For Phase 6 undo                                                                                                                                                                                           |
-| `app_meta`                                                         | key/value                                                                                                       | `schema_version`, `seed_version`, `seeded_at`, `last_backup_at`, `onboarding_dismissed` (`META_KEYS`)                                                                                                      |
+| `app_meta`                                                         | key/value                                                                                                       | `schema_version`, `seed_version`, `seeded_at`, `last_backup_at`, `backup_history` (JSON, capped at 25), `onboarding_dismissed` (`META_KEYS`)                                                               |
 | `people`                                                           | friends + exactly one `is_self` row (`sys:self`, migration 0008)                                                | Groups                                                                                                                                                                                                     |
 | `split_groups`                                                     | name, icon, `simplify_debts`, `direct_person_id`                                                                | A 1:1 friendship is a **hidden group** with `direct_person_id` set                                                                                                                                         |
 | `group_members`                                                    | soft-removable membership                                                                                       | Removal allowed only at a zero balance                                                                                                                                                                     |

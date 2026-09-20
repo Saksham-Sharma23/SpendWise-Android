@@ -82,6 +82,43 @@ function ensureNativeListener() {
 }
 
 /**
+ * Tell every live query that the database underneath it was REPLACED.
+ *
+ * Normal writes announce themselves: expo-sqlite fires a change event naming
+ * the table, and the hub wakes the queries that read it. A restore never does,
+ * because nothing was written — the file itself was swapped (db/backup/restore.ts).
+ * So every query already on screen kept showing figures from the database that
+ * no longer exists. Found on the phone during the Phase 7 drill: after a
+ * restore of 50,002 transactions, Transactions (mounted fresh) showed them all
+ * and Home (mounted before) still offered to add your first one.
+ *
+ * `subscribeAll` is not worth adding for this: the tables are known, and
+ * naming them keeps the hub's one rule — a query re-runs only for a table it
+ * actually reads.
+ */
+export function notifyDatabaseReplaced(): void {
+  for (const table of REPLACEABLE_TABLES) hub.emit(table);
+}
+
+/** Every table a screen can read. Keep in step with db/schema.ts. */
+const REPLACEABLE_TABLES = [
+  'transactions',
+  'categories',
+  'budgets',
+  'subscriptions',
+  'import_batches',
+  'app_meta',
+  'people',
+  'split_groups',
+  'group_members',
+  'split_expenses',
+  'split_expense_payers',
+  'split_expense_shares',
+  'split_debts',
+  'settlements',
+] as const;
+
+/**
  * @param run      async query, e.g. `() => readDb.select()…` (awaited)
  * @param tables   every base table the query reads
  * @param deps     values the query depends on (like useMemo deps)

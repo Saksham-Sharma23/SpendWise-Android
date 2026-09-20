@@ -3,7 +3,7 @@ import * as Sharing from 'expo-sharing';
 
 import { openReadConnection, sqliteDb } from '../connection';
 import { writeEncryptedCopy } from '../encryptedCopy';
-import { appDir, BACKUPS_DIR, deleteIfExists, quoteSql, sqlitePath, timestampForFile } from '../files';
+import { appDir, BACKUPS_DIR, databaseFiles, deleteIfExists, quoteSql, sqlitePath, timestampForFile } from '../files';
 import { lastAppliedMillis, type JournalEntry, type MigrationConnection } from '../migrate';
 import migrations from '../migrations/migrations';
 import { buildBackupJson, type BackupPayload, type BackupReader } from './json';
@@ -100,6 +100,40 @@ const conn: MigrationConnection = {
   exec: (sql) => sqliteDb.execSync(sql),
   all: <T>(sql: string) => sqliteDb.getAllSync(sql) as T[],
 };
+
+export interface Footprint {
+  /** The database file itself — the part that counts toward the auto-backup quota. */
+  databaseBytes: number;
+  /** The write-ahead log. Excluded from auto-backup, but it is disk someone paid for. */
+  walBytes: number;
+  /** Exports and pre-restore copies kept in `files/backups/`. Also excluded. */
+  backupsBytes: number;
+  /** Rows in the ledger, for turning bytes into "about N more entries". */
+  transactions: number;
+}
+
+/**
+ * What this database actually occupies, for the quota warning in Settings.
+ *
+ * `count(*)` on the ledger is an index-only scan and runs in a few ms even at
+ * 50k rows; it is read here rather than passed in so the figure and the size
+ * always come from the same moment.
+ */
+export function databaseFootprint(): Footprint {
+  const [main, wal] = databaseFiles();
+  let transactions = 0;
+  try {
+    transactions = sqliteDb.getFirstSync<{ n: number }>('SELECT count(*) AS n FROM transactions')?.n ?? 0;
+  } catch {
+    // A database that cannot be counted still has a size worth showing.
+  }
+  return {
+    databaseBytes: main?.exists ? main.size : 0,
+    walBytes: wal?.exists ? wal.size : 0,
+    backupsBytes: listBackups().reduce((total, f) => total + f.size, 0),
+    transactions,
+  };
+}
 
 /** The migration index this database is at, for the header a restore checks. */
 export function currentMigrationIdx(): number {

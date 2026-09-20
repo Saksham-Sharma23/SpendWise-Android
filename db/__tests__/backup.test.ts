@@ -3,6 +3,18 @@ import type Database from 'better-sqlite3';
 import { buildBackupJson, countRows, restoreJsonInto, type BackupReader, type BackupWriter } from '../backup/json';
 import { exportSql, importSql, rowKeys, TABLE_SPECS } from '../backup/tables';
 import {
+  appendHistory,
+  backupAge,
+  daysSince,
+  lastExport,
+  MAX_ENTRIES,
+  parseHistory,
+  serialiseHistory,
+  STALE_AFTER_DAYS,
+  type HistoryEntry,
+} from '../backup/history';
+import { AUTO_BACKUP_QUOTA_BYTES, quotaState, roomForTransactions, WARN_FRACTION } from '../backup/size';
+import {
   backupFileName,
   backupsToDelete,
   describeStamp,
@@ -290,6 +302,13 @@ describe('validation refuses before it writes', () => {
     expect(describeBackup({ transactions: 1284, budgets: 6, categories: 0 })).toBe('1284 transactions · 6 budgets');
     expect(describeBackup({})).toBe('no records');
   });
+
+  it('pluralises each label properly, including the irregular one', () => {
+    // "17 categorys" appeared in the restore confirmation on the phone.
+    expect(describeBackup({ categories: 17 })).toBe('17 categories');
+    expect(describeBackup({ categories: 1 })).toBe('1 category');
+    expect(describeBackup({ transactions: 1, split_expenses: 2 })).toBe('1 transaction · 2 group expenses');
+  });
 });
 
 describe('backup file names', () => {
@@ -371,5 +390,127 @@ describe('schema version', () => {
     expect(appliedMigrationIdx(list, list[0]!.when)).toBe(list[0]!.idx);
     // A timestamp from a build with migrations this one does not ship.
     expect(appliedMigrationIdx(list, last.when + 1)).toBe(bundledMigrationIdx(list) + 1);
+  });
+});
+
+describe('backup history', () => {
+  const entry = (over: Partial<HistoryEntry> = {}): HistoryEntry => ({
+    at: '2026-09-20T10:00:00.000Z',
+    event: 'export',
+    format: 'db',
+    bytes: 1024,
+    transactions: 10,
+    ...over,
+  });
+
+  it('round-trips through the stored string', () => {
+    const list = [entry(), entry({ event: 'restore', format: 'json' })];
+    expect(parseHistory(serialiseHistory(list))).toEqual(list);
+  });
+
+  it('survives anything the stored value could actually be', () => {
+    // A log must never be the reason a screen fails to render.
+    for (const raw of [null, undefined, '', 'not json', '{}', '[]', '3', '"text"']) {
+      expect(parseHistory(raw)).toEqual([]);
+    }
+  });
+
+  it('drops entries it cannot use instead of rendering nonsense', () => {
+    const raw = JSON.stringify([
+      entry(),
+      { at: '', event: 'export', format: 'db' },
+      { at: 'x', event: 'exploded', format: 'db' },
+      { at: 'x', event: 'export', format: 'tar.gz' },
+      null,
+      'nope',
+    ]);
+    expect(parseHistory(raw)).toEqual([entry()]);
+  });
+
+  it('repairs a bad size or count rather than discarding the entry', () => {
+    const raw = JSON.stringify([{ at: 'x', event: 'export', format: 'db', bytes: -5, transactions: 1.9 }]);
+    expect(parseHistory(raw)).toEqual([{ at: 'x', event: 'export', format: 'db', bytes: 0, transactions: 1 }]);
+  });
+
+  it('keeps the newest first and caps the list', () => {
+    let list: HistoryEntry[] = [];
+    for (let i = 0; i < MAX_ENTRIES + 10; i++) list = appendHistory(list, entry({ transactions: i }));
+    expect(list).toHaveLength(MAX_ENTRIES);
+    expect(list[0]!.transactions).toBe(MAX_ENTRIES + 9);
+  });
+
+  it('treats a restore as NOT a backup', () => {
+    // The whole point of the log: restoring does not mean you have a copy.
+    const onlyRestores = [entry({ event: 'restore' })];
+    expect(lastExport(onlyRestores)).toBeNull();
+    expect(backupAge(onlyRestores).stale).toBe(true);
+    expect(backupAge([]).days).toBeNull();
+  });
+
+  it('measures staleness from the last export, on the same rule as the Phase 8 nudge', () => {
+    const now = Date.parse('2026-09-20T10:00:00.000Z');
+    const at = (days: number) => new Date(now - days * 86_400_000).toISOString();
+    expect(backupAge([entry({ at: at(3) })], now)).toEqual({ days: 3, stale: false });
+    expect(backupAge([entry({ at: at(STALE_AFTER_DAYS) })], now).stale).toBe(true);
+    expect(backupAge([entry({ at: at(STALE_AFTER_DAYS - 1) })], now).stale).toBe(false);
+    // A newer restore does not reset the clock on the last export.
+    expect(backupAge([entry({ at: at(0), event: 'restore' }), entry({ at: at(60) })], now).stale).toBe(true);
+  });
+
+  it('reports an unreadable timestamp rather than a wrong number of days', () => {
+    expect(daysSince('not a date')).toBeNull();
+  });
+});
+
+describe('auto-backup quota', () => {
+  const MB = 1024 * 1024;
+
+  it('rises through ok, warn and over at the documented boundaries', () => {
+    expect(quotaState(1 * MB).level).toBe('ok');
+    // The dev phone's real database: 14.6 MB of 25 MB is 58%, comfortably ok.
+    expect(quotaState(15_273_984).level).toBe('ok');
+    // The warning starts exactly at WARN_FRACTION, not a rounded megabyte.
+    expect(quotaState(AUTO_BACKUP_QUOTA_BYTES * WARN_FRACTION - 1).level).toBe('ok');
+    expect(quotaState(AUTO_BACKUP_QUOTA_BYTES * WARN_FRACTION).level).toBe('warn');
+    expect(quotaState(AUTO_BACKUP_QUOTA_BYTES - 1).level).toBe('warn');
+    expect(quotaState(AUTO_BACKUP_QUOTA_BYTES).level).toBe('over');
+    expect(quotaState(40 * MB).level).toBe('over');
+  });
+
+  /**
+   * The threshold is a judgement, so it is written down as one: at 70% of the
+   * quota the warning fires with about 25,700 transactions still to spare (at
+   * the 305 bytes a row this database actually uses). That is years of notice
+   * at any realistic rate of entry — which is the point, because the limit it
+   * warns about gives no notice at all.
+   */
+  it('warns early enough to be worth warning about', () => {
+    const perRow = 15_273_984 / 50_002;
+    const headroom = (AUTO_BACKUP_QUOTA_BYTES * (1 - WARN_FRACTION)) / perRow;
+    expect(headroom).toBeGreaterThan(20_000);
+  });
+
+  it('clamps the bar and never reports negative headroom', () => {
+    expect(quotaState(40 * MB).fraction).toBe(1);
+    expect(quotaState(40 * MB).remaining).toBe(0);
+    expect(quotaState(-5).bytes).toBe(0);
+    expect(quotaState(Number.NaN).fraction).toBe(0);
+  });
+
+  it('turns bytes left into transactions left, using THIS database’s row size', () => {
+    // 15 MB over 50,002 rows ~ 314 bytes each; ~10 MB left is ~33k more rows.
+    const room = roomForTransactions(15 * MB, 50_002);
+    expect(room).not.toBeNull();
+    expect(room!).toBeGreaterThan(25_000);
+    expect(room!).toBeLessThan(40_000);
+  });
+
+  it('declines to guess from too little data', () => {
+    expect(roomForTransactions(1000, 3)).toBeNull();
+    expect(roomForTransactions(0, 50_000)).toBeNull();
+  });
+
+  it('reports no room once the quota is passed', () => {
+    expect(roomForTransactions(30 * MB, 100_000)).toBe(0);
   });
 });

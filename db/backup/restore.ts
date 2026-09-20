@@ -145,42 +145,43 @@ function sniffFormat(file: File): BackupFormat {
 /**
  * Copy or decrypt the candidate into the staging slot.
  *
- * For an encrypted file this is where a wrong passphrase is discovered:
- * SQLCipher accepts the ATTACH regardless and fails on the first read, so
- * `sqlcipher_export` is the read that settles it. The message it throws is
- * about page sizes and HMACs, which tells a person nothing, so it is replaced.
+ * Everything here runs on the STAGING file's own connection, never the live
+ * one. That is what lets a restore work from the boot-failure screen: the
+ * database this app normally talks to may be the very thing that is broken,
+ * and a recovery path that needs the broken database to work is not a
+ * recovery path.
+ *
+ * For an encrypted file this is where a wrong passphrase is discovered.
+ * SQLCipher accepts the ATTACH regardless and fails on the first READ, so
+ * `sqlcipher_export` is the read that settles it. Its own message is about
+ * page sizes and HMACs, which tells a person nothing, so it is replaced.
  */
 function stageDatabaseFile(source: File, passphrase?: string): void {
   discardRestore();
   const target = stagingFile();
 
   if (passphrase) {
-    sqliteDb.execSync(`ATTACH DATABASE ${quoteSql(sqlitePath(source))} AS src KEY ${quoteSql(passphrase)}`);
-    let attachedTarget = false;
+    // A fresh, unencrypted database at the staging path; the encrypted backup
+    // is attached to IT and exported into its `main`. sqlcipher_export takes
+    // (destination, source), so this decrypts src into the staging file.
+    const staging = SQLite.openDatabaseSync(STAGING_DB_NAME);
     try {
-      // KEY '' attaches an UNencrypted database: this is SQLCipher's documented
-      // way to decrypt, and it is what makes the staged file an ordinary
-      // SQLite file the rest of the pipeline can check.
-      sqliteDb.execSync(`ATTACH DATABASE ${quoteSql(sqlitePath(target))} AS plain KEY ''`);
-      attachedTarget = true;
-      sqliteDb.getFirstSync(`SELECT sqlcipher_export('plain', 'src')`);
+      staging.execSync(`ATTACH DATABASE ${quoteSql(sqlitePath(source))} AS src KEY ${quoteSql(passphrase)}`);
+      try {
+        staging.getFirstSync(`SELECT sqlcipher_export('main', 'src')`);
+      } finally {
+        try {
+          staging.execSync('DETACH DATABASE src');
+        } catch {
+          // The staging file is deleted on failure anyway.
+        }
+      }
     } catch {
       throw new RestoreError(
         'That passphrase does not open this backup. A backup cannot be opened without the passphrase it was made with.',
       );
     } finally {
-      if (attachedTarget) {
-        try {
-          sqliteDb.execSync('DETACH DATABASE plain');
-        } catch {
-          // Nothing more to do; the staging file is deleted on failure anyway.
-        }
-      }
-      try {
-        sqliteDb.execSync('DETACH DATABASE src');
-      } catch {
-        // As above.
-      }
+      staging.closeSync();
     }
     return;
   }
@@ -191,21 +192,19 @@ function stageDatabaseFile(source: File, passphrase?: string): void {
   source.copySync(target);
 }
 
-/** Read a staged SQLite file through the live connection, without opening a second one. */
+/** Check the staged file on its OWN connection, so a broken live database cannot block a restore. */
 function inspectStaged(): { problems: Problem[]; counts: Record<string, number>; migrationIdx: number | null } {
   const problems: Problem[] = [];
-  sqliteDb.execSync(`ATTACH DATABASE ${quoteSql(sqlitePath(stagingFile()))} AS cand`);
+  const staging = SQLite.openDatabaseSync(STAGING_DB_NAME);
   try {
-    const check = sqliteDb.getFirstSync<{ integrity_check: string }>('PRAGMA cand.integrity_check(1)');
+    const check = staging.getFirstSync<{ integrity_check: string }>('PRAGMA integrity_check(1)');
     if (check?.integrity_check !== 'ok') {
       problems.push(fatal(`This backup file is damaged (${check?.integrity_check ?? 'no result'}).`));
       return { problems, counts: {}, migrationIdx: null };
     }
 
     const tables = new Set(
-      sqliteDb
-        .getAllSync<{ name: string }>(`SELECT name FROM cand.sqlite_master WHERE type = 'table'`)
-        .map((r) => r.name),
+      staging.getAllSync<{ name: string }>(`SELECT name FROM sqlite_master WHERE type = 'table'`).map((r) => r.name),
     );
 
     if (!tables.has('__drizzle_migrations')) {
@@ -217,8 +216,8 @@ function inspectStaged(): { problems: Problem[]; counts: Record<string, number>;
       return { problems, counts: {}, migrationIdx: null };
     }
 
-    const applied = sqliteDb.getFirstSync<{ created_at: number | string | null }>(
-      'SELECT created_at FROM cand.__drizzle_migrations ORDER BY created_at DESC LIMIT 1',
+    const applied = staging.getFirstSync<{ created_at: number | string | null }>(
+      'SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 1',
     )?.created_at;
     const migrationIdx = appliedMigrationIdx(
       migrations.journal.entries as JournalEntry[],
@@ -228,12 +227,12 @@ function inspectStaged(): { problems: Problem[]; counts: Record<string, number>;
     const counts: Record<string, number> = {};
     for (const spec of TABLE_SPECS) {
       counts[spec.name] = tables.has(spec.name)
-        ? (sqliteDb.getFirstSync<{ n: number }>(`SELECT count(*) AS n FROM cand.${quoteId(spec.name)}`)?.n ?? 0)
+        ? (staging.getFirstSync<{ n: number }>(`SELECT count(*) AS n FROM ${quoteId(spec.name)}`)?.n ?? 0)
         : 0;
     }
     return { problems, counts, migrationIdx };
   } finally {
-    sqliteDb.execSync('DETACH DATABASE cand');
+    staging.closeSync();
   }
 }
 
@@ -365,20 +364,45 @@ export interface RestoreResult {
  *      schema whose migration fails on this data, most plausibly — so a bad
  *      outcome here puts the copy from step 1 back and boots that instead.
  */
-export async function applyRestore(plan: RestorePlan): Promise<RestoreResult> {
+export interface ApplyOptions {
+  /**
+   * Set when restoring from the boot-failure screen, where the database being
+   * replaced is the one that would not open.
+   *
+   * It changes two judgements. The safety copy falls back to MOVING the broken
+   * files aside when `VACUUM INTO` cannot read them — a vacuum failure is a
+   * reason to stop when the app is healthy and exactly what is expected when
+   * it is not. And a restored file that still will not boot is NOT rolled
+   * back, because rolling back would reinstate a database that was already
+   * failing; both files are kept and named instead.
+   */
+  recovery?: boolean;
+}
+
+export async function applyRestore(plan: RestorePlan, options: ApplyOptions = {}): Promise<RestoreResult> {
   const staged = stagingFile();
   if (!staged.exists) throw new RestoreError('The checked copy is gone. Choose the backup again.');
+  const recovery = options.recovery ?? false;
 
   const dir = appDir(BACKUPS_DIR);
   const replaced = new File(dir, preRestoreName(timestampForFile()));
   deleteIfExists(replaced);
+
+  let copied = false;
   try {
     sqliteDb.execSync(`VACUUM INTO ${quoteSql(sqlitePath(replaced))}`);
+    copied = true;
   } catch (e) {
-    discardRestore();
-    throw new RestoreError(
-      `Could not copy your current data before replacing it, so nothing was changed: ${e instanceof Error ? e.message : String(e)}`,
-    );
+    if (!recovery) {
+      discardRestore();
+      throw new RestoreError(
+        `Could not copy your current data before replacing it, so nothing was changed: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+    // Recovery: SQLite cannot read the file, which is why we are here. Keep
+    // the BYTES instead — they are the only remaining evidence of whatever
+    // went wrong, and someone may yet recover rows from them by hand.
+    deleteIfExists(replaced);
   }
 
   // One file from here on: anything still in the staged WAL is folded in now,
@@ -387,6 +411,13 @@ export async function applyRestore(plan: RestorePlan): Promise<RestoreResult> {
 
   closeConnection();
   const [main, wal, shm] = databaseFiles();
+
+  if (!copied) {
+    // Move rather than delete, and take the WAL with it: a torn database plus
+    // its log is still the best chance of reading anything back out.
+    if (main!.exists) main!.moveSync(replaced);
+    if (wal!.exists) wal!.moveSync(new File(dir, `${replaced.name}-wal`));
+  }
   deleteIfExists(wal!);
   deleteIfExists(shm!);
   deleteIfExists(main!);
@@ -395,12 +426,21 @@ export async function applyRestore(plan: RestorePlan): Promise<RestoreResult> {
 
   const boot = await bootDatabase();
   if (boot.kind !== 'ready') {
+    const failed = new File(dir, failedRestoreName(timestampForFile()));
+    deleteIfExists(failed);
+
+    if (recovery) {
+      // Nothing to go back to that was any better. Say so plainly and leave
+      // both files where they can be found.
+      throw new RestoreError(
+        `That backup could not be opened either. Your previous data is kept as ${replaced.name}. (${boot.message})`,
+      );
+    }
+
     // Put back exactly what was there. The failed file is kept beside the
     // copy, named so it is obvious which is which, because it is the only
     // evidence of why this did not work.
     closeConnection();
-    const failed = new File(dir, failedRestoreName(timestampForFile()));
-    deleteIfExists(failed);
     if (main!.exists) main!.moveSync(failed);
     deleteIfExists(wal!);
     deleteIfExists(shm!);

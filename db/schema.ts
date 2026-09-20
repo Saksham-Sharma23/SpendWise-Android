@@ -443,6 +443,14 @@ export const META_KEYS = {
   /** Version of the system-category set last reconciled (db/seed.ts). */
   SEED_VERSION: 'seed_version',
   LAST_BACKUP_AT: 'last_backup_at',
+  /**
+   * A short JSON log of exports and restores (`db/backup/history.ts`).
+   *
+   * `last_backup_at` answers "when"; this answers "did I ever really, and what
+   * happened since". Capped at 25 entries, so the row stays a few KB. App
+   * state, not user data — deliberately absent from a backup's own contents.
+   */
+  BACKUP_HISTORY: 'backup_history',
   /** '1' once the user dismisses first-run onboarding on Home. */
   ONBOARDING_DISMISSED: 'onboarding_dismissed',
   /**

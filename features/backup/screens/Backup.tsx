@@ -18,7 +18,8 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { font, Text } from '@/components/ui/Text';
-import { describeSize, describeStamp, type BackupFileInfo, type RestorePlan } from '@/db/backup';
+import { describeSize, describeStamp, type BackupFileInfo, type HistoryEntry, type RestorePlan } from '@/db/backup';
+import { formatCount } from '@/lib/money';
 import { rise } from '@/lib/motion';
 import { useColors, withAlpha } from '@/lib/theme';
 import { Dialog } from '../components/Dialog';
@@ -28,6 +29,7 @@ import {
   chooseBackupFile,
   confirmRestore,
   lastBackupAt,
+  readHistory,
   runExport,
   savedBackups,
   shareSavedBackup,
@@ -49,6 +51,7 @@ export function Backup() {
   const colors = useColors();
   const [last, setLast] = useState<string | null>(null);
   const [files, setFiles] = useState<BackupFileInfo[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [busy, setBusy] = useState<ExportFormat | null>(null);
 
   const [askPassphrase, setAskPassphrase] = useState<'export' | 'restore' | null>(null);
@@ -60,6 +63,7 @@ export function Backup() {
   const refresh = useCallback(() => {
     setFiles(savedBackups());
     setLast(lastBackupAt());
+    setHistory(readHistory());
   }, []);
 
   useEffect(refresh, [refresh]);
@@ -219,6 +223,23 @@ export function Backup() {
             </Card>
           )}
         </Animated.View>
+
+        {history.length > 0 ? (
+          <Animated.View entering={rise(160)} className="gap-3">
+            <Text variant="label" tone="muted">
+              History
+            </Text>
+            <Card className="p-1">
+              {history.slice(0, 8).map((entry, i) => (
+                <HistoryRow key={`${entry.at}-${i}`} entry={entry} />
+              ))}
+            </Card>
+            <Text variant="caption" tone="subtle" style={{ lineHeight: 17 }}>
+              The last {history.length === 1 ? 'entry' : `${history.length} entries`}, kept on this phone. Not included
+              in a backup's own contents.
+            </Text>
+          </Animated.View>
+        ) : null}
       </View>
 
       <Dialog
@@ -418,4 +439,51 @@ function describeWhen(iso: string | null): string {
   if (days < 30) return `${days} days ago`;
   const months = Math.floor(days / 30);
   return months === 1 ? 'a month ago' : `${months} months ago`;
+}
+
+const EVENT_LABEL: Record<HistoryEntry['event'], string> = {
+  export: 'Backed up',
+  restore: 'Restored',
+};
+
+/**
+ * One line of the log.
+ *
+ * A restore is marked differently from an export on purpose: restoring is not
+ * backing up, and a history that let the two blur together would answer the
+ * only question it exists for — "have I got a copy of this somewhere?" —
+ * wrongly, and reassuringly.
+ */
+function HistoryRow({ entry }: { entry: HistoryEntry }) {
+  const colors = useColors();
+  const isExport = entry.event === 'export';
+  return (
+    <View className="flex-row items-center gap-3 p-3">
+      <View
+        className="h-8 w-8 items-center justify-center rounded-lg"
+        style={{ backgroundColor: withAlpha(isExport ? colors.primary : colors.warning, 0.14) }}
+      >
+        {isExport ? <ShieldCheck size={15} color={colors.primary} /> : <RotateCcw size={15} color={colors.warning} />}
+      </View>
+      <View className="flex-1">
+        <Text weight="medium" size={13} tone="default">
+          {EVENT_LABEL[entry.event]} · {FORMAT_LABEL[entry.format]}
+        </Text>
+        <Text variant="caption" tone="subtle" style={{ marginTop: 1 }}>
+          {describeWhenExact(entry.at)}
+          {entry.transactions > 0 ? ` · ${formatCount(entry.transactions)} transactions` : ''}
+          {entry.bytes > 0 ? ` · ${describeSize(entry.bytes)}` : ''}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** An ISO timestamp as a short local date and time. */
+function describeWhenExact(iso: string): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return 'unknown time';
+  const d = new Date(t);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }

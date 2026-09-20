@@ -9,6 +9,7 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { useColors, withAlpha } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { Appearance } from '../components/Appearance';
+import { Storage } from '../components/Storage';
 import { RETENTION_DAYS } from '../data/retention';
 import { Text } from '@/components/ui/Text';
 
@@ -53,7 +54,11 @@ export function Settings() {
           </Card>
         </Animated.View>
 
-        <Animated.View entering={rise(60)} className="gap-3">
+        <Animated.View entering={rise(60)}>
+          <Storage />
+        </Animated.View>
+
+        <Animated.View entering={rise(90)} className="gap-3">
           <Text variant="label" tone="muted">
             Coming later
           </Text>
@@ -75,7 +80,7 @@ export function Settings() {
           </Card>
         </Animated.View>
 
-        <Animated.View entering={rise(120)}>
+        <Animated.View entering={rise(150)}>
           <View
             className="flex-row items-center gap-3 rounded-2xl border p-4"
             style={{ backgroundColor: colors.primarySoft, borderColor: colors.primaryBorder }}

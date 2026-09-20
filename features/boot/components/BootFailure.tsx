@@ -7,14 +7,21 @@ import { moveDatabaseAside, shareDatabaseCopy, type BootOutcome } from '@/db/boo
 import { useColors } from '@/lib/theme';
 import { useThemeStore } from '@/lib/themeStore';
 import { Text, font } from '@/components/ui/Text';
+import { RecoveryRestore } from './RecoveryRestore';
 
 /**
  * What the user sees when the database cannot be opened, migrated or seeded.
  *
  * There is no server to fix this from, so the screen offers real exits
  * instead of an apology: share a copy of the data (always first — nothing is
- * lost by it), try again, or start fresh. "Start fresh" moves the database
- * aside rather than deleting it, and needs a typed confirmation.
+ * lost by it), try again, restore a backup, or start fresh. "Start fresh"
+ * moves the database aside rather than deleting it, and needs a typed
+ * confirmation.
+ *
+ * ORDER IS THE DESIGN. Sharing a copy comes first because it cannot lose
+ * anything. Restore comes after it, because restoring replaces what is on the
+ * phone and the damaged file may hold the only copy of the last few entries.
+ * "Start fresh" is last and the only one that asks you to type something.
  */
 
 const CONFIRM_WORD = 'START FRESH';
@@ -85,6 +92,13 @@ export function BootFailure({ outcome, onRetry }: { outcome: Failure; onRetry: (
           primary={!snapshot}
         />
         <Action label="Try again" busy={false} onPress={onRetry} />
+
+        {/*
+          The recovery path D5 promised: restore without needing the app to
+          open first. It never touches the broken database — see
+          RecoveryRestore and db/backup/restore.ts.
+        */}
+        <RecoveryRestore onRestored={onRetry} />
 
         {confirming ? (
           <View

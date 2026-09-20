@@ -18,6 +18,7 @@
 export {
   buildJsonPayload,
   currentMigrationIdx,
+  databaseFootprint,
   exportDatabaseFile,
   exportJsonFile,
   formatOf,
@@ -29,12 +30,35 @@ export {
   type BackupFormat,
   type BackupKind,
   type ExportResult,
+  type Footprint,
 } from './export';
 
 export { applyRestore, discardRestore, prepareRestore, RestoreError } from './restore';
-export type { RestorePlan, RestoreResult } from './restore';
+export type { ApplyOptions, RestorePlan, RestoreResult } from './restore';
 
 export { backupsToDelete, describeSize, describeStamp, kindOf, stampOf } from './naming';
+
+export {
+  appendHistory,
+  backupAge,
+  daysSince,
+  lastExport,
+  MAX_ENTRIES,
+  parseHistory,
+  serialiseHistory,
+  STALE_AFTER_DAYS,
+  type HistoryEntry,
+  type HistoryEvent,
+} from './history';
+
+export {
+  AUTO_BACKUP_QUOTA_BYTES,
+  quotaState,
+  roomForTransactions,
+  WARN_FRACTION,
+  type QuotaLevel,
+  type QuotaState,
+} from './size';
 
 export { BACKUP_FORMAT_VERSION, type BackupPayload } from './json';
 export { describeBackup, type Problem } from './validate';
