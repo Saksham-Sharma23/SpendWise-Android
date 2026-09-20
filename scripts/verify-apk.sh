@@ -14,7 +14,10 @@ set -uo pipefail
 
 APK="${1:-android/app/build/outputs/apk/release/app-release.apk}"
 SDK="${ANDROID_HOME:-$LOCALAPPDATA/Android/Sdk}"
-AAPT="$(ls "$SDK"/build-tools/*/aapt2.exe 2>/dev/null | tail -1)"
+# aapt2.exe on Windows, aapt2 on Linux (the release workflow); newest build-tools wins.
+AAPT="$(ls "$SDK"/build-tools/*/aapt2.exe "$SDK"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)"
+# `python` on Windows (`python3` there can be the Store stub); `python3` on Ubuntu, which has no `python`.
+PYTHON="$(command -v python || command -v python3)"
 
 if [ ! -f "$APK" ]; then
   echo "FAIL: no APK at $APK"
@@ -105,7 +108,7 @@ fi
 
 # --- 5. Native layer: arm64 only, and SQLCipher actually present --------
 echo "=== Native libraries ==="
-python - "$APK" <<'PY'
+"$PYTHON" - "$APK" <<'PY'
 import sys, zipfile
 z = zipfile.ZipFile(sys.argv[1])
 libs = [n for n in z.namelist() if n.startswith('lib/')]

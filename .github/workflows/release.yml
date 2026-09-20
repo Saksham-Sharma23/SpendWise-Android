@@ -1,0 +1,118 @@
+# Builds the release APK on GitHub, the same way the release runbook does by
+# hand: a CLEAN prebuild (android/ is not committed, so there is no stale
+# manifest to inherit), a Gradle release build, then scripts/verify-apk.sh on
+# the artifact itself. The APK is the thing that ships, so the APK is what gets
+# checked: no INTERNET, and every permission on the allowlist (CLAUDE.md #1).
+#
+#   push to main       → APK attached to the run as an artifact (30 days)
+#   push a v* tag      → the same, plus a GitHub Release with the APK
+#   Actions → Run      → manual build of any branch
+#
+# Signing. With these four repository secrets set, the APK is re-signed with
+# your release key (apksigner, after Gradle):
+#   ANDROID_KEYSTORE_BASE64   the .jks file, base64-encoded
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_ALIAS
+#   ANDROID_KEY_PASSWORD
+# Without them it stays signed with Expo's template debug key: installable,
+# and it updates a local dev build in place, but anyone can sign with that key,
+# so it is for testing only. The run summary says which key was used.
+#
+# Tests are not re-run here: ci.yml runs `npm run verify` on every PR and every
+# push to main.
+
+name: Release APK
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write # gh release create
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      APK: android/app/build/outputs/apk/release/app-release.apk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci
+
+      # Cheap and first: the release CONFIG keeps INTERNET blocked and backup on.
+      - name: Release permission policy
+        run: npm run check:release-policy
+
+      # No SPENDWISE_DEV_NETWORK, so app.config.ts fails closed: no INTERNET.
+      - name: Prebuild (clean)
+        run: npx expo prebuild --platform android --clean --no-install
+
+      # arm64 only, like every local build (see docs/run-on-phone.md).
+      - name: Gradle release build
+        working-directory: android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+      - name: Sign with the release key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::No release keystore secrets: this APK is signed with the shared Expo debug key (testing only)."
+            echo "Signed with: **Expo debug key** (testing only; set the ANDROID_KEYSTORE_* secrets)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          KS="$RUNNER_TEMP/release.jks"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$KS"
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          "$BT/apksigner" sign --ks "$KS" --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:KS_PASS --key-pass env:KEY_PASS "$APK"
+          rm -f "$KS"
+          "$BT/apksigner" verify --print-certs "$APK" | head -3
+          echo "Signed with: **release key** (\`$KEY_ALIAS\`)" >> "$GITHUB_STEP_SUMMARY"
+
+      # The final word: permissions in the built APK against the allowlist.
+      - name: Verify the APK
+        run: bash scripts/verify-apk.sh "$APK"
+
+      - name: Name the APK
+        run: |
+          NAME="spendwise-${GITHUB_REF_NAME//\//-}-${GITHUB_SHA::7}.apk"
+          cp "$APK" "$NAME"
+          echo "APK_NAME=$NAME" >> "$GITHUB_ENV"
+          echo "APK: \`$NAME\` ($(du -h "$NAME" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: ${{ env.APK_NAME }}
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Publish a GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "$APK_NAME" --title "SpendWise $GITHUB_REF_NAME" --generate-notes

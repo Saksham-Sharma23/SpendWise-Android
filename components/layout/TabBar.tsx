@@ -1,7 +1,7 @@
 import { useRouter, type Tabs } from 'expo-router';
 import { ChartColumn, House, LayoutGrid, Plus, Receipt, type LucideIcon } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -16,9 +16,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { fonts, springs, useColors, useThemeName, withAlpha } from '@/lib/theme';
+import { springs, useColors, useThemeName, withAlpha } from '@/lib/theme';
 import { PressableScale } from '../ui/PressableScale';
 import { BLUR_AVAILABLE, GlassBlur } from './glass';
+import { Text } from '@/components/ui/Text';
 
 // expo-router vendors react-navigation and does not re-export the tab bar
 // prop type, so derive it from the Tabs component itself.
@@ -26,7 +27,7 @@ type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tab
 
 const TABS: Record<string, { icon: LucideIcon; label: string; slot: number }> = {
   index: { icon: House, label: 'Home', slot: 0 },
-  transactions: { icon: Receipt, label: 'Activity', slot: 1 },
+  transactions: { icon: Receipt, label: 'Transactions', slot: 1 },
   insights: { icon: ChartColumn, label: 'Insights', slot: 3 },
   more: { icon: LayoutGrid, label: 'More', slot: 4 },
 };
@@ -511,13 +512,11 @@ function Tab({
       </Animated.View>
       <Animated.View style={labelStyle}>
         <Text
+          weight={isLight ? (focused ? 'bold' : 'semibold') : focused ? 'semibold' : 'medium'}
+          size={10}
+          tone={focused ? 'primary' : 'default'}
           numberOfLines={1}
-          style={{
-            color: focused ? colors.primary : colors.foreground,
-            fontFamily: isLight ? (focused ? fonts.bold : fonts.semibold) : focused ? fonts.semibold : fonts.medium,
-            fontSize: 10,
-            marginTop: 3,
-          }}
+          style={{ marginTop: 3 }}
         >
           {label}
         </Text>

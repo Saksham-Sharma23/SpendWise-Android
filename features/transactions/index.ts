@@ -2,6 +2,8 @@
 export { transactionBenchQueries } from './benchmark';
 export { Ledger } from './components/Ledger';
 export { RecentlyDeleted } from './components/RecentlyDeleted';
+export { FiltersSheet } from './screens/FiltersSheet';
+export { TransactionForm } from './screens/TransactionForm';
 export {
   createTransaction,
   getTransaction,

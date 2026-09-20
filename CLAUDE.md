@@ -26,8 +26,8 @@
 - **This app makes zero network requests.** Anything that implies `fetch`, Axios, a base URL, a JWT or
   a token refresh is wrong, and predates the 2026-09-11 decision. The release build does not even declare
   `INTERNET`.
-- **Current phase: R4 (UI kit and thin routes), then Backup (7) and Sheets (6A).** R0–R3 are done: every
-  feature is on the standard layout in _Architecture_, and new code must follow it. One thing R0 could not
+- **Current phase: Backup (7) — the engine is written, the phone drill is not done. Then Sheets (6A).** R0–R4 are done: every feature is on the standard layout in
+  _Architecture_, every screen is built from the `components/ui` kit, and new code must follow both. One thing R0 could not
   close: removing the unused native packages needs a rebuild + `npm run verify:apk` to confirm the manifest
   shrank.
 - **`npm run verify` before every push.** It runs typecheck (app **and** tests), lint, the lint self-test,
@@ -49,13 +49,13 @@
 
 ## The locked decisions
 
-| Decision                              | Choice                                                                        | Consequence                                                                                                   |
-| ------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Architecture**                      | Standalone, zero network                                                      | No auth, HTTP, server cache or offline queue. Only files cross the boundary: spreadsheets in, backups out     |
-| **Storage**                           | SQLite (`expo-sqlite`) + Drizzle ORM                                          | Typed queries, generated migrations. `useDbQuery` + `readDb` replace any server-state library                 |
-| **Analytics**                         | Aggregate in SQL on the device                                                | `GROUP BY` in SQLite; never `SELECT` rows you intend to sum                                                   |
-| **Durability**                        | Manual export **+** Android auto-backup **+** monthly reminder                | All three must ship (Phases 7/8). Today only auto-backup rules exist, **so a factory reset loses everything** |
-| **Encryption** _(amended 2026-09-14)_ | Main DB **unkeyed**; SQLCipher only for passphrase-encrypted **backup files** | A Keystore-keyed DB restored by auto-backup could not be opened. FBE + the sandbox protect data at rest       |
+| Decision                              | Choice                                                                        | Consequence                                                                                                                                     |
+| ------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Architecture**                      | Standalone, zero network                                                      | No auth, HTTP, server cache or offline queue. Only files cross the boundary: spreadsheets in, backups out                                       |
+| **Storage**                           | SQLite (`expo-sqlite`) + Drizzle ORM                                          | Typed queries, generated migrations. `useDbQuery` + `readDb` replace any server-state library                                                   |
+| **Analytics**                         | Aggregate in SQL on the device                                                | `GROUP BY` in SQLite; never `SELECT` rows you intend to sum                                                                                     |
+| **Durability**                        | Manual export **+** Android auto-backup **+** monthly reminder                | Layers 1 and 2 are built (Phase 7: `.db` / passphrase / `.json` export, validate-first restore). **Not yet run on a phone.** Layer 3 is Phase 8 |
+| **Encryption** _(amended 2026-09-14)_ | Main DB **unkeyed**; SQLCipher only for passphrase-encrypted **backup files** | A Keystore-keyed DB restored by auto-backup could not be opened. FBE + the sandbox protect data at rest                                         |
 
 ---
 
@@ -103,7 +103,7 @@ Rules — **all enforced by ESLint** (`boundaries/dependencies` and `no-restrict
 1. A feature never imports another feature. Something two features need moves **down** (`data/`, `components/`, `lib/`).
 2. `components/` and `lib/` never import `features/`. `lib/` stays free of React Native where it holds pure logic, so Node tests can load it.
 3. A route imports a feature only through its `index.ts` (`@/features/groups`), never a file inside it.
-4. `app/` imports `db/` only in `app/_layout.tsx` (boot). _`app/settings/index.tsx` and `app/dev.tsx` still do; R4 moves them, and the named exception in `eslint.config.js` shrinks with them._
+4. `app/` imports `db/` only in `app/_layout.tsx` (boot).
 5. Imports that leave their own folder use the `@/` alias (`@/lib/money`), never `../../`.
 
 ### Repository layout
@@ -114,13 +114,14 @@ app/                         routes: read params, render one screen from `@/feat
   (tabs)/                    index (Home) · transactions · add (FAB placeholder) · insights · more
   (modals)/                  transaction · budget · subscription · filters (formSheet) · category · group ·
                              friend · split-expense · settle-up · balances (formSheet)
-                             transaction/budget/subscription/filters are still full screens; R4 moves them
   budgets/ tracker/ categories/ groups/[id]/{index,totals} friends/[id] settings/{index,recently-deleted}
-  sheets/ backup/            placeholders for Phases 6A and 7
-  dev.tsx                    dev harness (redirects away when !__DEV__)
-features/<name>/             analytics · boot · budgets · categories · dashboard · groups · settings ·
-                             tracker · transactions — every one in the SAME shape:
+  sheets/                    placeholder for Phase 6A
+  backup/                    export and restore (Phase 7)
+  dev.tsx                    dev harness route (redirects away when !__DEV__; the screen is features/devtools)
+features/<name>/             analytics · backup · boot · budgets · categories · dashboard · devtools · groups ·
+                             settings · tracker · transactions — every one in the SAME shape:
   index.ts                   public surface: the only thing routes may import
+  screens/                   what a route renders (typed props, no param reading), where it isn't in components/
   components/                this feature's UI
   data/sql.ts                read builders that TAKE `db` — tests run this exact SQL (#18)
   data/writes.ts             write cores: take a sync `db`, use writeTx, throw UserFacingError
@@ -135,10 +136,13 @@ data/<topic>/                SHARED data access, below the features: sql.ts · h
   categories/                the live category list (+ income/expense filter) every picker uses
   meta/                      app_meta get/set/useMeta
 components/
-  ui/                        Card, PressableScale, Segmented, CategoryIcon (+ iconMap.ts), LedgerRow,
-                             AnimatedAmount, DatePickerSheet, EmptyState, Swap, AmountDial, Avatar, *Card pieces
+  ui/                        THE KIT: Text (+ font()), Button, IconButton, Chip/Badge, CategoryChip, Section/FieldLabel,
+                             Field/ErrorText, StatFigure, FormModal (+ useSubmitOnce) · Card, PressableScale, Segmented,
+                             CategoryIcon (+ iconMap.ts), LedgerRow, AnimatedAmount, DatePickerSheet, EmptyState, Swap,
+                             AmountDial, Avatar, *Card pieces
   charts/                    AreaChart (scrubber) · Donut · MiniDonut · TrendChart · geometry.ts (pure, tested)
-  layout/                    Screen (+ TAB_BAR_CLEARANCE) · TabBar (glass, droplet) · ThemeProvider · Welcome · glass
+  layout/                    Screen (+ TAB_BAR_CLEARANCE) · TabBar (glass, droplet) · ThemeProvider · Welcome · glass ·
+                             ComingSoon (placeholder screens)
 db/                          the database itself — nothing app-level
   schema.ts                  THE source of truth for every table and type
   types.ts                   SyncDb, AnyDb and allSync(): the one definition of a handle's type
@@ -150,6 +154,9 @@ db/                          the database itself — nothing app-level
   migrate.ts                 FK-safe migration, user-data probe, integrity flag (pure, tested)
   seed.ts · seedCore.ts · seedData.ts   system categories: binding · reconciliation · the list itself
   retention.ts · files.ts · encryptedCopy.ts (passphrase backup copies) · legacyEncryption.ts (remove in R6)
+  backup/                    Phase 7: tables.ts + json.ts (what a JSON backup holds) · validate.ts + naming.ts
+                             (pure, tested) · version.ts · export.ts (VACUUM INTO / sqlcipher_export / share) ·
+                             restore.ts (stage → validate → snapshot → swap → boot, with a way back)
   dev/                       devSeed.ts · benchmark.ts — dev harness only; lint blocks production imports
   migrations/                generated by drizzle-kit. NEVER hand-edit; custom SQL via `--custom`
 lib/
@@ -165,8 +172,7 @@ docs/                        see the table at the top · diagrams/01-debt-simpli
 ```
 
 **Copy an existing feature** when adding one: `features/budgets` and `features/tracker` are the smallest
-complete examples. Still to come in R4: `screens/` inside features, and a `components/ui` kit (Text
-variants, Button, FormModal) so screens stop styling text inline.
+complete examples. Build screens from the `components/ui` kit; a new form is a `FormModal`.
 
 ---
 
@@ -186,10 +192,11 @@ variants, Button, FormModal) so screens stop styling text inline.
 12. **Schema changes:** edit `db/schema.ts` → `npx drizzle-kit generate` → **read the SQL** (three known generator bugs, see Gotchas) → `db/__tests__/migrations.test.ts` on the populated fixture → run on a copy of the phone's database. Data fixes go in `drizzle-kit generate --custom`. Never hand-edit a generated migration.
 13. **Colours come from tokens.** `useColors()` in components (`colors` only where a hook can't run). No hex literals in charts or screens (`components/charts/__tests__/tokens.test.ts`). Change a palette → `npm run theme:css`.
 14. **Use `useToday()` for "today" in anything rendered**, never `todayISO()` at render. Date presets are stored as names and resolved at query time.
-15. **Restore backs up before it overwrites** (Phase 7): validate, snapshot, then swap.
+15. **Restore backs up before it overwrites** (Phase 7): validate against a STAGING copy, snapshot the live database with `VACUUM INTO`, then swap — and if the restored file does not boot, put the snapshot back. Nothing live is touched until `applyRestore`. Backup file names carry their kind (`spendwise-`, `spendwise-before-restore-`, `spendwise-failed-restore-`), because pruning must never delete a safety copy.
 16. **Notification channels exist before posting; reminders are rescheduled wholesale** (Phase 8).
 17. **Dev-only code is guarded twice:** the entry point checks `__DEV__`, and the route or function refuses to run otherwise (`app/dev.tsx`, `db/devSeed.ts`).
 18. **Tests run the shipped code.** Pure logic is tested directly; SQL is tested by passing a better-sqlite3 Drizzle handle to the same builders (`db/__tests__/support.ts`). Don't keep a hand-written copy of a query in a test.
+19. **Text goes through `components/ui/Text`** (`variant`, or `weight` + `size`, and `tone`); a TextInput spreads `font(weight, size)`. No `fontFamily: fonts.` outside `components/ui` and `components/charts`. A route reads its params and passes typed props to one screen.
 
 ---
 
@@ -222,7 +229,7 @@ Every user table has `uid` (32 hex chars from SQLite, or `sys:*`) for export →
 ```
 [ Home ] [ Transactions ] ( + ) [ Insights ] [ More ]
                           tap: add transaction · long-press: Sheets
-More → Budgets · Tracker · Categories · Groups · Sheets* · Backup* · Settings (Appearance, Recently deleted) · Dev harness (dev)
+More → Budgets · Tracker · Categories · Groups · Sheets* · Backup · Settings (Appearance, Recently deleted) · Dev harness (dev)
                                                    * placeholder screens
 ```
 

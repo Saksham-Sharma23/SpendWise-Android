@@ -1,12 +1,13 @@
 import { X } from 'lucide-react-native';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatDayMonth } from '@/lib/dates';
-import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useColors, withAlpha } from '@/lib/theme';
 import { appear, leave, reflow } from '@/lib/motion';
 import { DATE_PRESETS, NO_DATES, type TransactionFilters } from '../data/filters';
+import { Text } from '@/components/ui/Text';
 
 interface Props {
   filters: TransactionFilters;
@@ -97,10 +98,7 @@ export function FilterChips({ filters, categories, onChange, onClearSearch, onCl
               }}
             >
               {chip.tint ? <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: chip.tint }} /> : null}
-              <Text
-                numberOfLines={1}
-                style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 12, maxWidth: 160 }}
-              >
+              <Text variant="small" tone="default" numberOfLines={1} style={{ maxWidth: 160 }}>
                 {chip.label}
               </Text>
               <X size={13} color={colors.muted} />
@@ -109,7 +107,9 @@ export function FilterChips({ filters, categories, onChange, onClearSearch, onCl
         ))}
         {chips.length > 1 ? (
           <PressableScale accessibilityRole="button" onPress={onClearAll} className="justify-center px-2">
-            <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 12 }}>Clear all</Text>
+            <Text weight="semibold" size={12} tone="primary">
+              Clear all
+            </Text>
           </PressableScale>
         ) : null}
       </ScrollView>

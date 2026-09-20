@@ -1,17 +1,18 @@
 import { useRouter } from 'expo-router';
 import { Handshake } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { MONTHS_LONG, MONTHS_SHORT } from '@/lib/dates';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
-import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useColors, withAlpha } from '@/lib/theme';
 import { removeSettlements, undoRemoveSettlements } from '../data/actions';
 import { toastWithUndo } from './undoToast';
 import type { ActivityRow, PersonRow } from '../data/hooks';
 import { expenseEffect, paidLine, settlementLine } from '../domain/wording';
 import { toneColor } from './kit';
+import { Text } from '@/components/ui/Text';
 
 /**
  * A group's activity, Splitwise-style: month headers; each row has the date
@@ -43,15 +44,7 @@ export function ActivityList({
         return (
           <View key={`${row.kind}-${row.id}`}>
             {header ? (
-              <Text
-                style={{
-                  color: colors.muted,
-                  fontFamily: fonts.semibold,
-                  fontSize: 13,
-                  marginTop: 14,
-                  marginBottom: 6,
-                }}
-              >
+              <Text weight="semibold" size={13} tone="muted" style={{ marginTop: 14, marginBottom: 6 }}>
                 {MONTHS_LONG[Number(month.slice(5, 7)) - 1]} {month.slice(0, 4)}
               </Text>
             ) : null}
@@ -70,7 +63,9 @@ export function ActivityList({
           className="mt-3 items-center rounded-full py-3"
           style={{ backgroundColor: colors.card }}
         >
-          <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 13 }}>Show older</Text>
+          <Text weight="semibold" size={13} tone="primary">
+            Show older
+          </Text>
         </PressableScale>
       ) : null}
     </View>
@@ -78,13 +73,12 @@ export function ActivityList({
 }
 
 function DateBlock({ date }: { date: string }) {
-  const colors = useColors();
   return (
     <View style={{ width: 34 }} className="items-center">
-      <Text style={{ color: colors.subtle, fontFamily: fonts.medium, fontSize: 10 }}>
+      <Text weight="medium" size={10} tone="subtle">
         {MONTHS_SHORT[Number(date.slice(5, 7)) - 1]}
       </Text>
-      <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17, marginTop: -2 }}>
+      <Text weight="bold" size={17} tone="default" style={{ marginTop: -2 }}>
         {Number(date.slice(8, 10))}
       </Text>
     </View>
@@ -113,26 +107,19 @@ function ExpenseRow({ row, people, selfId }: { row: ActivityRow; people: Map<num
       <DateBlock date={row.date} />
       <CategoryIcon icon={icon} color={color} size={40} />
       <View className="flex-1">
-        <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
+        <Text variant="bodyStrong" tone="default" numberOfLines={1}>
           {title}
         </Text>
-        <Text numberOfLines={1} style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
+        <Text variant="caption" tone="muted" numberOfLines={1} style={{ marginTop: 1 }}>
           {paidLine(lead?.name ?? null, row.leadPayerId === selfId, row.payerCount, row.amountPaise)}
         </Text>
       </View>
       <View className="items-end" style={{ minWidth: 86 }}>
-        <Text style={{ color: toneColor(effect.tone, colors), fontFamily: fonts.medium, fontSize: 11 }}>
+        <Text weight="medium" size={11} style={{ color: toneColor(effect.tone, colors) }}>
           {effect.text}
         </Text>
         {effect.amount ? (
-          <Text
-            style={{
-              color: toneColor(effect.tone, colors),
-              fontFamily: fonts.bold,
-              fontSize: 15,
-              fontVariant: ['tabular-nums'],
-            }}
-          >
+          <Text variant="amount" weight="bold" size={15} style={{ color: toneColor(effect.tone, colors) }}>
             {effect.amount}
           </Text>
         ) : null}
@@ -172,14 +159,11 @@ function SettlementRow({ row, people, selfId }: { row: ActivityRow; people: Map<
         <Handshake size={19} color={colors.income} strokeWidth={2.1} />
       </View>
       <View className="flex-1">
-        <Text numberOfLines={2} style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 14 }}>
+        <Text weight="medium" size={14} tone="default" numberOfLines={2}>
           {text}
         </Text>
         {row.title ? (
-          <Text
-            numberOfLines={1}
-            style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}
-          >
+          <Text variant="caption" tone="subtle" numberOfLines={1} style={{ marginTop: 1 }}>
             {row.title}
           </Text>
         ) : null}

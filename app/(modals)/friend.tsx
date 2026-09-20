@@ -1,4 +1,8 @@
+import { useLocalSearchParams } from 'expo-router';
+
 import { FriendForm } from '@/features/groups';
+
 export default function FriendModal() {
-  return <FriendForm />;
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  return <FriendForm editingId={id ? Number(id) : null} />;
 }

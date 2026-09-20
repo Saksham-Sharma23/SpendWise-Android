@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ChartPie, Handshake, Receipt, Scale, Settings2, Users } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { Screen } from '@/components/layout/Screen';
@@ -10,12 +10,14 @@ import { Card } from '@/components/ui/Card';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
-import { fonts, useColors } from '@/lib/theme';
+import { useColors } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { useGroup, useGroupActivity } from '../data/hooks';
 import { friendStatus, yourStatus } from '../domain/wording';
 import { ActivityList } from './ActivityList';
-import { ActionPill, FloatingAction, RoundButton, toneColor } from './kit';
+import { ActionPill, FloatingAction, toneColor } from './kit';
+import { Text } from '@/components/ui/Text';
+import { IconButton } from '@/components/ui/IconButton';
 
 const PAGE = 60;
 
@@ -75,12 +77,13 @@ export function GroupDetail({ groupId }: { groupId: number }) {
         title={group.name}
         subtitle={`${group.memberCount} ${group.memberCount === 1 ? 'person' : 'people'}${group.simplifyDebts ? ' · debts simplified' : ''}`}
         right={
-          <RoundButton
+          <IconButton
+            size="lg"
             label="Edit group"
             onPress={() => router.push({ pathname: '/(modals)/group', params: { id: String(groupId) } })}
           >
             <Settings2 size={19} color={colors.foreground} />
-          </RoundButton>
+          </IconButton>
         }
       >
         <View className="gap-4 px-5" style={{ paddingBottom: 90 }}>
@@ -93,18 +96,11 @@ export function GroupDetail({ groupId }: { groupId: number }) {
                   size={48}
                 />
                 <View className="flex-1">
-                  <Text
-                    style={{
-                      color: toneColor(you.tone, colors),
-                      fontFamily: fonts.bold,
-                      fontSize: 20,
-                      letterSpacing: -0.4,
-                    }}
-                  >
+                  <Text weight="bold" size={20} style={{ color: toneColor(you.tone, colors), letterSpacing: -0.4 }}>
                     {you.text.charAt(0).toUpperCase() + you.text.slice(1)}
                   </Text>
                   {settled && !empty ? (
-                    <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
+                    <Text variant="caption" tone="muted" style={{ marginTop: 2 }}>
                       Everyone is square
                     </Text>
                   ) : null}
@@ -114,12 +110,12 @@ export function GroupDetail({ groupId }: { groupId: number }) {
               {lines.length > 0 ? (
                 <View className="mt-3 gap-1">
                   {lines.slice(0, 3).map((l, i) => (
-                    <Text key={i} style={{ color: toneColor(l.tone, colors), fontFamily: fonts.medium, fontSize: 13 }}>
+                    <Text variant="body" key={i} style={{ color: toneColor(l.tone, colors) }}>
                       {l.text}
                     </Text>
                   ))}
                   {lines.length > 3 ? (
-                    <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12 }}>
+                    <Text variant="caption" tone="subtle">
                       and {lines.length - 3} more in Balances
                     </Text>
                   ) : null}

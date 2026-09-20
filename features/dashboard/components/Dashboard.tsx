@@ -9,8 +9,8 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react-native';
-import { useEffect, type ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { Screen } from '@/components/layout/Screen';
@@ -27,9 +27,8 @@ import { MONTHS_LONG, fromISODate, type ISODate } from '@/lib/dates';
 import { buildInsight } from '@/lib/insight';
 import { formatINR } from '@/lib/money';
 import { upcomingRenewals } from '@/lib/renewals';
-import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useColors, withAlpha } from '@/lib/theme';
 import { useToday } from '@/lib/today';
-import { rise } from '@/lib/motion';
 import {
   dismissOnboarding,
   useActiveSubscriptions,
@@ -42,7 +41,10 @@ import {
   type CategorySpend,
   type MonthOverview,
 } from '../data/hooks';
-import { TrendChart } from './TrendChart';
+import { IncomeExpenseCard } from './IncomeExpenseCard';
+import { Text, font } from '@/components/ui/Text';
+import { Badge } from '@/components/ui/Chip';
+import { Section } from '@/components/ui/Section';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -57,15 +59,6 @@ function greeting(hour: number): string {
 function pctChange(current: number, previous: number): number | null {
   if (previous === 0) return null;
   return ((current - previous) / previous) * 100;
-}
-
-/** Staggered entrance, so the dashboard assembles rather than pops in. */
-function Section({ index, children }: { index: number; children: ReactNode }) {
-  return (
-    <Animated.View entering={rise(60 + index * 70)} className="px-5">
-      {children}
-    </Animated.View>
-  );
 }
 
 export function Dashboard() {
@@ -118,7 +111,7 @@ export function Dashboard() {
           <Section index={0}>
             <Card variant="accent" className="p-5">
               <View className="flex-row items-center justify-between">
-                <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>
+                <Text variant="body" tone="muted">
                   Net balance · {month}
                 </Text>
                 <View
@@ -132,19 +125,18 @@ export function Dashboard() {
                 paise={net}
                 style={{
                   color: net < 0 ? colors.expense : colors.primary,
-                  fontFamily: fonts.bold,
-                  fontSize: 38,
+                  ...font('bold', 38),
                   letterSpacing: -1.2,
                   marginTop: 6,
                 }}
               />
               <View className="mt-3 flex-row items-center gap-2">
-                <Chip
+                <Badge
                   tone={savedPct >= 0 ? 'good' : 'bad'}
                   icon={savedPct >= 0 ? ArrowUpRight : ArrowDownRight}
                   label={`${Math.abs(savedPct).toFixed(1)}%`}
                 />
-                <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12 }}>
+                <Text variant="caption" tone="muted">
                   {savedPct >= 0 ? 'of income saved' : 'more spent than earned'}
                 </Text>
               </View>
@@ -177,7 +169,7 @@ export function Dashboard() {
           </Section>
 
           <Section index={3}>
-            <TrendChart />
+            <IncomeExpenseCard />
           </Section>
 
           <Section index={4}>
@@ -251,20 +243,6 @@ function Renewals({ today }: { today: ISODate }) {
   return <RenewalsCard renewals={upcomingRenewals(subs, today, 3)} onOpenTracker={() => router.push('/tracker')} />;
 }
 
-function Chip({ tone, icon: Icon, label }: { tone: 'good' | 'bad' | 'neutral'; icon?: LucideIcon; label: string }) {
-  const colors = useColors();
-  const color = tone === 'good' ? colors.income : tone === 'bad' ? colors.expense : colors.muted;
-  return (
-    <View
-      className="flex-row items-center gap-0.5 rounded-full px-2 py-0.5"
-      style={{ backgroundColor: withAlpha(color, 0.14) }}
-    >
-      {Icon ? <Icon size={12} color={color} strokeWidth={2.5} /> : null}
-      <Text style={{ color, fontFamily: fonts.semibold, fontSize: 11 }}>{label}</Text>
-    </View>
-  );
-}
-
 function StatCard({
   label,
   icon: Icon,
@@ -287,7 +265,9 @@ function StatCard({
   return (
     <Card className="flex-1 p-4" glow={color}>
       <View className="flex-row items-center justify-between">
-        <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>{label}</Text>
+        <Text variant="body" tone="muted">
+          {label}
+        </Text>
         <View
           className="h-8 w-8 items-center justify-center rounded-full"
           style={{ backgroundColor: withAlpha(color, 0.14) }}
@@ -300,23 +280,26 @@ function StatCard({
         options={{ whole: true }}
         style={{
           color: colors.foreground,
-          fontFamily: fonts.bold,
-          fontSize: 21,
+          ...font('bold', 21),
           letterSpacing: -0.5,
           marginTop: 10,
         }}
       />
       <View className="mt-2 flex-row items-center gap-1.5">
         {change == null ? (
-          <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11 }}>No data last month</Text>
+          <Text weight="regular" size={11} tone="subtle">
+            No data last month
+          </Text>
         ) : (
           <>
-            <Chip
+            <Badge
               tone={good ? 'good' : 'bad'}
               icon={up ? ArrowUpRight : ArrowDownRight}
               label={`${Math.abs(change).toFixed(0)}%`}
             />
-            <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11 }}>vs last month</Text>
+            <Text weight="regular" size={11} tone="subtle">
+              vs last month
+            </Text>
           </>
         )}
       </View>
@@ -325,14 +308,15 @@ function StatCard({
 }
 
 function TopCategories({ today, expensePaise }: { today: ISODate; expensePaise: number }) {
-  const colors = useColors();
   const { data: top } = useTopCategories(today, 4);
   if (top.length === 0) return null;
 
   return (
     <Card className="p-5">
-      <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>Where it went</Text>
-      <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
+      <Text weight="bold" size={17} tone="default">
+        Where it went
+      </Text>
+      <Text variant="caption" tone="muted" style={{ marginTop: 2 }}>
         Top categories this month
       </Text>
       <View className="mt-4 gap-4">
@@ -363,20 +347,10 @@ function CategoryBar({ item, share, index }: { item: CategorySpend; share: numbe
       <CategoryIcon icon={item.icon} color={item.color} size={38} />
       <View className="flex-1">
         <View className="flex-row items-baseline justify-between">
-          <Text
-            numberOfLines={1}
-            style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14, flexShrink: 1 }}
-          >
+          <Text weight="semibold" size={14} tone="default" numberOfLines={1} style={{ flexShrink: 1 }}>
             {item.name ?? 'Uncategorised'}
           </Text>
-          <Text
-            style={{
-              color: colors.foreground,
-              fontFamily: fonts.semibold,
-              fontSize: 14,
-              fontVariant: ['tabular-nums'],
-            }}
-          >
+          <Text variant="amount" weight="semibold" size={14} tone="default">
             {formatINR(item.totalPaise, { whole: true })}
           </Text>
         </View>
@@ -384,7 +358,7 @@ function CategoryBar({ item, share, index }: { item: CategorySpend; share: numbe
           <View className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: colors.elevated }}>
             <Animated.View className="h-full rounded-full" style={[{ backgroundColor: tint }, fill]} />
           </View>
-          <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11, width: 32, textAlign: 'right' }}>
+          <Text weight="medium" size={11} tone="muted" style={{ width: 32, textAlign: 'right' }}>
             {Math.round(share * 100)}%
           </Text>
         </View>
@@ -401,14 +375,18 @@ function RecentTransactions() {
   return (
     <Card className="px-5 pb-2 pt-5">
       <View className="flex-row items-center justify-between">
-        <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>Recent transactions</Text>
+        <Text weight="bold" size={17} tone="default">
+          Recent transactions
+        </Text>
         {rows.length > 0 ? (
           <PressableScale
             accessibilityRole="button"
             onPress={() => router.push('/(tabs)/transactions')}
             className="py-1 pl-3"
           >
-            <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 13 }}>View all</Text>
+            <Text weight="semibold" size={13} tone="primary">
+              View all
+            </Text>
           </PressableScale>
         ) : null}
       </View>
@@ -418,7 +396,9 @@ function RecentTransactions() {
         <View style={{ height: 120 }} />
       ) : rows.length === 0 ? (
         <View className="items-center py-8">
-          <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13 }}>Nothing here yet.</Text>
+          <Text weight="regular" size={13} tone="muted">
+            Nothing here yet.
+          </Text>
           <PressableScale
             accessibilityRole="button"
             onPress={() => router.push('/(modals)/transaction')}
@@ -426,7 +406,9 @@ function RecentTransactions() {
             style={{ backgroundColor: colors.primary }}
           >
             <Plus size={16} color={colors.onPrimary} strokeWidth={2.6} />
-            <Text style={{ color: colors.onPrimary, fontFamily: fonts.semibold }}>Add your first</Text>
+            <Text weight="semibold" tone="onPrimary">
+              Add your first
+            </Text>
           </PressableScale>
         </View>
       ) : (

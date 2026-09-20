@@ -1,4 +1,8 @@
+import { useLocalSearchParams } from 'expo-router';
+
 import { CategoryEditor } from '@/features/categories';
+
 export default function CategoryModal() {
-  return <CategoryEditor />;
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  return <CategoryEditor editingId={id ? Number(id) : null} />;
 }

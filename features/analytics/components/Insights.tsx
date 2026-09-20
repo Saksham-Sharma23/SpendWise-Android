@@ -1,28 +1,21 @@
 import { useRouter } from 'expo-router';
 import { ChartColumn } from 'lucide-react-native';
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { View } from 'react-native';
-import Animated from 'react-native-reanimated';
 
 import { Screen } from '@/components/layout/Screen';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Segmented } from '@/components/ui/Segmented';
 import { useToday } from '@/lib/today';
-import { rise } from '@/lib/motion';
 import { RANGES, type RangeMonths } from '../domain/period';
 import { useEarliestDate, usePeriodStats } from '../data/hooks';
 import { CategoryBreakdown } from './CategoryBreakdown';
 import { PeriodSummary, StatGrid } from './StatCards';
 import { SpendingTrend } from './SpendingTrend';
+import { Section } from '@/components/ui/Section';
 
-/** Staggered entrance, so the screen assembles rather than pops in. */
-function Section({ index, children }: { index: number; children: ReactNode }) {
-  return (
-    <Animated.View entering={rise(40 + index * 70)} className="px-5">
-      {children}
-    </Animated.View>
-  );
-}
+/** Each card rises 70 ms after the one above it. */
+const STAGGER = { base: 40, step: 70 };
 
 /**
  * Insights: where the money goes, over time.
@@ -60,7 +53,7 @@ export function Insights() {
         </View>
       ) : (
         <View className="gap-3">
-          <Section index={0}>
+          <Section stagger={STAGGER} index={0}>
             <Segmented<`${RangeMonths}`>
               value={`${range}`}
               onChange={(v) => setRange(Number(v) as RangeMonths)}
@@ -68,19 +61,19 @@ export function Insights() {
             />
           </Section>
 
-          <Section index={1}>
+          <Section stagger={STAGGER} index={1}>
             <PeriodSummary months={range} stats={stats} />
           </Section>
 
-          <Section index={2}>
+          <Section stagger={STAGGER} index={2}>
             <SpendingTrend months={range} today={today} />
           </Section>
 
-          <Section index={3}>
+          <Section stagger={STAGGER} index={3}>
             <StatGrid stats={stats} />
           </Section>
 
-          <Section index={4}>
+          <Section stagger={STAGGER} index={4}>
             <CategoryBreakdown today={today} earliest={earliest.data} />
           </Section>
         </View>

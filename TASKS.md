@@ -29,8 +29,8 @@
 | **R2**    | Guard rails: lint, format, CI | 1½ d  | ✅ done 2026-09-19 (568 tests)                    |
 | **R3**    | One data layer                | 3 d   | ✅ done 2026-09-19 (568 tests)                    |
 | **RF**    | Review fixes B21–B30 + motion | —     | ✅ code 2026-09-19 · 🟡 `verify` + phone checks   |
-| **R4**    | UI kit and thin routes        | 3 d   | ⬜                                                |
-| **7**     | **Backup & restore**          | 3–4 d | ⬜ ← **most important remaining product work**    |
+| **R4**    | UI kit and thin routes        | 3 d   | ✅ done 2026-09-20 (screens verified on phone)    |
+| **7**     | **Backup & restore**          | 3–4 d | 🟡 export + restore built; phone drill pending    |
 | 8         | Native layer                  | 3–4 d | ⬜                                                |
 | R5        | Performance (was TASKS2 F4)   | 2 d   | 🟡 7 of 8 done; 2 slow queries to index           |
 | R6        | Observability and release ops | 1 d   | ⬜                                                |
@@ -39,7 +39,9 @@
 | 9         | Hardening & Play Store        | 4–5 d | ⬜                                                |
 
 **Recommended order:** R0 → R1 → R2 → R3 → R4 → 7 → 8 → R5 → R6 → 6A → 6B → 9.
-_2026-09-19:_ the review fixes (RF) and most of R5 were done early, on branch `fix/review-b21-b28`. **Next: R4.**
+_2026-09-19:_ the review fixes (RF) and most of R5 were done early, on branch `fix/review-b21-b28`.
+_2026-09-20:_ R4 done — screens verified on the phone (typecheck clean; jest and lint not yet run).
+_2026-09-20:_ Phase 7 — the first five batches are built: `.db`, passphrase and `.json` exports, and a validate-first restore that stages, checks, snapshots and can roll itself back. Typecheck clean; **jest and lint not yet run, and none of it has run on the phone**. **Next: the phone drill** (populate → export → uninstall → reinstall → restore), then the remaining Phase 7 items.
 _Why this order:_ a factory reset currently loses everything, so Backup (7) comes before any new data
 surface. The refactor (R3/R4) comes before Backup and Sheets so that the two biggest new features are
 written in the target layout, not ported into it afterwards. Guard rails (R2) come before the refactor so
@@ -254,14 +256,23 @@ How to test each fix, and the B22 phone steps: [`docs/review-fixes-b21-b28.md`](
 
 **Goal:** a screen is composed from primitives, and a route file is a one-liner. **Est:** 3 days.
 
-- [ ] **`components/ui/Text`** with variants (`display`, `title`, `heading`, `body`, `bodyStrong`, `caption`, `label` (uppercase section label), `amount`) + `tone` (`default`/`muted`/`subtle`/`primary`/`income`/`expense`)
-      _Why:_ 332 inline `fontFamily` styles in 45 files; each screen re-derives the type scale.
-- [ ] **`Button`, `IconButton` (the round header button), `Chip`, `Section`, `StatFigure`, `Field` (`Label` + `ErrorText` + input)**; delete the per-file copies (A5)
-- [ ] **`FormModal` + `useSubmitOnce`**: header (close · title · optional delete), keyboard handling, sticky primary button, the double-tap guard, the "no longer exists" redirect
-- [ ] **Move screens out of `app/`** into `features/*/screens/`: transaction, budget and subscription forms; the filters sheet; More; Settings; the dev harness (`features/devtools/`) (A4). Routes become ≤ 20 lines
-- [ ] **Rename** `features/dashboard/components/TrendChart` → `IncomeExpenseCard`; unify the tab label "Activity" vs the screen title "Transactions" (B20)
-- [ ] **Migrate screens to the kit**, one feature per commit; remove the dead `colors` imports
-- [ ] **Subscription anchor date and group expense date use `DatePickerSheet`** (TASKS2 F5 discovered)
+- [x] **`components/ui/Text`** with `variant` (`caption` · `small` · `body` · `bodyStrong` · `heading` · `title` · `label` · `amount`), `weight` + `size` for the long tail, and `tone`; `font(weight, size)` for TextInputs
+      _Why:_ 294 inline `fontFamily` styles in 36 files (34 weight/size pairs); each screen re-derived the type scale.
+      The variants are the pairs the screens actually used, so the migration moved nothing on screen.
+- [x] **`Button`, `IconButton`, `Chip` + `Badge`, `CategoryChip`, `Section` + `FieldLabel`, `StatFigure`, `Field` + `ErrorText`**; every per-file copy deleted (`Label`, `RoundButton`, `ErrorText`, `Section`, `SectionLabel`, the six `Figure` shells, `Chip` ×2, the dev harness `Button`) (A5)
+- [x] **`FormModal` + `useSubmitOnce`** (the gate is `lib/submitGate.ts`, tested in Node): used by the transaction, budget and subscription forms
+- [x] **Screens out of `app/`**: `features/transactions/screens/{TransactionForm,FiltersSheet}`, `features/budgets/screens/BudgetForm`, `features/tracker/screens/SubscriptionForm`, `features/settings/screens/{More,Settings}`, `features/devtools` (A4). Every route reads its params and passes typed props (Groups and Category screens included); `components/layout/ComingSoon` holds the Sheets/Backup placeholders. Only `_layout.tsx` files exceed 20 lines, and only `app/_layout.tsx` imports `db/`
+- [x] **Renames:** the Home card is `IncomeExpenseCard`; the tab says **Transactions** like the screen (B20); no `toLocaleString` outside `lib/money.ts`
+- [x] **Every screen on the kit**: no `fontFamily: fonts.` outside `components/ui` and `components/charts`; 12 dead `colors = useColors()` removed. The six remaining `import { colors }` are real (static styles and worklets, convention #13)
+- [x] **`DatePickerSheet` for every date**: subscription anchor date, group expense date, settle-up date
+- [x] **Screenshot pass on the phone** (2026-09-20, 27 screens per theme, `%TEMP%/r4shots/`): **light — all 27 screens pixel-identical** to the "before" set (largest difference 0.72% on Home, which is the date and month-to-date figures changing overnight). **Dark — the 20 non-modal screens identical**; the **7 dark modals have no before/after diff at all** — the Back press in the capture script meant the dark "before" run caught the phone's home screen and the dark "after" run the Expo dev launcher, so both sides are junk. They were re-captured (`after2-dark/`, verified real screens, not launcher) and checked by eye only. The light diff is what actually proves the modals did not move; the dark modals rest on the shared layout plus that eyeball. **"Transactions" fits in the tab bar**, no truncation
+
+**R4 Discovered:**
+
+- Not one commit per feature: the text migration was one codemod over 33 files (Babel; it maps weight, size and palette colour exactly and skips anything it can't), so it is one commit.
+- **A screenshot script must never press Back.** Both dark modal runs were silently invalidated by it: Back popped the modal, then the screen behind it, then the app itself — so the script went on capturing the home screen and the dev launcher under the right filenames. Relaunch by deep link between screens instead, and check every capture for the launcher before trusting a diff (a flat colour-variety count catches it: every bad shot lands within a few counts of every other).
+- The tab label "Transactions" is longer than "Activity" but fits: checked on the phone, no truncation.
+- A capture script that walks screens by deep link must not press Back after each one: the stack empties and the app exits to the dev launcher, and the screenshots silently become launcher shots. Relaunch between screens instead.
 
 **Done when:** no `app/` file exceeds 20 lines except `_layout.tsx`; a grep for `fontFamily: fonts.` outside `components/ui` and `components/charts` returns nothing; the phone looks identical before and after (screenshot pass of every screen, both themes).
 
@@ -274,18 +285,46 @@ How to test each fix, and the B22 phone steps: [`docs/review-fixes-b21-b28.md`](
 
 > **The highest-stakes phase.** Every other failure is an annoyance. A backup failure permanently loses data someone typed in by hand.
 
-- [ ] **Export `.db`** via `VACUUM INTO` a temp file + `expo-sharing`; record `last_backup_at`
+- [x] **Export `.db`** via `VACUUM INTO` + `expo-sharing`; records `last_backup_at` (2026-09-20, `db/backup/export.ts`)
       _Why:_ a byte-exact, consistent single file (no WAL) is the most reliable restore.
-- [ ] **Optional passphrase** (`writeEncryptedCopy`) with an explicit "a forgotten passphrase means this backup is gone" warning
-- [ ] **Export `.json`** with `format_version`, `schema_migration_idx`, and every user table keyed by `uid` (Groups included; `split_debts` may be omitted and rebuilt)
+      Every export is also KEPT in `files/backups/` (pruned to the newest 3 per format, excluded from auto-backup):
+      a share sheet dismissed by accident should not mean no backup.
+- [x] **Optional passphrase** (`writeEncryptedCopy`), with the warning stated before the field: "it cannot be reset
+      or recovered. If you forget it, this backup is gone — there is no way in, for you or for us."
+- [x] **Export `.json`** with `format_version`, `schema_migration_idx` and every user table keyed by `uid`
+      (`db/backup/{tables,json}.ts`). Read through the ASYNC connection, so a 50k-row export does not freeze the screen.
       _Why:_ readable, and restorable across schema versions.
-- [ ] **Restore: validate first, change nothing on failure** — header/passphrase, `integrity_check`, migration index ≤ bundled, row counts
-- [ ] **Snapshot the current DB before swapping**; swap through `closeConnection` → move → reopen → `bootDatabase()` (the reopenable connection already supports it)
+- [x] **Restore: validate first, change nothing on failure** (`db/backup/{validate,restore}.ts`) — format sniffed from
+      the BYTES not the name, `integrity_check`, migration index ≤ bundled, row counts against the file's own header,
+      every foreign key resolved by uid. All of it against a STAGING copy; the live database is untouched until
+      `applyRestore`
+- [x] **Snapshot the current DB before swapping**; `VACUUM INTO` → fold the staged WAL → `closeConnection` → move →
+      `bootDatabase()`. If the restored file does not boot, the copy goes back and boots instead
 - [ ] **Restore from the boot-failure screen too** (the recovery path D5 promised)
 - [ ] **Settings: database + WAL size, last backup date, warn near the 25 MB auto-backup quota**
 - [ ] **Backup history** (`app_meta` or a small table) — "did I ever back this up?"
 - [ ] **Tests:** JSON round-trip on the migrated 50k fixture (row counts and paise totals per table identical); restore refuses a newer migration index; a wrong passphrase changes nothing
 - [ ] _(Monthly reminder ships with Phase 8 channels)_
+
+**Phase 7 Discovered:**
+
+- **No new native module was needed for the file picker.** `expo-file-system` v57 ships `File.pickFileAsync`
+  (Storage Access Framework), so restoring a file from a cloud drive costs no rebuild. `expo-document-picker`
+  stays removed — re-add it for 6A only if that needs something this cannot do.
+- **A picked file arrives as a `content://` URI**, which SQLite cannot open and `ATTACH` cannot read. It is
+  copied into the app's cache first, and everything downstream works on that copy.
+- **`split_debts` is exported, not recomputed.** Rebuilding it on restore would have meant a second copy of
+  `features/groups/domain/debts.ts` written in SQL — `db/` may not import a feature — so two implementations
+  would have had to agree forever, with the backup one never exercised. The rows cost a few bytes per expense
+  and were written in the same transaction as the expense they belong to.
+- **The format is sniffed from the first bytes, not the file name.** A backup that has been mailed and
+  downloaded again is called anything at all; guessing from the name reported a JSON file as "encrypted" and
+  sent the user hunting for a passphrase that never existed.
+- **The staged file's WAL has to be folded in before the swap**, or moving the single main file would leave
+  committed rows behind — the exact failure `VACUUM INTO` exists to avoid, arriving by the back door.
+- **`pruneBackups` nearly deleted the pre-restore safety copy.** Both are `spendwise-*.db` in the same folder.
+  Names now carry their kind, and `backupsToDelete` is pure and tested — like `snapshotsToDelete` in
+  `db/migrate.ts`, and for the same reason.
 
 **Exit criterion (on the phone):** populate → export → **uninstall** → reinstall → restore → row counts and totals match exactly. Repeat with an encrypted export and with the JSON export.
 
@@ -333,6 +372,8 @@ How to test each fix, and the B22 phone steps: [`docs/review-fixes-b21-b28.md`](
 
 - [ ] **Local crash log** (`lib/crashlog.ts`): global error handler + unhandled rejections → rotating `files/logs/crash.log`, last 200 entries, **no amounts or notes**; Settings → "Share crash log" (T9)
       _Why:_ release builds have no crash reporting, and Sentry is ruled out by the no-`INTERNET` rule.
+- [x] **Release APK on GitHub** (`.github/workflows/release.yml`, 2026-09-19): push to `main` → clean prebuild → `assembleRelease` (arm64) → `verify-apk.sh` → artifact; a `v*` tag also publishes a GitHub Release. Re-signed with the release key when the `ANDROID_KEYSTORE_*` secrets are set, else the Expo debug key with a warning. **Not yet run on GitHub**
+- [ ] **Create the release keystore** and add the four `ANDROID_KEYSTORE_*` secrets; back the `.jks` up outside the repo (losing it means no update can ever install over the old app)
 - [ ] **`docs/runbooks/release.md`**: version bump, `rm -rf android` → prebuild → `build:release-apk` → `verify:apk` → backup drill → migration drill → tag
 - [ ] **`docs/runbooks/migrations.md`**: the drizzle-kit bug list, generate → read SQL → populated test → phone copy
 - [ ] **Remove `db/legacyEncryption.ts` and `expo-secure-store`** once no installed build can hold a keyed DB (all testers upgraded past 2026-09-14)

@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { Donut } from '@/components/charts/Donut';
@@ -12,9 +12,10 @@ import { categoryColor } from '@/lib/categoryColor';
 import { formatMonthYear, type ISODate } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
 import { useMotion } from '@/lib/motion';
-import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useColors, withAlpha } from '@/lib/theme';
 import { clampMonth, shiftMonth, toSlices, type Slice } from '../domain/period';
 import { useCategoryBreakdown } from '../data/hooks';
+import { Text } from '@/components/ui/Text';
 
 /**
  * Where one month's spending went: a donut with a month picker and a legend.
@@ -65,8 +66,10 @@ export function CategoryBreakdown({ today, earliest }: { today: ISODate; earlies
     <Card className="p-5">
       <View className="flex-row items-center justify-between">
         <View className="flex-1 pr-2">
-          <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>By category</Text>
-          <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
+          <Text weight="bold" size={17} tone="default">
+            By category
+          </Text>
+          <Text variant="caption" tone="muted" style={{ marginTop: 2 }}>
             Where the month’s spending went
           </Text>
         </View>
@@ -78,7 +81,7 @@ export function CategoryBreakdown({ today, earliest }: { today: ISODate; earlies
       >
         <MonthStep direction="back" disabled={!canBack} onPress={() => step(-1)} />
         <Swap swapKey={shown} direction={direction} distance={10}>
-          <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}>
+          <Text weight="semibold" size={14} tone="default">
             {formatMonthYear(shown)}
           </Text>
         </Swap>
@@ -89,7 +92,7 @@ export function CategoryBreakdown({ today, earliest }: { today: ISODate; earlies
         <View style={{ height: 240 }} />
       ) : slices.length === 0 ? (
         <View className="items-center py-10">
-          <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13 }}>
+          <Text weight="regular" size={13} tone="muted">
             No spending in {formatMonthYear(shown)}.
           </Text>
         </View>
@@ -102,24 +105,21 @@ export function CategoryBreakdown({ today, earliest }: { today: ISODate; earlies
               onSelect={setSelectedKey}
             >
               <View pointerEvents="none" className="items-center px-8">
-                <Text numberOfLines={1} style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 12 }}>
+                <Text variant="small" tone="muted" numberOfLines={1}>
                   {selected ? displayName(selected) : 'Spent'}
                 </Text>
                 <Text
+                  weight="bold"
+                  size={22}
+                  tone="default"
                   numberOfLines={1}
                   adjustsFontSizeToFit
-                  style={{
-                    color: colors.foreground,
-                    fontFamily: fonts.bold,
-                    fontSize: 22,
-                    letterSpacing: -0.5,
-                    marginTop: 2,
-                  }}
+                  style={{ letterSpacing: -0.5, marginTop: 2 }}
                 >
                   {formatINR(selected ? selected.totalPaise : total, { whole: true })}
                 </Text>
                 {selected ? (
-                  <Text style={{ color: colors.subtle, fontFamily: fonts.medium, fontSize: 12, marginTop: 1 }}>
+                  <Text variant="small" tone="subtle" style={{ marginTop: 1 }}>
                     {percent(selected.share)} of spend
                   </Text>
                 ) : null}
@@ -237,20 +237,10 @@ function LegendRow({
         )}
         <View className="flex-1">
           <View className="flex-row items-baseline justify-between">
-            <Text
-              numberOfLines={1}
-              style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14, flexShrink: 1 }}
-            >
+            <Text weight="semibold" size={14} tone="default" numberOfLines={1} style={{ flexShrink: 1 }}>
               {displayName(slice)}
             </Text>
-            <Text
-              style={{
-                color: colors.foreground,
-                fontFamily: fonts.semibold,
-                fontSize: 14,
-                fontVariant: ['tabular-nums'],
-              }}
-            >
+            <Text variant="amount" weight="semibold" size={14} tone="default">
               {formatINR(slice.totalPaise, { whole: true })}
             </Text>
           </View>
@@ -258,9 +248,7 @@ function LegendRow({
             <View className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: colors.elevated }}>
               <Animated.View className="h-full rounded-full" style={[{ backgroundColor: color }, bar]} />
             </View>
-            <Text
-              style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11, width: 34, textAlign: 'right' }}
-            >
+            <Text weight="medium" size={11} tone="muted" style={{ width: 34, textAlign: 'right' }}>
               {percent(slice.share)}
             </Text>
           </View>

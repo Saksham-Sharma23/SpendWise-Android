@@ -1,4 +1,8 @@
+import { useLocalSearchParams } from 'expo-router';
+
 import { GroupForm } from '@/features/groups';
+
 export default function GroupModal() {
-  return <GroupForm />;
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  return <GroupForm editingId={id ? Number(id) : null} />;
 }

@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { TrendChart as Chart, type TrendMode } from '@/components/charts/TrendChart';
 import { Card } from '@/components/ui/Card';
 import { Segmented } from '@/components/ui/Segmented';
 import { formatMonthYear } from '@/lib/dates';
 import { formatINR, formatINRCompact } from '@/lib/money';
-import { fonts, useColors } from '@/lib/theme';
+import { useColors } from '@/lib/theme';
 import { useToday } from '@/lib/today';
 import { useMonthlyTrend } from '../data/hooks';
+import { Text } from '@/components/ui/Text';
+import { StatFigure } from '@/components/ui/StatFigure';
 
 type Range = '6' | '12';
 
@@ -20,7 +22,7 @@ type Range = '6' | '12';
  * the header. The chart itself only draws; the numbers come aggregated from
  * SQL (useMonthlyTrend), at most 12 rows.
  */
-export function TrendChart() {
+export function IncomeExpenseCard() {
   const colors = useColors();
   const [range, setRange] = useState<Range>('6');
   const [mode, setMode] = useState<TrendMode>('bar');
@@ -37,8 +39,10 @@ export function TrendChart() {
     <Card className="p-5">
       <View className="flex-row items-start justify-between">
         <View className="flex-1 pr-3">
-          <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>Income vs Expense</Text>
-          <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
+          <Text weight="bold" size={17} tone="default">
+            Income vs Expense
+          </Text>
+          <Text variant="caption" tone="muted" style={{ marginTop: 2 }}>
             {active ? formatMonthYear(active.month) : `Last ${range} months`}
           </Text>
         </View>
@@ -65,7 +69,7 @@ export function TrendChart() {
       </View>
 
       <View className="mt-4 flex-row items-center justify-between">
-        <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11 }}>
+        <Text weight="regular" size={11} tone="subtle">
           {empty ? 'Your trend appears as you add transactions.' : 'Tap a month for its figures'}
         </Text>
         <View style={{ width: 104 }}>
@@ -88,27 +92,20 @@ export function TrendChart() {
 }
 
 function Figure({ label, color, paise }: { label: string; color: string; paise: number }) {
-  const colors = useColors();
   return (
-    <View className="flex-1 rounded-2xl px-3 py-2.5" style={{ backgroundColor: colors.elevated }}>
-      <View className="flex-row items-center gap-1.5">
-        <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color }} />
-        <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>{label}</Text>
-      </View>
+    <StatFigure label={label} dot={color} tile>
       <Text
+        variant="amount"
+        weight="bold"
+        size={16}
+        tone="default"
         numberOfLines={1}
         adjustsFontSizeToFit
-        style={{
-          color: colors.foreground,
-          fontFamily: fonts.bold,
-          fontSize: 16,
-          marginTop: 3,
-          fontVariant: ['tabular-nums'],
-        }}
+        style={{ marginTop: 3 }}
       >
         {/* Crore-scale month totals switch to the compact form so they fit. */}
         {paise >= 1_00_00_000 * 100 ? formatINRCompact(paise) : formatINR(paise, { whole: true })}
       </Text>
-    </View>
+    </StatFigure>
   );
 }

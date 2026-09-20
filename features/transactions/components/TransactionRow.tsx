@@ -1,13 +1,14 @@
 import { Trash2 } from 'lucide-react-native';
 import { memo } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { LedgerRow } from '@/components/ui/LedgerRow';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { usePerfFlags } from '@/lib/perfFlags';
-import { fonts, useColors } from '@/lib/theme';
+import { useColors } from '@/lib/theme';
 import { type TransactionRow as Row } from '../data/sql';
+import { Text } from '@/components/ui/Text';
 
 /**
  * One ledger row.
@@ -42,7 +43,9 @@ function RightAction({ onPress }: { onPress: () => void }) {
         style={{ backgroundColor: colors.expense }}
       >
         <Trash2 size={19} color={colors.onAccent} strokeWidth={2.3} />
-        <Text style={{ color: colors.onAccent, fontFamily: fonts.semibold, fontSize: 10, marginTop: 2 }}>Delete</Text>
+        <Text weight="semibold" size={10} tone="onAccent" style={{ marginTop: 2 }}>
+          Delete
+        </Text>
       </PressableScale>
     </View>
   );

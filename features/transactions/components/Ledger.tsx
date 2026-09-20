@@ -2,7 +2,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { CircleAlert, Receipt, Search, SearchX, Share2, SlidersHorizontal, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
@@ -17,7 +17,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { categoryColor } from '@/lib/categoryColor';
 import { formatMonthYear } from '@/lib/dates';
 import { formatCount } from '@/lib/money';
-import { fonts, useColors } from '@/lib/theme';
+import { useColors } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { exportTransactionsCsv } from '../data/export';
 import { useFilterStore } from '../filterStore';
@@ -27,6 +27,8 @@ import { useTransactionSummary, useTransactionPages } from '../data/hooks';
 import { type TransactionRow } from '../data/sql';
 import { FilterChips } from './FilterChips';
 import { TransactionRowItem } from './TransactionRow';
+import { Text, font } from '@/components/ui/Text';
+import { StatFigure } from '@/components/ui/StatFigure';
 
 /**
  * The ledger.
@@ -175,15 +177,7 @@ export function Ledger() {
     ({ item }: { item: ListItem }) =>
       item.kind === 'month' ? (
         <View className="px-5 pb-1 pt-4" style={{ backgroundColor: colors.background }}>
-          <Text
-            style={{
-              color: colors.muted,
-              fontFamily: fonts.semibold,
-              fontSize: 12,
-              letterSpacing: 1,
-              textTransform: 'uppercase',
-            }}
-          >
+          <Text weight="semibold" size={12} tone="muted" style={{ letterSpacing: 1, textTransform: 'uppercase' }}>
             {item.label}
           </Text>
         </View>
@@ -253,7 +247,9 @@ export function Ledger() {
               className="rounded-full border px-4 py-2.5"
               style={{ borderColor: colors.border, backgroundColor: colors.card }}
             >
-              <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 13 }}>Cancel</Text>
+              <Text weight="semibold" size={13} tone="default">
+                Cancel
+              </Text>
             </PressableScale>
             <PressableScale
               accessibilityRole="button"
@@ -262,7 +258,9 @@ export function Ledger() {
               className="rounded-full px-4 py-2.5"
               style={{ backgroundColor: colors.expense }}
             >
-              <Text style={{ color: colors.onAccent, fontFamily: fonts.semibold, fontSize: 13 }}>Delete</Text>
+              <Text weight="semibold" size={13} tone="onAccent">
+                Delete
+              </Text>
             </PressableScale>
           </View>
         ) : (
@@ -281,7 +279,9 @@ export function Ledger() {
                   className="absolute -right-0.5 -top-0.5 h-4 w-4 items-center justify-center rounded-full"
                   style={{ backgroundColor: colors.primary }}
                 >
-                  <Text style={{ color: colors.onPrimary, fontFamily: fonts.bold, fontSize: 9 }}>{sheetCount}</Text>
+                  <Text weight="bold" size={9} tone="onPrimary">
+                    {sheetCount}
+                  </Text>
                 </View>
               ) : null}
             </RoundIconButton>
@@ -315,7 +315,7 @@ export function Ledger() {
               }}
               returnKeyType="search"
               className="ml-2.5 flex-1"
-              style={{ color: colors.foreground, fontFamily: fonts.regular, fontSize: 14 }}
+              style={{ color: colors.foreground, ...font('regular', 14) }}
             />
             {searchInput ? (
               <PressableScale
@@ -440,16 +440,14 @@ function RoundIconButton({
 }
 
 function SummaryFigure({ label, paise, color }: { label: string; paise: number; color: string }) {
-  const colors = useColors();
   return (
-    <View className="flex-1 items-center px-1">
-      <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>{label}</Text>
+    <StatFigure label={label} align="center">
       <AnimatedAmount
         paise={paise}
         options={{ whole: true }}
         align="center"
-        style={{ color, fontFamily: fonts.bold, fontSize: 16, marginTop: 4 }}
+        style={{ color, ...font('bold', 16), marginTop: 4 }}
       />
-    </View>
+    </StatFigure>
   );
 }

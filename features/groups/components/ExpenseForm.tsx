@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import {
   CalendarDays,
   Check,
@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
@@ -27,7 +27,7 @@ import { addDays, formatDayMonth } from '@/lib/dates';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '@/lib/money';
 import { useToday } from '@/lib/today';
-import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useColors, withAlpha } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { draftFromExpense, emptyDraft, evaluate, type Draft } from '../domain/draft';
 import { directGroupFor, removeExpense, saveSplitExpense, undoRemoveExpense } from '../data/actions';
@@ -42,7 +42,12 @@ import {
   useGroupsHub,
 } from '../data/hooks';
 import { formatPercent } from '../domain/split';
-import { FormSheet, RoundButton, SectionLabel } from './kit';
+import { FormSheet } from './kit';
+import { Text, font } from '@/components/ui/Text';
+import { IconButton } from '@/components/ui/IconButton';
+import { FieldLabel } from '@/components/ui/Section';
+import { Chip } from '@/components/ui/Chip';
+import { DatePickerSheet } from '@/components/ui/DatePickerSheet';
 
 export interface CategoryOption {
   id: number;
@@ -77,20 +82,32 @@ const METHOD_WORDS: Record<SplitMethod, string> = {
  * `categories` comes in as a prop: features may not import one another
  * (CLAUDE.md #9), so the route passes the ledger's categories down.
  */
-export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
+/**
+ * `editingId` edits an expense; otherwise `groupId` or `friendId` pre-picks
+ * who it is with (from the group or friend screen it was opened on).
+ */
+export function ExpenseForm({
+  categories,
+  editingId,
+  groupId: openedFromGroup,
+  friendId: openedFromFriend,
+}: {
+  categories: CategoryOption[];
+  editingId: number | null;
+  groupId: number | null;
+  friendId: number | null;
+}) {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const today = useToday();
-  const params = useLocalSearchParams<{ id?: string; groupId?: string; friendId?: string }>();
-  const editingId = params.id ? Number(params.id) : null;
   const { data: hub } = useGroupsHub();
 
   const [selfId] = useState(getSelfId);
   const [existing] = useState(() => (editingId != null ? getExpenseForEdit(editingId) : undefined));
   // Read once, when the form opens — never during a render (B28).
   const [initialGroup] = useState(() => {
-    const groupId = existing?.groupId ?? (params.groupId ? Number(params.groupId) : null);
+    const groupId = existing?.groupId ?? openedFromGroup;
     return groupId != null ? getGroupRow(groupId) : undefined;
   });
 
@@ -99,8 +116,8 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
       if (initialGroup.directPersonId != null) return { kind: 'friend', personId: initialGroup.directPersonId };
       return { kind: 'group', groupId: initialGroup.id };
     }
-    if (existing || params.groupId) return null;
-    if (params.friendId) return { kind: 'friend', personId: Number(params.friendId) };
+    if (existing || openedFromGroup != null) return null;
+    if (openedFromFriend != null) return { kind: 'friend', personId: openedFromFriend };
     return null;
     // Resolved once, from the params the form opened with.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -125,6 +142,7 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
 
   const [description, setDescription] = useState(existing?.description ?? '');
   const [date, setDate] = useState(existing?.date ?? today);
+  const [pickingDate, setPickingDate] = useState(false);
   const [categoryId, setCategoryId] = useState<number | null>(existing?.categoryId ?? null);
   const [note, setNote] = useState(existing?.note ?? '');
   const [draft, setDraft] = useState<Draft>(() =>
@@ -243,16 +261,16 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAvoidingView behavior="padding" className="flex-1" style={{ paddingTop: insets.top }}>
         <View className="flex-row items-center justify-between px-5 py-3">
-          <RoundButton label="Close" onPress={() => router.back()}>
+          <IconButton size="lg" label="Close" onPress={() => router.back()}>
             <X size={19} color={colors.foreground} />
-          </RoundButton>
-          <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 16 }}>
+          </IconButton>
+          <Text variant="heading" tone="default">
             {editingId != null ? 'Edit expense' : 'Add expense'}
           </Text>
           {editingId != null ? (
-            <RoundButton label="Delete expense" onPress={onDelete} tint={colors.expense}>
+            <IconButton size="lg" label="Delete expense" onPress={onDelete} tint={colors.expense}>
               <Trash2 size={17} color={colors.expense} />
-            </RoundButton>
+            </IconButton>
           ) : (
             <View style={{ width: 44 }} />
           )}
@@ -261,7 +279,9 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
         <ScrollView className="px-5" keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
           {/* With you and: [target] */}
           <Animated.View entering={rise()} className="flex-row flex-wrap items-center gap-2">
-            <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14 }}>With you and:</Text>
+            <Text weight="medium" size={14} tone="muted">
+              With you and:
+            </Text>
             <Pill label={targetLabel} onPress={() => setSheet('target')} disabled={editingId != null} />
           </Animated.View>
 
@@ -278,15 +298,16 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
               className="flex-1 border-b py-2.5"
               style={{
                 color: colors.foreground,
-                fontFamily: fonts.semibold,
-                fontSize: 18,
+                ...font('semibold', 18),
                 borderColor: colors.borderStrong,
               }}
             />
           </Animated.View>
           <Animated.View entering={rise(100)} className="mt-3 flex-row items-center gap-3">
             <View style={{ width: 52 }} className="items-center">
-              <Text style={{ color: colors.primary, fontFamily: fonts.bold, fontSize: 30 }}>₹</Text>
+              <Text variant="title" tone="primary">
+                ₹
+              </Text>
             </View>
             <TextInput
               value={draft.amount}
@@ -298,8 +319,7 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
               className="flex-1 border-b py-1"
               style={{
                 color: colors.foreground,
-                fontFamily: fonts.bold,
-                fontSize: 38,
+                ...font('bold', 38),
                 letterSpacing: -1,
                 borderColor: colors.borderStrong,
                 fontVariant: ['tabular-nums'],
@@ -311,9 +331,13 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
           {target != null ? (
             <Animated.View entering={rise(150)} className="mt-7 items-center">
               <View className="flex-row flex-wrap items-center justify-center gap-2">
-                <Text style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 15 }}>Paid by</Text>
+                <Text weight="medium" size={15} tone="default">
+                  Paid by
+                </Text>
                 <Pill label={paidLabel} onPress={() => setSheet('paid')} />
-                <Text style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 15 }}>and split</Text>
+                <Text weight="medium" size={15} tone="default">
+                  and split
+                </Text>
                 <Pill label={METHOD_WORDS[draft.method]} onPress={() => setSheet('split')} />
               </View>
               <SplitSummary result={result} draft={draft} members={members} selfId={selfId} />
@@ -322,33 +346,51 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
 
           {/* Date, category, note */}
           <Animated.View entering={rise(200)} className="mt-8">
-            <SectionLabel>Date</SectionLabel>
+            <FieldLabel>Date</FieldLabel>
             <View className="flex-row items-center gap-2">
               {[
                 { label: 'Today', value: today },
                 { label: 'Yesterday', value: addDays(today, -1) },
               ].map((d) => (
-                <Chip key={d.label} label={d.label} on={date === d.value} onPress={() => setDate(d.value)} />
+                <Chip key={d.label} label={d.label} selected={date === d.value} onPress={() => setDate(d.value)} />
               ))}
               <View className="flex-1 flex-row items-center justify-end gap-1">
-                <RoundButton label="Previous day" onPress={() => setDate(addDays(date, -1))}>
+                <IconButton size="lg" label="Previous day" onPress={() => setDate(addDays(date, -1))}>
                   <ChevronLeft size={17} color={colors.foreground} />
-                </RoundButton>
-                <View className="flex-row items-center gap-1.5 px-1">
+                </IconButton>
+                {/* R4-7: the same calendar as every other date in the app. */}
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel={`Date: ${formatDayMonth(date)} ${date.slice(0, 4)}. Opens a calendar`}
+                  onPress={() => setPickingDate(true)}
+                  scaleTo={0.96}
+                  className="flex-row items-center gap-1.5 px-1"
+                >
                   <CalendarDays size={14} color={colors.primary} />
-                  <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 13 }}>
+                  <Text weight="semibold" size={13} tone="default">
                     {formatDayMonth(date)}
                   </Text>
-                </View>
-                <RoundButton label="Next day" onPress={() => setDate(addDays(date, 1))}>
+                </PressableScale>
+                <IconButton size="lg" label="Next day" onPress={() => setDate(addDays(date, 1))}>
                   <ChevronRight size={17} color={colors.foreground} />
-                </RoundButton>
+                </IconButton>
               </View>
             </View>
+            <DatePickerSheet
+              visible={pickingDate}
+              value={date}
+              today={today}
+              title="When was it?"
+              onSelect={(d) => {
+                setDate(d);
+                setPickingDate(false);
+              }}
+              onClose={() => setPickingDate(false)}
+            />
           </Animated.View>
 
           <Animated.View entering={rise(250)} className="mt-6">
-            <SectionLabel>Category (for group totals)</SectionLabel>
+            <FieldLabel>Category (for group totals)</FieldLabel>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {categories.map((c) => {
                 const on = c.id === categoryId;
@@ -367,13 +409,7 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
                     }}
                   >
                     <CategoryIcon icon={c.icon} color={t} size={24} />
-                    <Text
-                      style={{
-                        color: on ? colors.foreground : colors.muted,
-                        fontFamily: on ? fonts.semibold : fonts.medium,
-                        fontSize: 13,
-                      }}
-                    >
+                    <Text weight={on ? 'semibold' : 'medium'} size={13} tone={on ? 'default' : 'muted'}>
                       {c.name}
                     </Text>
                   </PressableScale>
@@ -392,8 +428,7 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
             className="mt-6 rounded-2xl border px-4 py-3.5"
             style={{
               color: colors.foreground,
-              fontFamily: fonts.medium,
-              fontSize: 14,
+              ...font('medium', 14),
               backgroundColor: colors.card,
               borderColor: colors.border,
               minHeight: 52,
@@ -406,15 +441,7 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
           style={{ paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: colors.border }}
         >
           {!canSave && target != null && draft.amount.trim() !== '' && result.problem ? (
-            <Text
-              style={{
-                color: colors.expense,
-                fontFamily: fonts.medium,
-                fontSize: 12,
-                textAlign: 'center',
-                marginBottom: 8,
-              }}
-            >
+            <Text variant="small" tone="expense" style={{ textAlign: 'center', marginBottom: 8 }}>
               {result.problem}
             </Text>
           ) : null}
@@ -424,7 +451,7 @@ export function ExpenseForm({ categories }: { categories: CategoryOption[] }) {
             className="items-center rounded-full py-4"
             style={{ backgroundColor: colors.primary, opacity: canSave ? 1 : 0.45 }}
           >
-            <Text style={{ color: colors.onPrimary, fontFamily: fonts.bold, fontSize: 16 }}>
+            <Text weight="bold" size={16} tone="onPrimary">
               {editingId != null ? 'Save changes' : 'Save expense'}
             </Text>
           </PressableScale>
@@ -480,31 +507,10 @@ function Pill({ label, onPress, disabled = false }: { label: string; onPress: ()
       className="flex-row items-center gap-1 rounded-full border px-3.5 py-1.5"
       style={{ borderColor: colors.primaryBorder, backgroundColor: colors.primarySoft }}
     >
-      <Text
-        numberOfLines={1}
-        style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 15, maxWidth: 200 }}
-      >
+      <Text variant="bodyStrong" tone="primary" numberOfLines={1} style={{ maxWidth: 200 }}>
         {label}
       </Text>
       {!disabled ? <ChevronDown size={14} color={colors.primary} strokeWidth={2.6} /> : null}
-    </PressableScale>
-  );
-}
-
-function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
-  const colors = useColors();
-  return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityState={{ selected: on }}
-      onPress={onPress}
-      className="rounded-full border px-3.5 py-1.5"
-      style={{
-        borderColor: on ? colors.primaryBorder : colors.border,
-        backgroundColor: on ? colors.primarySoft : colors.card,
-      }}
-    >
-      <Text style={{ color: on ? colors.primary : colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>{label}</Text>
     </PressableScale>
   );
 }
@@ -521,11 +527,10 @@ function SplitSummary({
   members: Member[];
   selfId: number;
 }) {
-  const colors = useColors();
   if (result.amountPaise == null) return null;
   if (result.problem) {
     return (
-      <Text style={{ color: colors.warning, fontFamily: fonts.medium, fontSize: 12, marginTop: 8 }}>
+      <Text variant="small" tone="warning" style={{ marginTop: 8 }}>
         {result.problem}
       </Text>
     );
@@ -543,10 +548,7 @@ function SplitSummary({
       .join(' · ');
   }
   return (
-    <Text
-      numberOfLines={2}
-      style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 8, textAlign: 'center' }}
-    >
+    <Text variant="caption" tone="muted" numberOfLines={2} style={{ marginTop: 8, textAlign: 'center' }}>
       {text}
     </Text>
   );
@@ -576,9 +578,7 @@ function TargetSheet({
       {hub.groups.length === 0 && hub.friends.length === 0 ? (
         <View className="items-center py-6">
           <Users size={28} color={colors.muted} />
-          <Text
-            style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14, marginTop: 8, textAlign: 'center' }}
-          >
+          <Text weight="medium" size={14} tone="muted" style={{ marginTop: 8, textAlign: 'center' }}>
             Create a group or add a friend first.
           </Text>
           <PressableScale
@@ -587,11 +587,13 @@ function TargetSheet({
             className="mt-4 rounded-full px-5 py-3"
             style={{ backgroundColor: colors.primary }}
           >
-            <Text style={{ color: colors.onPrimary, fontFamily: fonts.semibold }}>Create a group</Text>
+            <Text weight="semibold" tone="onPrimary">
+              Create a group
+            </Text>
           </PressableScale>
         </View>
       ) : null}
-      {hub.groups.length > 0 ? <SectionLabel>Groups</SectionLabel> : null}
+      {hub.groups.length > 0 ? <FieldLabel>Groups</FieldLabel> : null}
       {hub.groups.map((g) => {
         const on = current?.kind === 'group' && current.groupId === g.id;
         return (
@@ -609,7 +611,7 @@ function TargetSheet({
       })}
       {hub.friends.length > 0 ? (
         <View className="mt-4">
-          <SectionLabel>Friends</SectionLabel>
+          <FieldLabel>Friends</FieldLabel>
         </View>
       ) : null}
       {hub.friends.map(({ person }) => {
@@ -654,11 +656,13 @@ function OptionRow({
     >
       {leading}
       <View className="flex-1">
-        <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
+        <Text variant="bodyStrong" tone="default" numberOfLines={1}>
           {title}
         </Text>
         {subtitle ? (
-          <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12 }}>{subtitle}</Text>
+          <Text variant="caption" tone="muted">
+            {subtitle}
+          </Text>
         ) : null}
       </View>
       {on ? <Check size={18} color={colors.primary} strokeWidth={2.6} /> : null}
@@ -685,7 +689,7 @@ function RemainingFooter({
       className="items-center rounded-2xl py-3"
       style={{ backgroundColor: ok ? withAlpha(colors.income, 0.12) : withAlpha(colors.expense, 0.1) }}
     >
-      <Text style={{ color: ok ? colors.income : colors.expense, fontFamily: fonts.semibold, fontSize: 14 }}>
+      <Text weight="semibold" size={14} tone={ok ? 'income' : 'expense'}>
         {ok ? `${whole} ✓` : remaining > 0 ? `${value} left of ${whole}` : `${value} over ${whole}`}
       </Text>
     </View>
@@ -791,7 +795,7 @@ function SplitSheet({
     ) : draft.method === 'percent' ? (
       <RemainingFooter remaining={result.splitRemaining} kind="bp" total={result.amountPaise} />
     ) : draft.method === 'equal' && result.perPersonPaise != null ? (
-      <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13, textAlign: 'center' }}>
+      <Text variant="body" tone="muted" style={{ textAlign: 'center' }}>
         {formatINR(result.perPersonPaise)}/person · {result.shares?.length ?? 0} people
       </Text>
     ) : undefined;
@@ -810,9 +814,7 @@ function SplitSheet({
         ]}
       />
       {result.amountPaise == null ? (
-        <Text
-          style={{ color: colors.warning, fontFamily: fonts.medium, fontSize: 13, marginTop: 14, textAlign: 'center' }}
-        >
+        <Text variant="body" tone="warning" style={{ marginTop: 14, textAlign: 'center' }}>
           Enter the amount first
         </Text>
       ) : null}
@@ -832,17 +834,10 @@ function SplitSheet({
                 style={{ backgroundColor: colors.card }}
               >
                 <Avatar name={m.name} isSelf={m.isSelf} size={36} />
-                <Text className="flex-1" style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 15 }}>
+                <Text weight="medium" size={15} tone="default" className="flex-1">
                   {m.isSelf ? 'You' : m.name}
                 </Text>
-                <Text
-                  style={{
-                    color: on ? colors.foreground : colors.subtle,
-                    fontFamily: fonts.semibold,
-                    fontSize: 14,
-                    fontVariant: ['tabular-nums'],
-                  }}
-                >
+                <Text variant="amount" weight="semibold" size={14} tone={on ? 'default' : 'subtle'}>
                   {on ? formatINR(shareOf(m.id)) : '—'}
                 </Text>
                 <View
@@ -894,30 +889,22 @@ function SplitSheet({
             >
               <Avatar name={m.name} isSelf={m.isSelf} size={36} />
               <View className="flex-1">
-                <Text style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 15 }}>
+                <Text weight="medium" size={15} tone="default">
                   {m.isSelf ? 'You' : m.name}
                 </Text>
-                <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12 }}>
+                <Text variant="caption" tone="muted">
                   {formatINR(shareOf(m.id))}
                 </Text>
               </View>
-              <RoundButton label={`Fewer shares for ${m.name}`} onPress={() => set(units - 1)}>
+              <IconButton size="lg" label={`Fewer shares for ${m.name}`} onPress={() => set(units - 1)}>
                 <Minus size={16} color={colors.foreground} />
-              </RoundButton>
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontFamily: fonts.bold,
-                  fontSize: 17,
-                  minWidth: 24,
-                  textAlign: 'center',
-                }}
-              >
+              </IconButton>
+              <Text weight="bold" size={17} tone="default" style={{ minWidth: 24, textAlign: 'center' }}>
                 {units}
               </Text>
-              <RoundButton label={`More shares for ${m.name}`} onPress={() => set(units + 1)}>
+              <IconButton size="lg" label={`More shares for ${m.name}`} onPress={() => set(units + 1)}>
                 <Plus size={16} color={colors.foreground} />
-              </RoundButton>
+              </IconButton>
             </View>
           );
         })}
@@ -948,10 +935,14 @@ function AmountRow({
     <View className="flex-row items-center gap-3 rounded-2xl px-3 py-2" style={{ backgroundColor: colors.card }}>
       <Avatar name={member.name} isSelf={member.isSelf} size={36} />
       <View className="flex-1">
-        <Text style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 15 }}>
+        <Text weight="medium" size={15} tone="default">
           {member.isSelf ? 'You' : member.name}
         </Text>
-        {hint ? <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12 }}>{hint}</Text> : null}
+        {hint ? (
+          <Text variant="caption" tone="muted">
+            {hint}
+          </Text>
+        ) : null}
       </View>
       <View
         className="flex-row items-center rounded-xl border px-3"
@@ -962,7 +953,9 @@ function AmountRow({
         }}
       >
         {prefix ? (
-          <Text style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 15 }}>{prefix}</Text>
+          <Text variant="bodyStrong" tone="muted">
+            {prefix}
+          </Text>
         ) : null}
         <TextInput
           value={value}
@@ -975,15 +968,16 @@ function AmountRow({
           style={{
             flex: 1,
             color: colors.foreground,
-            fontFamily: fonts.semibold,
-            fontSize: 16,
+            ...font('semibold', 16),
             paddingVertical: 8,
             textAlign: 'right',
             fontVariant: ['tabular-nums'],
           }}
         />
         {suffix ? (
-          <Text style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 15 }}>{suffix}</Text>
+          <Text variant="bodyStrong" tone="muted">
+            {suffix}
+          </Text>
         ) : null}
       </View>
     </View>

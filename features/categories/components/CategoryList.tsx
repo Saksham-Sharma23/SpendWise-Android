@@ -1,7 +1,7 @@
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Plus, Tags } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,10 +10,11 @@ import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatCount } from '@/lib/money';
-import { fonts, useColors } from '@/lib/theme';
+import { useColors } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { useCategoriesWithUsageResult } from '../data/hooks';
 import type { CategoryWithUsage } from '../data/sql';
+import { Text } from '@/components/ui/Text';
 
 /**
  * Category management. The server used to own categories; here the user
@@ -86,21 +87,18 @@ function Row({ item, index, onPress }: { item: CategoryWithUsage; index: number;
         <CategoryIcon icon={item.icon} color={item.color} />
         <View className="flex-1">
           <View className="flex-row items-center gap-2">
-            <Text
-              numberOfLines={1}
-              style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15, flexShrink: 1 }}
-            >
+            <Text variant="bodyStrong" tone="default" numberOfLines={1} style={{ flexShrink: 1 }}>
               {item.name}
             </Text>
             {item.isSystem ? (
               <View className="rounded-full px-2 py-0.5" style={{ backgroundColor: colors.elevated }}>
-                <Text style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 9, letterSpacing: 0.5 }}>
+                <Text weight="semibold" size={9} tone="muted" style={{ letterSpacing: 0.5 }}>
                   BUILT-IN
                 </Text>
               </View>
             ) : null}
           </View>
-          <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
+          <Text variant="caption" tone="muted" style={{ marginTop: 2 }}>
             {item.transactionCount === 0
               ? 'Not used yet'
               : `${formatCount(item.transactionCount)} ${item.transactionCount === 1 ? 'transaction' : 'transactions'}`}

@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { CalendarDays, Crown, PiggyBank, Receipt, type LucideIcon } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { AnimatedAmount } from '@/components/ui/AnimatedAmount';
 import { Card } from '@/components/ui/Card';
@@ -11,8 +11,10 @@ import { categoryColor } from '@/lib/categoryColor';
 import type { DbQueryResult } from '@/lib/db/useDbQuery';
 import { formatDayMonth } from '@/lib/dates';
 import { formatCount, formatINR } from '@/lib/money';
-import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useColors, withAlpha } from '@/lib/theme';
 import type { PeriodStats } from '../data/hooks';
+import { Text, font } from '@/components/ui/Text';
+import { StatFigure } from '@/components/ui/StatFigure';
 
 /**
  * The range's headline figures: money in, money out, what is left. The hero
@@ -25,14 +27,15 @@ export function PeriodSummary({ months, stats }: { months: number; stats: DbQuer
 
   return (
     <Card variant="accent" className="p-5">
-      <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>Net · last {months} months</Text>
+      <Text variant="body" tone="muted">
+        Net · last {months} months
+      </Text>
       <AnimatedAmount
         paise={s.netPaise}
         options={{ whole: true }}
         style={{
           color: s.netPaise < 0 ? colors.expense : colors.primary,
-          fontFamily: fonts.bold,
-          fontSize: 34,
+          ...font('bold', 34),
           letterSpacing: -1.1,
           marginTop: 4,
         }}
@@ -41,7 +44,7 @@ export function PeriodSummary({ months, stats }: { months: number; stats: DbQuer
         <SummaryFigure label="Income" color={colors.income} paise={s.incomePaise} />
         <SummaryFigure label="Spent" color={colors.expense} paise={s.expensePaise} />
       </View>
-      <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11, marginTop: 12 }}>
+      <Text weight="regular" size={11} tone="subtle" style={{ marginTop: 12 }}>
         {formatCount(s.count)} {s.count === 1 ? 'transaction' : 'transactions'}
       </Text>
     </Card>
@@ -51,17 +54,13 @@ export function PeriodSummary({ months, stats }: { months: number; stats: DbQuer
 function SummaryFigure({ label, color, paise }: { label: string; color: string; paise: number }) {
   const colors = useColors();
   return (
-    <View className="flex-1">
-      <View className="flex-row items-center gap-1.5">
-        <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color }} />
-        <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 12 }}>{label}</Text>
-      </View>
+    <StatFigure label={label} dot={color} labelSize={12} inset={false}>
       <AnimatedAmount
         paise={paise}
         options={{ whole: true }}
-        style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 17, marginTop: 3 }}
+        style={{ color: colors.foreground, ...font('semibold', 17), marginTop: 3 }}
       />
-    </View>
+    </StatFigure>
   );
 }
 
@@ -163,11 +162,12 @@ function Stat({
   leading?: React.ReactNode;
   onPress?: () => void;
 }) {
-  const colors = useColors();
   const body = (
     <Card className="flex-1 p-4" glow={tone}>
       <View className="flex-row items-center justify-between">
-        <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 12 }}>{label}</Text>
+        <Text variant="small" tone="muted">
+          {label}
+        </Text>
         {leading ?? (
           <View
             className="h-8 w-8 items-center justify-center rounded-full"
@@ -181,22 +181,19 @@ function Stat({
           — so they cross-fade rather than count up like the summary above. */}
       <Swap swapKey={value}>
         <Text
+          variant="amount"
+          weight="bold"
+          size={20}
+          tone="default"
           numberOfLines={1}
           adjustsFontSizeToFit
-          style={{
-            color: colors.foreground,
-            fontFamily: fonts.bold,
-            fontSize: 20,
-            letterSpacing: -0.4,
-            marginTop: 10,
-            fontVariant: ['tabular-nums'],
-          }}
+          style={{ letterSpacing: -0.4, marginTop: 10 }}
         >
           {value}
         </Text>
       </Swap>
       <Swap swapKey={detail}>
-        <Text numberOfLines={2} style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11, marginTop: 4 }}>
+        <Text weight="regular" size={11} tone="subtle" numberOfLines={2} style={{ marginTop: 4 }}>
           {detail}
         </Text>
       </Swap>

@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ArrowDownWideNarrow, CalendarClock, Plus, Repeat } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { toast } from 'sonner-native';
 
@@ -14,7 +14,7 @@ import { formatDayMonth } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
 import { renewalCountdown } from '@/lib/renewals';
 import { useToday } from '@/lib/today';
-import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useColors, withAlpha } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { restoreSubscription, setSubscriptionStatus, softDeleteSubscription } from '../data/actions';
 import { useSubscriptions } from '../data/hooks';
@@ -26,6 +26,7 @@ import {
   type SubscriptionSort,
 } from '../domain/renewal';
 import { SubscriptionCard, type CardActions } from './SubscriptionCard';
+import { Text } from '@/components/ui/Text';
 
 /**
  * The Tracker: recurring costs and what renews next.
@@ -123,20 +124,13 @@ export function Tracker() {
         <View className="gap-3 px-5">
           <Animated.View entering={rise()}>
             <Card className="p-5" variant="accent">
-              <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 12 }}>Every month</Text>
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontFamily: fonts.bold,
-                  fontSize: 32,
-                  letterSpacing: -1,
-                  marginTop: 2,
-                  fontVariant: ['tabular-nums'],
-                }}
-              >
+              <Text variant="small" tone="muted">
+                Every month
+              </Text>
+              <Text variant="amount" weight="bold" size={32} tone="default" style={{ letterSpacing: -1, marginTop: 2 }}>
                 {formatINR(summary.monthlyTotalPaise, { whole: true })}
               </Text>
-              <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
+              <Text variant="caption" tone="muted" style={{ marginTop: 2 }}>
                 {formatINR(summary.yearlyTotalPaise, { whole: true })} a year · {summary.activeCount} active
               </Text>
 
@@ -146,10 +140,10 @@ export function Tracker() {
                   style={{ backgroundColor: withAlpha(colors.foreground, 0.05) }}
                 >
                   <CalendarClock size={17} color={summary.next.urgency === 'soon' ? colors.warning : colors.primary} />
-                  <Text className="flex-1" style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 13 }}>
+                  <Text variant="body" tone="default" className="flex-1">
                     {summary.next.name} renews {renewalCountdown(summary.next.daysUntilRenewal).toLowerCase()}
                   </Text>
-                  <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12 }}>
+                  <Text variant="caption" tone="muted">
                     {formatDayMonth(summary.next.nextRenewal)}
                   </Text>
                 </View>
@@ -185,7 +179,7 @@ export function Tracker() {
                       backgroundColor: on ? colors.primarySoft : 'transparent',
                     }}
                   >
-                    <Text style={{ color: on ? colors.primary : colors.muted, fontFamily: fonts.medium, fontSize: 12 }}>
+                    <Text variant="small" tone={on ? 'primary' : 'muted'}>
                       {s === 'renewal' ? 'Renewal' : s === 'amount' ? 'Cost' : 'Name'}
                     </Text>
                   </PressableScale>
@@ -195,7 +189,7 @@ export function Tracker() {
           </Animated.View>
 
           {visible.length === 0 ? (
-            <Text className="py-8 text-center" style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13 }}>
+            <Text weight="regular" size={13} tone="muted" className="py-8 text-center">
               Nothing {status === 'all' ? 'here' : status} right now.
             </Text>
           ) : (

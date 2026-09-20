@@ -1,6 +1,6 @@
 import { CirclePause, CirclePlay, EllipsisVertical, Pencil, Trash2, XCircle } from 'lucide-react-native';
 import { memo, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
@@ -8,9 +8,10 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { formatDayMonth } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
 import { renewalCountdown } from '@/lib/renewals';
-import { colors, fonts, useColors, withAlpha } from '@/lib/theme';
+import { colors, useColors, withAlpha } from '@/lib/theme';
 import { appear, rise } from '@/lib/motion';
 import type { EnrichedSubscription } from '../domain/renewal';
+import { Text } from '@/components/ui/Text';
 
 export interface CardActions {
   onEdit: (sub: EnrichedSubscription) => void;
@@ -63,10 +64,10 @@ export const SubscriptionCard = memo(function SubscriptionCard({
           <CategoryIcon icon={sub.icon} color={sub.color} size={44} />
 
           <View className="flex-1">
-            <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
+            <Text variant="bodyStrong" tone="default" numberOfLines={1}>
               {sub.name}
             </Text>
-            <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
+            <Text variant="caption" tone="muted" style={{ marginTop: 2 }}>
               {sub.status === 'active' ? `Renews ${formatDayMonth(sub.nextRenewal)}` : sub.billingCycle}
               {sub.status === 'active' && sub.billingCycle !== 'monthly'
                 ? ` · ${formatINR(sub.monthlyCostPaise, { whole: true })}/mo`
@@ -75,16 +76,14 @@ export const SubscriptionCard = memo(function SubscriptionCard({
           </View>
 
           <View className="items-end gap-1">
-            <Text
-              style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 15, fontVariant: ['tabular-nums'] }}
-            >
+            <Text variant="amount" weight="bold" size={15} tone="default">
               {formatINR(sub.amountPaise, { whole: true })}
             </Text>
             <View
               className="rounded-full px-2 py-0.5"
               style={{ backgroundColor: withAlpha(soon ? colors.warning : colors.muted, 0.14) }}
             >
-              <Text style={{ color: soon ? colors.warning : colors.muted, fontFamily: fonts.semibold, fontSize: 10 }}>
+              <Text weight="semibold" size={10} tone={soon ? 'warning' : 'muted'}>
                 {countdown}
               </Text>
             </View>
@@ -141,11 +140,7 @@ function ActionSheet({
           >
             <View className="mb-2 items-center py-2">
               <View className="h-1 w-10 rounded-full" style={{ backgroundColor: colors.borderStrong }} />
-              <Text
-                numberOfLines={1}
-                className="mt-3"
-                style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}
-              >
+              <Text variant="bodyStrong" tone="default" numberOfLines={1} className="mt-3">
                 {sub.name}
               </Text>
             </View>
@@ -211,9 +206,13 @@ function Row({
       >
         {icon}
         <View className="flex-1">
-          <Text style={{ color: tint ?? colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>{label}</Text>
+          <Text variant="bodyStrong" style={{ color: tint ?? colors.foreground }}>
+            {label}
+          </Text>
           {hint ? (
-            <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>{hint}</Text>
+            <Text variant="caption" tone="muted" style={{ marginTop: 1 }}>
+              {hint}
+            </Text>
           ) : null}
         </View>
       </PressableScale>

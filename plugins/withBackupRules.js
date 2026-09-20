@@ -14,8 +14,15 @@ const { withAndroidManifest, withDangerousMod } = require('expo/config-plugins')
  *                                   produce a torn database
  *   file  SQLite/spendwise.db.converting        in-progress legacy conversion
  *   file  snapshots/                pre-migration copies (large, device-local safety net)
+ *   file  backups/                  the user's own exports, and the pre-restore snapshot
+ *                                   (Phase 7). Whole copies of the database, so including
+ *                                   them would multiply every auto-backup by however many
+ *                                   exports are kept — straight into the 25 MB cap below.
+ *                                   The point of an export is that it leaves the device
+ *                                   anyway, through the share sheet
  *   file  legacy/                   encrypted originals kept for one launch after conversion
  *   file  unreadable/               databases moved aside by "Start fresh"
+ *   file  SQLite/restore-staging.db a half-built restore; never a database to back up
  *   file  DevLauncherApp-….js       the dev-launcher's JS bundle: ~15 MB, dev builds only,
  *                                   and re-downloaded from Metro on demand. It does not
  *                                   exist in a release build, but on a dev build it pushed
@@ -41,8 +48,12 @@ const EXCLUDES = [
   ['file', 'SQLite/spendwise.db-shm'],
   ['file', 'SQLite/spendwise.db.converting'],
   ['file', 'snapshots/'],
+  ['file', 'backups/'],
   ['file', 'legacy/'],
   ['file', 'unreadable/'],
+  ['file', 'SQLite/restore-staging.db'],
+  ['file', 'SQLite/restore-staging.db-wal'],
+  ['file', 'SQLite/restore-staging.db-shm'],
   // Dev-build only (expo-dev-launcher); see the quota note above.
   ['file', 'DevLauncherApp-BridgelessReactNativeDevBundle.js'],
   ['file', 'DevLauncherApp-ReactNativeDevBundle.js'],

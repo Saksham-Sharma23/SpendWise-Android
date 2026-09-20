@@ -13,13 +13,31 @@ import { DATABASE_NAME } from './connection';
  *                               "Start fresh", and the copies
  *                               the boot-failure screen shares
  *                               (removed at the next good boot)
+ *   files/backups/              exports the user made           — excluded from auto-backup
+ *                               (Phase 7), kept so "restore"
+ *                               has something to offer even
+ *                               when the share sheet was
+ *                               dismissed
  *
  * The exclusions live in plugins/withBackupRules.js. Keep the two in step.
+ *
+ * `backups/` is excluded for the same reason as `snapshots/`: it holds whole
+ * copies of the database, and including them would multiply every auto-backup
+ * by the number of exports kept — straight into the silent 25 MB cap.
  */
 
 export const SNAPSHOTS_DIR = 'snapshots';
 export const LEGACY_DIR = 'legacy';
 export const UNREADABLE_DIR = 'unreadable';
+export const BACKUPS_DIR = 'backups';
+
+/**
+ * The half-built database a restore assembles before it is allowed near the
+ * live one. It lives in the SQLite directory because expo-sqlite opens
+ * databases by name from there, and a restore needs a real second connection
+ * to migrate and fill it.
+ */
+export const STAGING_DB_NAME = 'restore-staging.db';
 
 export function sqliteDir(): Directory {
   return new Directory(Paths.document, 'SQLite');

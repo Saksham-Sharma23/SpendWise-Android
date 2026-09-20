@@ -1,24 +1,24 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { ArrowRight, Sparkles } from 'lucide-react-native';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { Avatar } from '@/components/ui/Avatar';
 import { PressableScale } from '@/components/ui/PressableScale';
-import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useColors, withAlpha } from '@/lib/theme';
 import { useGroup } from '../data/hooks';
 import { memberStatus, simplifiedNote, transferLine } from '../domain/wording';
-import { SectionLabel, toneColor } from './kit';
+import { toneColor } from './kit';
+import { Text } from '@/components/ui/Text';
+import { FieldLabel } from '@/components/ui/Section';
 
 /**
  * Who owes whom in a group — the heart of it. Each row is one payment that
  * settles balances, with a Settle button. When simplification saved
  * payments, it says how many, so the feature explains itself.
  */
-export function BalancesSheet() {
+export function BalancesSheet({ groupId }: { groupId: number }) {
   const colors = useColors();
   const router = useRouter();
-  const params = useLocalSearchParams<{ groupId: string }>();
-  const groupId = Number(params.groupId);
   const { data, status } = useGroup(groupId);
 
   if (status === 'pending' || !data.group || !data.balances)
@@ -31,8 +31,10 @@ export function BalancesSheet() {
 
   return (
     <ScrollView style={{ backgroundColor: colors.card }} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-      <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 20 }}>Balances</Text>
-      <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 13, marginTop: 2 }}>
+      <Text weight="bold" size={20} tone="default">
+        Balances
+      </Text>
+      <Text weight="regular" size={13} tone="muted" style={{ marginTop: 2 }}>
         {data.group.name}
       </Text>
 
@@ -42,17 +44,17 @@ export function BalancesSheet() {
           style={{ backgroundColor: colors.primarySoft }}
         >
           <Sparkles size={16} color={colors.primary} />
-          <Text className="flex-1" style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 13 }}>
+          <Text variant="body" tone="default" className="flex-1">
             Simplified: {note}
           </Text>
         </View>
       ) : null}
 
       <View className="mt-5">
-        <SectionLabel>Who owes whom</SectionLabel>
+        <FieldLabel>Who owes whom</FieldLabel>
         {balances.edges.length === 0 ? (
           <View className="items-center rounded-2xl py-8" style={{ backgroundColor: colors.elevated }}>
-            <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14 }}>
+            <Text weight="medium" size={14} tone="muted">
               Everyone is settled up 🎉
             </Text>
           </View>
@@ -73,12 +75,10 @@ export function BalancesSheet() {
                   </View>
                   {/* A payment between two other people is neutral information, not greyed out. */}
                   <Text
+                    weight="medium"
+                    size={14}
                     className="flex-1"
-                    style={{
-                      color: line.tone === 'none' ? colors.foreground : toneColor(line.tone, colors),
-                      fontFamily: fonts.medium,
-                      fontSize: 14,
-                    }}
+                    style={{ color: line.tone === 'none' ? colors.foreground : toneColor(line.tone, colors) }}
                   >
                     {line.text}
                   </Text>
@@ -100,7 +100,9 @@ export function BalancesSheet() {
                     className="rounded-full px-3.5 py-2"
                     style={{ backgroundColor: withAlpha(colors.primary, 0.14) }}
                   >
-                    <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 12 }}>Settle</Text>
+                    <Text weight="semibold" size={12} tone="primary">
+                      Settle
+                    </Text>
                   </PressableScale>
                 </View>
               );
@@ -110,7 +112,7 @@ export function BalancesSheet() {
       </View>
 
       <View className="mt-6">
-        <SectionLabel>Everyone's balance</SectionLabel>
+        <FieldLabel>Everyone's balance</FieldLabel>
         <View className="gap-1">
           {members.map((m) => {
             const net = balances.nets.get(m.id) ?? 0;
@@ -119,10 +121,10 @@ export function BalancesSheet() {
             return (
               <View key={m.id} className="flex-row items-center gap-3 py-2">
                 <Avatar name={m.name} isSelf={m.isSelf} size={34} />
-                <Text className="flex-1" style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 14 }}>
+                <Text weight="medium" size={14} tone="default" className="flex-1">
                   {who}
                 </Text>
-                <Text style={{ color: toneColor(s.tone, colors), fontFamily: fonts.semibold, fontSize: 13 }}>
+                <Text weight="semibold" size={13} style={{ color: toneColor(s.tone, colors) }}>
                   {s.text}
                 </Text>
               </View>

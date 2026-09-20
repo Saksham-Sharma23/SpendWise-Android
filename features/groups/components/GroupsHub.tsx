@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ChevronRight, Plus, Receipt, UserPlus, Users } from 'lucide-react-native';
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { Screen } from '@/components/layout/Screen';
@@ -14,11 +14,14 @@ import { Segmented } from '@/components/ui/Segmented';
 import { Swap } from '@/components/ui/Swap';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
 import { formatINR } from '@/lib/money';
-import { fonts, useColors } from '@/lib/theme';
+import { useColors } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { useGroupsHub, type Hub, type HubGroup } from '../data/hooks';
 import { friendShort, friendStatus, yourStatus } from '../domain/wording';
-import { FloatingAction, RoundButton, toneColor } from './kit';
+import { FloatingAction, toneColor } from './kit';
+import { Text } from '@/components/ui/Text';
+import { IconButton } from '@/components/ui/IconButton';
+import { StatFigure } from '@/components/ui/StatFigure';
 
 type Tab = 'groups' | 'friends';
 
@@ -44,9 +47,10 @@ export function GroupsHub() {
         title="Groups"
         subtitle="Split expenses with friends"
         right={
-          <RoundButton
+          <IconButton
+            size="lg"
             label={tab === 'groups' ? 'New group' : 'Add a friend'}
-            filled
+            look="filled"
             onPress={() => router.push(tab === 'groups' ? '/(modals)/group' : '/(modals)/friend')}
           >
             {tab === 'groups' ? (
@@ -54,7 +58,7 @@ export function GroupsHub() {
             ) : (
               <UserPlus size={19} color={colors.onPrimary} strokeWidth={2.4} />
             )}
-          </RoundButton>
+          </IconButton>
         }
       >
         {status === 'pending' ? null : nothingYet ? (
@@ -71,15 +75,13 @@ export function GroupsHub() {
           <View className="gap-4 px-5" style={{ paddingBottom: 90 }}>
             <Animated.View entering={rise()}>
               <Card variant="accent" className="p-5">
-                <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>Overall</Text>
+                <Text variant="body" tone="muted">
+                  Overall
+                </Text>
                 <Text
-                  style={{
-                    color: toneColor(overall.tone, colors),
-                    fontFamily: fonts.bold,
-                    fontSize: 26,
-                    letterSpacing: -0.6,
-                    marginTop: 4,
-                  }}
+                  weight="bold"
+                  size={26}
+                  style={{ color: toneColor(overall.tone, colors), letterSpacing: -0.6, marginTop: 4 }}
                 >
                   {overall.text.charAt(0).toUpperCase() + overall.text.slice(1)}
                 </Text>
@@ -118,18 +120,19 @@ export function GroupsHub() {
 }
 
 function Figure({ label, paise, color }: { label: string; paise: number; color: string }) {
-  const colors = useColors();
   return (
-    <View className="flex-1 rounded-2xl px-3 py-2.5" style={{ backgroundColor: colors.elevated }}>
-      <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>{label}</Text>
+    <StatFigure label={label} tile>
       <Text
+        variant="amount"
+        weight="bold"
+        size={17}
         numberOfLines={1}
         adjustsFontSizeToFit
-        style={{ color, fontFamily: fonts.bold, fontSize: 17, marginTop: 2, fontVariant: ['tabular-nums'] }}
+        style={{ color, marginTop: 2 }}
       >
         {formatINR(paise, { whole: true })}
       </Text>
-    </View>
+    </StatFigure>
   );
 }
 
@@ -144,7 +147,7 @@ function GroupList({ hub }: { hub: Hub }) {
         className="items-center rounded-3xl border border-dashed py-8"
         style={{ borderColor: colors.borderStrong }}
       >
-        <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14 }}>
+        <Text weight="medium" size={14} tone="muted">
           No groups yet — tap to create one
         </Text>
       </PressableScale>
@@ -182,18 +185,14 @@ function GroupRow({ group, hub, first }: { group: HubGroup; hub: Hub; first: boo
     >
       <CategoryIcon icon={icon} color={deterministicColor(group.name)} size={46} />
       <View className="flex-1">
-        <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
+        <Text variant="bodyStrong" tone="default" numberOfLines={1}>
           {group.name}
         </Text>
-        <Text style={{ color: toneColor(status.tone, colors), fontFamily: fonts.medium, fontSize: 13, marginTop: 1 }}>
+        <Text variant="body" style={{ color: toneColor(status.tone, colors), marginTop: 1 }}>
           {status.text}
         </Text>
         {lines.map((l, i) => (
-          <Text
-            key={i}
-            numberOfLines={1}
-            style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}
-          >
+          <Text variant="caption" tone="subtle" key={i} numberOfLines={1} style={{ marginTop: 1 }}>
             {l.text}
           </Text>
         ))}
@@ -214,7 +213,7 @@ function FriendList({ hub }: { hub: Hub }) {
         className="items-center rounded-3xl border border-dashed py-8"
         style={{ borderColor: colors.borderStrong }}
       >
-        <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14 }}>
+        <Text weight="medium" size={14} tone="muted">
           No friends yet — tap to add one
         </Text>
       </PressableScale>
@@ -237,16 +236,14 @@ function FriendList({ hub }: { hub: Hub }) {
           >
             <Avatar name={person.name} size={44} />
             <View className="flex-1">
-              <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>
+              <Text variant="bodyStrong" tone="default" numberOfLines={1}>
                 {person.name}
               </Text>
-              <Text
-                style={{ color: toneColor(status.tone, colors), fontFamily: fonts.medium, fontSize: 13, marginTop: 1 }}
-              >
+              <Text variant="body" style={{ color: toneColor(status.tone, colors), marginTop: 1 }}>
                 {status.text}
               </Text>
               {groupCount > 1 ? (
-                <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
+                <Text variant="caption" tone="subtle" style={{ marginTop: 1 }}>
                   across {groupCount} groups
                 </Text>
               ) : null}

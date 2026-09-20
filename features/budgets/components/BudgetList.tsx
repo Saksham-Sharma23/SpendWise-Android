@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { PiggyBank, Plus, TriangleAlert } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { toast } from 'sonner-native';
 
@@ -14,11 +14,13 @@ import { colorForName } from '@/lib/categoryColor';
 import { addDays, formatDayMonth } from '@/lib/dates';
 import { formatINR } from '@/lib/money';
 import { useToday } from '@/lib/today';
-import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useColors, withAlpha } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { budgetTotals, daysLeftLabel, type BudgetProgress } from '../domain/progress';
 import { restoreBudget, softDeleteBudget } from '../data/actions';
 import { useBudgetsWithSpend } from '../data/hooks';
+import { Text } from '@/components/ui/Text';
+import { StatFigure } from '@/components/ui/StatFigure';
 
 /**
  * Budgets: one card per category limit, with this cycle's spend.
@@ -81,7 +83,7 @@ export function BudgetList() {
                 style={{ backgroundColor: colors.expenseSoft, borderColor: withAlpha(colors.expense, 0.3) }}
               >
                 <TriangleAlert size={19} color={colors.expense} />
-                <Text className="flex-1" style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 13 }}>
+                <Text variant="body" tone="default" className="flex-1">
                   {overBudget.length === 1
                     ? `${overBudget[0]!.categoryName} is over budget by ${formatINR(Math.abs(overBudget[0]!.remainingPaise), { whole: true })}`
                     : `${overBudget.length} budgets are over their limit`}
@@ -126,21 +128,17 @@ export function BudgetList() {
 function Figure({ label, value, tint, last }: { label: string; value: string; tint?: string; last?: boolean }) {
   const colors = useColors();
   return (
-    <View className="flex-1 px-1" style={last ? undefined : { borderRightWidth: 1, borderRightColor: colors.border }}>
-      <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>{label}</Text>
+    <StatFigure label={label} divider={!last}>
       <Text
+        variant="amount"
+        weight="bold"
+        size={16}
         numberOfLines={1}
-        style={{
-          color: tint ?? colors.foreground,
-          fontFamily: fonts.bold,
-          fontSize: 16,
-          marginTop: 3,
-          fontVariant: ['tabular-nums'],
-        }}
+        style={{ color: tint ?? colors.foreground, marginTop: 3 }}
       >
         {value}
       </Text>
-    </View>
+    </StatFigure>
   );
 }
 
@@ -153,7 +151,6 @@ function BudgetCard({
   onPress: () => void;
   onDelete: () => void;
 }) {
-  const colors = useColors();
   const tone = toneFor(budget.state);
   const color = budget.categoryColor ?? colorForName(budget.categoryName);
   const percent = Math.round(budget.ratio * 100);
@@ -174,39 +171,29 @@ function BudgetCard({
 
           <View className="flex-1">
             <View className="flex-row items-center gap-2">
-              <Text
-                numberOfLines={1}
-                className="flex-1"
-                style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}
-              >
+              <Text variant="bodyStrong" tone="default" numberOfLines={1} className="flex-1">
                 {budget.categoryName}
               </Text>
               <View className="rounded-full px-2 py-0.5" style={{ backgroundColor: softToneFor(budget.state) }}>
-                <Text style={{ color: tone, fontFamily: fonts.semibold, fontSize: 11, fontVariant: ['tabular-nums'] }}>
+                <Text variant="amount" weight="semibold" size={11} style={{ color: tone }}>
                   {budget.state === 'paused' ? 'Paused' : `${percent}%`}
                 </Text>
               </View>
             </View>
 
-            <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 3 }}>
-              <Text style={{ color: colors.foreground, fontFamily: fonts.semibold }}>
+            <Text variant="caption" tone="muted" style={{ marginTop: 3 }}>
+              <Text weight="semibold" tone="default">
                 {formatINR(budget.spentPaise, { whole: true })}
               </Text>
               {` of ${formatINR(budget.limitPaise, { whole: true })}`}
             </Text>
 
             <View className="mt-2 flex-row items-center justify-between">
-              <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11 }}>
+              <Text weight="regular" size={11} tone="subtle">
                 {/* cycleEnd is the cycle's last day; the reset is the day after (B23). */}
                 {daysLeftLabel(budget.daysLeft)} · resets {formatDayMonth(addDays(budget.cycleEnd, 1))}
               </Text>
-              <Text
-                style={{
-                  color: budget.remainingPaise < 0 ? colors.expense : colors.muted,
-                  fontFamily: fonts.medium,
-                  fontSize: 11,
-                }}
-              >
+              <Text weight="medium" size={11} tone={budget.remainingPaise < 0 ? 'expense' : 'muted'}>
                 {budget.remainingPaise < 0
                   ? `${formatINR(Math.abs(budget.remainingPaise), { whole: true })} over`
                   : `${formatINR(budget.perDayLeftPaise, { whole: true })}/day left`}

@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ChevronRight, Handshake, Pencil, Receipt, UserX } from 'lucide-react-native';
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { Screen } from '@/components/layout/Screen';
@@ -11,12 +11,15 @@ import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { deterministicColor, deterministicIcon } from '@/lib/identity';
-import { fonts, useColors } from '@/lib/theme';
+import { useColors } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { useGroupActivity, useGroupsHub } from '../data/hooks';
 import { friendShort, friendStatus } from '../domain/wording';
 import { ActivityList } from './ActivityList';
-import { ActionPill, RoundButton, SectionLabel, toneColor } from './kit';
+import { ActionPill, toneColor } from './kit';
+import { Text } from '@/components/ui/Text';
+import { IconButton } from '@/components/ui/IconButton';
+import { FieldLabel } from '@/components/ui/Section';
 
 const PAGE = 60;
 
@@ -70,12 +73,13 @@ export function FriendDetail({ personId }: { personId: number }) {
         shared.length > 0 ? `In ${shared.length} ${shared.length === 1 ? 'group' : 'groups'} with you` : 'Friend'
       }
       right={
-        <RoundButton
+        <IconButton
+          size="lg"
           label="Edit friend"
           onPress={() => router.push({ pathname: '/(modals)/friend', params: { id: String(personId) } })}
         >
           <Pencil size={17} color={colors.foreground} />
-        </RoundButton>
+        </IconButton>
       }
     >
       <View className="gap-4 px-5" style={{ paddingBottom: 32 }}>
@@ -83,19 +87,12 @@ export function FriendDetail({ personId }: { personId: number }) {
           <Card variant="accent" className="flex-row items-center gap-4 p-5">
             <Avatar name={person.name} size={56} />
             <View className="flex-1">
-              <Text
-                style={{
-                  color: toneColor(headline.tone, colors),
-                  fontFamily: fonts.bold,
-                  fontSize: 20,
-                  letterSpacing: -0.4,
-                }}
-              >
+              <Text weight="bold" size={20} style={{ color: toneColor(headline.tone, colors), letterSpacing: -0.4 }}>
                 {headline.tone === 'none'
                   ? 'All settled up'
                   : headline.text.charAt(0).toUpperCase() + headline.text.slice(1)}
               </Text>
-              <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
+              <Text variant="caption" tone="muted" style={{ marginTop: 2 }}>
                 Across everything you share
               </Text>
             </View>
@@ -114,7 +111,7 @@ export function FriendDetail({ personId }: { personId: number }) {
 
         {shared.length > 0 ? (
           <Animated.View entering={rise(120)}>
-            <SectionLabel>Groups</SectionLabel>
+            <FieldLabel>Groups</FieldLabel>
             <Card>
               {shared.map((g, i) => {
                 const line = friendShort(perGroup.get(g.id) ?? 0);
@@ -133,20 +130,10 @@ export function FriendDetail({ personId }: { personId: number }) {
                       size={38}
                     />
                     <View className="flex-1">
-                      <Text
-                        numberOfLines={1}
-                        style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}
-                      >
+                      <Text weight="semibold" size={14} tone="default" numberOfLines={1}>
                         {g.name}
                       </Text>
-                      <Text
-                        style={{
-                          color: toneColor(line.tone, colors),
-                          fontFamily: fonts.medium,
-                          fontSize: 12,
-                          marginTop: 1,
-                        }}
-                      >
+                      <Text variant="small" style={{ color: toneColor(line.tone, colors), marginTop: 1 }}>
                         {line.text}
                       </Text>
                     </View>
@@ -159,7 +146,7 @@ export function FriendDetail({ personId }: { personId: number }) {
         ) : null}
 
         <Animated.View entering={rise(180)}>
-          <SectionLabel>Just the two of you</SectionLabel>
+          <FieldLabel>Just the two of you</FieldLabel>
           {direct && activity.data.length > 0 ? (
             <ActivityList
               rows={activity.data}
@@ -175,7 +162,7 @@ export function FriendDetail({ personId }: { personId: number }) {
               className="items-center rounded-3xl border border-dashed py-7"
               style={{ borderColor: colors.borderStrong }}
             >
-              <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14 }}>
+              <Text weight="medium" size={14} tone="muted">
                 Split something with {person.name} outside a group
               </Text>
             </PressableScale>

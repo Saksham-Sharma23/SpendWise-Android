@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
-import { BackHandler, KeyboardAvoidingView, Pressable, ScrollView, Text, View } from 'react-native';
+import { BackHandler, KeyboardAvoidingView, Pressable, ScrollView, View } from 'react-native';
 import { useEffect } from 'react';
 import Animated, {
   FadeIn,
@@ -14,73 +14,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/ui/PressableScale';
 import { easings } from '@/lib/motion';
-import { fonts, useColors, withAlpha, type Palette } from '@/lib/theme';
+import { useColors, withAlpha, type Palette } from '@/lib/theme';
 import type { Tone } from '../domain/wording';
+import { Text } from '@/components/ui/Text';
 
 /** The colour for a balance tone: owed to you, you owe, or neither. */
 export function toneColor(tone: Tone, colors: Palette): string {
   return tone === 'good' ? colors.income : tone === 'bad' ? colors.expense : colors.muted;
-}
-
-export function SectionLabel({ children }: { children: string }) {
-  const colors = useColors();
-  return (
-    <Text
-      style={{
-        color: colors.muted,
-        fontFamily: fonts.semibold,
-        fontSize: 12,
-        letterSpacing: 0.8,
-        textTransform: 'uppercase',
-        marginBottom: 10,
-      }}
-    >
-      {children}
-    </Text>
-  );
-}
-
-export function ErrorText({ children }: { children: string }) {
-  const colors = useColors();
-  return (
-    <Text style={{ color: colors.expense, fontFamily: fonts.medium, fontSize: 12, marginTop: 6 }}>{children}</Text>
-  );
-}
-
-export function RoundButton({
-  label,
-  onPress,
-  children,
-  tint,
-  filled = false,
-}: {
-  label: string;
-  onPress: () => void;
-  children: ReactNode;
-  tint?: string;
-  filled?: boolean;
-}) {
-  const colors = useColors();
-  return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      scaleTo={0.88}
-      className="h-11 w-11 items-center justify-center rounded-full"
-      style={
-        filled
-          ? { backgroundColor: tint ?? colors.primary }
-          : {
-              backgroundColor: tint ? withAlpha(tint, 0.12) : colors.card,
-              borderWidth: 1,
-              borderColor: tint ? withAlpha(tint, 0.3) : colors.border,
-            }
-      }
-    >
-      {children}
-    </PressableScale>
-  );
 }
 
 /** A pill action under a header: "Settle up", "Balances", "Totals". */
@@ -109,7 +49,7 @@ export function ActionPill({
       }
     >
       <Icon size={15} color={primary ? colors.onPrimary : colors.foreground} strokeWidth={2.3} />
-      <Text style={{ color: primary ? colors.onPrimary : colors.foreground, fontFamily: fonts.semibold, fontSize: 13 }}>
+      <Text weight="semibold" size={13} tone={primary ? 'onPrimary' : 'default'}>
         {label}
       </Text>
     </PressableScale>
@@ -147,7 +87,9 @@ export function FloatingAction({
         }}
       >
         <Icon size={19} color={colors.onPrimary} strokeWidth={2.5} />
-        <Text style={{ color: colors.onPrimary, fontFamily: fonts.bold, fontSize: 15 }}>{label}</Text>
+        <Text weight="bold" size={15} tone="onPrimary">
+          {label}
+        </Text>
       </PressableScale>
     </View>
   );
@@ -243,14 +185,18 @@ export function FormSheet({
             <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong }} />
           </View>
           <View className="flex-row items-center justify-between px-5 pb-2 pt-3">
-            <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 18 }}>{title}</Text>
+            <Text weight="bold" size={18} tone="default">
+              {title}
+            </Text>
             <PressableScale
               accessibilityRole="button"
               onPress={onClose}
               className="rounded-full px-4 py-2"
               style={{ backgroundColor: colors.primary }}
             >
-              <Text style={{ color: colors.onPrimary, fontFamily: fonts.semibold, fontSize: 14 }}>Done</Text>
+              <Text weight="semibold" size={14} tone="onPrimary">
+                Done
+              </Text>
             </PressableScale>
           </View>
           <ScrollView

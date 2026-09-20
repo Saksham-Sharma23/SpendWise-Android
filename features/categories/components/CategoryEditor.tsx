@@ -1,7 +1,7 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Check, GitMerge, Trash2, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, ScrollView, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from 'sonner-native';
@@ -9,11 +9,13 @@ import { toast } from 'sonner-native';
 import { CATEGORY_COLORS, CATEGORY_ICON_NAMES, CategoryIcon } from '@/components/ui/CategoryIcon';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatCount } from '@/lib/money';
-import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useColors, withAlpha } from '@/lib/theme';
 import { appear, leave, reflow, rise } from '@/lib/motion';
 import { createCategory, deleteCategory, getCategory, mergeCategory, updateCategory } from '../data/actions';
 import { useCategoriesWithUsage } from '../data/hooks';
 import { MAX_CATEGORY_NAME } from '../data/writes';
+import { Text, font } from '@/components/ui/Text';
+import { FieldLabel } from '@/components/ui/Section';
 
 /**
  * Create or edit a category: name, colour and icon, with a live preview.
@@ -21,12 +23,10 @@ import { MAX_CATEGORY_NAME } from '../data/writes';
  * and Delete (transactions become Uncategorised). Both confirm first — there
  * is no server copy to recover a mistake from.
  */
-export function CategoryEditor() {
+export function CategoryEditor({ editingId }: { editingId: number | null }) {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ id?: string }>();
-  const editingId = params.id ? Number(params.id) : null;
 
   // Read once: the editor holds a draft, and a live query would overwrite
   // what the user is typing whenever any category changed.
@@ -42,7 +42,9 @@ export function CategoryEditor() {
   if (editingId != null && !existing) {
     return (
       <View className="flex-1 items-center justify-center px-8" style={{ backgroundColor: colors.background }}>
-        <Text style={{ color: colors.muted, fontFamily: fonts.medium }}>That category no longer exists.</Text>
+        <Text weight="medium" tone="muted">
+          That category no longer exists.
+        </Text>
       </View>
     );
   }
@@ -120,7 +122,7 @@ export function CategoryEditor() {
         >
           <X size={19} color={colors.foreground} />
         </PressableScale>
-        <Text style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 16 }}>
+        <Text variant="heading" tone="default">
           {editingId != null ? 'Edit category' : 'New category'}
         </Text>
         <View style={{ width: 40 }} />
@@ -138,18 +140,16 @@ export function CategoryEditor() {
             <CategoryIcon icon={icon} color={color} size={76} />
           </Animated.View>
           <Text
+            weight="bold"
+            size={22}
+            tone={trimmed ? 'default' : 'subtle'}
             numberOfLines={1}
-            style={{
-              color: trimmed ? colors.foreground : colors.subtle,
-              fontFamily: fonts.bold,
-              fontSize: 22,
-              marginTop: 14,
-            }}
+            style={{ marginTop: 14 }}
           >
             {trimmed || 'Category name'}
           </Text>
           {editingId != null ? (
-            <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 4 }}>
+            <Text variant="caption" tone="muted" style={{ marginTop: 4 }}>
               {usage === 0
                 ? 'Not used yet'
                 : `Used by ${formatCount(usage)} ${usage === 1 ? 'transaction' : 'transactions'}`}
@@ -157,7 +157,7 @@ export function CategoryEditor() {
           ) : null}
         </Animated.View>
 
-        <Label>Name</Label>
+        <FieldLabel>Name</FieldLabel>
         <View className="rounded-2xl border px-4" style={{ backgroundColor: colors.card, borderColor: colors.border }}>
           <TextInput
             autoFocus={editingId == null}
@@ -169,11 +169,11 @@ export function CategoryEditor() {
             selectionColor={colors.primary}
             returnKeyType="done"
             className="py-3.5"
-            style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 16 }}
+            style={{ color: colors.foreground, ...font('medium', 16) }}
           />
         </View>
 
-        <Label top>Colour</Label>
+        <FieldLabel top>Colour</FieldLabel>
         <View className="flex-row flex-wrap gap-2.5">
           {CATEGORY_COLORS.map((c) => {
             const on = c === color;
@@ -195,7 +195,7 @@ export function CategoryEditor() {
           })}
         </View>
 
-        <Label top>Icon</Label>
+        <FieldLabel top>Icon</FieldLabel>
         <View className="flex-row flex-wrap gap-2">
           {CATEGORY_ICON_NAMES.map((n) => {
             const on = n === icon;
@@ -218,7 +218,7 @@ export function CategoryEditor() {
 
         {editingId != null && existing ? (
           <View className="mt-8 gap-3">
-            <Label>Manage</Label>
+            <FieldLabel>Manage</FieldLabel>
             {!existing.isSystem ? (
               <ActionRow
                 icon={<GitMerge size={18} color={colors.foreground} />}
@@ -239,7 +239,9 @@ export function CategoryEditor() {
                     style={{ borderColor: colors.border, backgroundColor: colors.card }}
                   >
                     <CategoryIcon icon={c.icon} color={c.color} size={26} />
-                    <Text style={{ color: colors.foreground, fontFamily: fonts.medium, fontSize: 13 }}>{c.name}</Text>
+                    <Text variant="body" tone="default">
+                      {c.name}
+                    </Text>
                   </PressableScale>
                 ))}
               </Animated.View>
@@ -253,7 +255,7 @@ export function CategoryEditor() {
                 onPress={confirmDelete}
               />
             ) : (
-              <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 }}>
+              <Text variant="caption" tone="muted" style={{ lineHeight: 18 }}>
                 Built-in categories can be renamed and recoloured, and other categories can be merged into them — but
                 they can't be deleted.
               </Text>
@@ -273,31 +275,12 @@ export function CategoryEditor() {
           className="items-center rounded-full py-4"
           style={{ backgroundColor: colors.primary }}
         >
-          <Text style={{ color: colors.onPrimary, fontFamily: fonts.bold, fontSize: 16 }}>
+          <Text weight="bold" size={16} tone="onPrimary">
             {editingId != null ? 'Save changes' : 'Create category'}
           </Text>
         </PressableScale>
       </View>
     </KeyboardAvoidingView>
-  );
-}
-
-function Label({ children, top = false }: { children: string; top?: boolean }) {
-  const colors = useColors();
-  return (
-    <Text
-      style={{
-        color: colors.muted,
-        fontFamily: fonts.semibold,
-        fontSize: 12,
-        letterSpacing: 0.8,
-        textTransform: 'uppercase',
-        marginBottom: 10,
-        marginTop: top ? 24 : 0,
-      }}
-    >
-      {children}
-    </Text>
   );
 }
 
@@ -328,8 +311,12 @@ function ActionRow({
     >
       {icon}
       <View className="flex-1">
-        <Text style={{ color: tint ?? colors.foreground, fontFamily: fonts.semibold, fontSize: 15 }}>{title}</Text>
-        <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>{hint}</Text>
+        <Text variant="bodyStrong" style={{ color: tint ?? colors.foreground }}>
+          {title}
+        </Text>
+        <Text variant="caption" tone="muted" style={{ marginTop: 1 }}>
+          {hint}
+        </Text>
       </View>
     </PressableScale>
   );

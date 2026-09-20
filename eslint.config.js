@@ -246,7 +246,7 @@ module.exports = defineConfig([
   // The dev harness and the per-feature benchmark lists are the only callers
   // of db/dev. Same rules as everywhere else, minus that one pattern.
   {
-    files: ['app/dev.tsx', 'features/*/benchmark.ts', 'db/dev/**'],
+    files: ['features/devtools/**', 'features/*/benchmark.ts', 'db/dev/**'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -271,11 +271,11 @@ module.exports = defineConfig([
    * happens to live inside the feature, so moving it breaks the route. With
    * `@/features/groups` the feature decides what it exports and can reorganise
    * freely behind that (R3-B). Listed after the db/dev block so it wins for
-   * app/; app/dev.tsx gets its own copy that still allows db/dev.
+   * app/. (Since R4 the dev harness lives in features/devtools, so no route
+   * needs db/dev.)
    */
   {
     files: ['app/**/*.{ts,tsx}'],
-    ignores: ['app/dev.tsx'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -299,24 +299,6 @@ module.exports = defineConfig([
       ],
     },
   },
-  {
-    files: ['app/dev.tsx'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            { group: ['../../*'], message: 'Import across folders with the @/ alias, not ../../' },
-            {
-              group: ['@/features/*/**'],
-              message: 'Routes import a feature through its index: `@/features/<name>`, not a file inside it.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-
   /**
    * lib/ holds pure logic that Node tests load directly, so it must stay free
    * of React Native. The listed files are the deliberate exceptions: lib/db is
@@ -339,18 +321,14 @@ module.exports = defineConfig([
   },
 
   /**
-   * The three routes that still reach into db/ (review A7).
+   * The one route that reaches into db/ (review A7).
    *
    * `app/_layout.tsx` is legitimate and permanent: something has to boot the
    * database, and the root layout is where that belongs (CLAUDE.md #9, rule 3).
-   *
-   * `app/dev.tsx` and `app/settings/index.tsx` are DEBT. R4-4 moves both into
-   * features/, and then this list shrinks to _layout alone. Named here rather
-   * than disabled inline so the debt is countable: when one entry remains,
-   * that part of R4 is done.
+   * R4-4 moved the other two (the dev harness and Settings) into features/.
    */
   {
-    files: ['app/_layout.tsx', 'app/dev.tsx', 'app/settings/index.tsx'],
+    files: ['app/_layout.tsx'],
     rules: { 'boundaries/dependencies': 'off' },
   },
 

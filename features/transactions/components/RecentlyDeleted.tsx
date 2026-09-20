@@ -1,4 +1,4 @@
-import { Alert, Text, View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { RotateCcw, Trash2 } from 'lucide-react-native';
 import Animated from 'react-native-reanimated';
 import { toast } from 'sonner-native';
@@ -12,7 +12,7 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { colorForName } from '@/lib/categoryColor';
 import { formatDayMonth } from '@/lib/dates';
 import { formatCount, formatINR } from '@/lib/money';
-import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useColors, withAlpha } from '@/lib/theme';
 import { useToday } from '@/lib/today';
 import { leave, reflow, rise } from '@/lib/motion';
 import {
@@ -23,6 +23,7 @@ import {
 } from '../data/actions';
 import { useDeletedTransactions } from '../data/hooks';
 import { type DeletedTransactionRow } from '../data/sql';
+import { Text } from '@/components/ui/Text';
 
 /**
  * Settings → Recently deleted (TASKS2 5C).
@@ -35,7 +36,6 @@ import { type DeletedTransactionRow } from '../data/sql';
  * Import-batch rows are not listed: they are restored with their batch.
  */
 export function RecentlyDeleted() {
-  const colors = useColors();
   const today = useToday();
   const {
     data: { rows, total },
@@ -94,7 +94,9 @@ export function RecentlyDeleted() {
       right={
         total > 1 ? (
           <PressableScale accessibilityRole="button" onPress={emptyAll} className="px-2 py-2">
-            <Text style={{ color: colors.expense, fontFamily: fonts.semibold, fontSize: 14 }}>Empty</Text>
+            <Text weight="semibold" size={14} tone="expense">
+              Empty
+            </Text>
           </PressableScale>
         ) : undefined
       }
@@ -122,15 +124,7 @@ export function RecentlyDeleted() {
           </Card>
         )}
         {status === 'ok' && total > rows.length ? (
-          <Text
-            style={{
-              color: colors.subtle,
-              fontFamily: fonts.regular,
-              fontSize: 12,
-              marginTop: 12,
-              textAlign: 'center',
-            }}
-          >
+          <Text variant="caption" tone="subtle" style={{ marginTop: 12, textAlign: 'center' }}>
             {`Showing the newest ${formatCount(rows.length)} of ${formatCount(total)}. Empty removes all of them.`}
           </Text>
         ) : null}
@@ -164,20 +158,18 @@ function DeletedRow({
     >
       <CategoryIcon icon={row.categoryIcon} color={color} size={36} />
       <View className="flex-1">
-        <Text numberOfLines={1} style={{ color: colors.foreground, fontFamily: fonts.semibold, fontSize: 14 }}>
+        <Text weight="semibold" size={14} tone="default" numberOfLines={1}>
           {row.note?.trim() || row.categoryName || 'Uncategorised'}
         </Text>
-        <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 }}>
+        <Text variant="caption" tone="muted" style={{ marginTop: 1 }}>
           {income ? '+' : '−'}
           {formatINR(row.amountPaise)} · {formatDayMonth(row.date)} {row.date.slice(0, 4)}
         </Text>
         <Text
-          style={{
-            color: urgent ? colors.expense : colors.subtle,
-            fontFamily: urgent ? fonts.medium : fonts.regular,
-            fontSize: 11,
-            marginTop: 2,
-          }}
+          weight={urgent ? 'medium' : 'regular'}
+          size={11}
+          tone={urgent ? 'expense' : 'subtle'}
+          style={{ marginTop: 2 }}
         >
           {left === 0 ? 'Removed at next launch' : `${left} ${left === 1 ? 'day' : 'days'} left`}
         </Text>
@@ -191,7 +183,9 @@ function DeletedRow({
         style={{ borderColor: colors.primaryBorder, backgroundColor: colors.primarySoft }}
       >
         <RotateCcw size={14} color={colors.primary} />
-        <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 12 }}>Restore</Text>
+        <Text weight="semibold" size={12} tone="primary">
+          Restore
+        </Text>
       </PressableScale>
       <PressableScale
         accessibilityRole="button"

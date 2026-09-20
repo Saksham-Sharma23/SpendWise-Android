@@ -1,14 +1,15 @@
 import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import type { ReactNode } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { fonts, useColors } from '@/lib/theme';
+import { useColors } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { PressableScale } from '../ui/PressableScale';
 import { BlurTarget } from './glass';
+import { Text } from '@/components/ui/Text';
 
 interface ScreenProps {
   title?: string;
@@ -53,23 +54,15 @@ export function Screen({ title, subtitle, eyebrow, children, scroll = true, righ
         <View className="flex-row items-end justify-between">
           <View className="flex-1 pr-3">
             {eyebrow ? (
-              <Text className="mb-1 text-sm" style={{ color: colors.muted, fontFamily: fonts.medium }}>
+              <Text weight="medium" tone="muted" className="mb-1 text-sm">
                 {eyebrow}
               </Text>
             ) : null}
-            <Text
-              style={{
-                color: colors.foreground,
-                fontFamily: fonts.bold,
-                fontSize: 30,
-                letterSpacing: -0.8,
-                lineHeight: 36,
-              }}
-            >
+            <Text variant="title" tone="default" style={{ letterSpacing: -0.8, lineHeight: 36 }}>
               {title}
             </Text>
             {subtitle ? (
-              <Text className="mt-1 text-sm" style={{ color: colors.muted, fontFamily: fonts.regular }}>
+              <Text weight="regular" tone="muted" className="mt-1 text-sm">
                 {subtitle}
               </Text>
             ) : null}

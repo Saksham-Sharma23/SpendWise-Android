@@ -1,8 +1,6 @@
 # Every rule in CLAUDE.md that a tool can check, run on every change.
-#
-# NOTE: this repository has no remote yet (plan.md R0-1), so this workflow has
-# never run on GitHub. Everything it runs is also run locally by
-# `npm run verify`, which is what to use until a remote exists.
+# Everything it runs is also run locally by `npm run verify`. The release APK
+# itself is built and checked by release.yml.
 
 name: CI
 
@@ -49,7 +47,7 @@ jobs:
         run: npx jest --ci
 
       # INTERNET blocked and allowBackup on, in the release config. The APK
-      # itself is checked by `npm run verify:apk` in the release runbook.
+      # itself is checked by scripts/verify-apk.sh in release.yml.
       - name: Release permission policy
         run: node scripts/check-release-policy.js
 

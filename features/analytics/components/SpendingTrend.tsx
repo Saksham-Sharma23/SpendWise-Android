@@ -1,13 +1,15 @@
 import { useCallback, useState } from 'react';
-import { Text, View, type TextStyle } from 'react-native';
+import { View, type TextStyle } from 'react-native';
 
 import { AreaChart } from '@/components/charts/AreaChart';
 import { AnimatedAmount } from '@/components/ui/AnimatedAmount';
 import { Card } from '@/components/ui/Card';
 import { formatMonthYear, type ISODate } from '@/lib/dates';
 import { formatINRCompact } from '@/lib/money';
-import { fonts, useColors } from '@/lib/theme';
+import { useColors } from '@/lib/theme';
 import { useSpendingTrend } from '../data/hooks';
+import { Text, font } from '@/components/ui/Text';
+import { StatFigure } from '@/components/ui/StatFigure';
 
 /**
  * The spending-trend card: the scrubbable area chart plus the figures for
@@ -43,8 +45,10 @@ export function SpendingTrend({ months, today }: { months: number; today: ISODat
 
   return (
     <Card className="p-5">
-      <Text style={{ color: colors.foreground, fontFamily: fonts.bold, fontSize: 17 }}>Spending trend</Text>
-      <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }}>
+      <Text weight="bold" size={17} tone="default">
+        Spending trend
+      </Text>
+      <Text variant="caption" tone="muted" style={{ marginTop: 2 }}>
         {active ? formatMonthYear(active.month) : `Last ${months} months`}
       </Text>
 
@@ -62,7 +66,7 @@ export function SpendingTrend({ months, today }: { months: number; today: ISODat
         )}
       </View>
 
-      <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11, marginTop: 10 }}>
+      <Text weight="regular" size={11} tone="subtle" style={{ marginTop: 10 }}>
         {empty ? 'No transactions in this range yet.' : 'Drag across the chart to compare months'}
       </Text>
     </Card>
@@ -76,18 +80,13 @@ function Figure({ label, color, paise, count }: { label: string; color: string; 
   const compact = Math.abs(paise) >= 10_00_000 * 100;
   const style: TextStyle = {
     color: colors.foreground,
-    fontFamily: fonts.bold,
-    fontSize: 15,
+    ...font('bold', 15),
     marginTop: 3,
     fontVariant: ['tabular-nums'],
   };
 
   return (
-    <View className="flex-1 rounded-2xl px-3 py-2.5" style={{ backgroundColor: colors.elevated }}>
-      <View className="flex-row items-center gap-1.5">
-        <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color }} />
-        <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 11 }}>{label}</Text>
-      </View>
+    <StatFigure label={label} dot={color} tile>
       {compact ? (
         <Text numberOfLines={1} adjustsFontSizeToFit style={style}>
           {formatINRCompact(paise)}
@@ -95,6 +94,6 @@ function Figure({ label, color, paise, count }: { label: string; color: string; 
       ) : (
         <AnimatedAmount paise={paise} animate={count} durationMs={420} options={{ whole: true }} style={style} />
       )}
-    </View>
+    </StatFigure>
   );
 }

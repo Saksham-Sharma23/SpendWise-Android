@@ -1,14 +1,15 @@
 import { Check } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { AmountDial } from '@/components/ui/AmountDial';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatINR, paiseToDecimalString, parseAmountToPaise } from '@/lib/money';
-import { colors, fonts, useColors, withAlpha } from '@/lib/theme';
+import { colors, useColors, withAlpha } from '@/lib/theme';
 import { appear } from '@/lib/motion';
 import { DIAL_SCALES, presetsFor, rescale, scaleFor, turnsOf, type DialScale } from '../domain/dial';
+import { Text, font } from '@/components/ui/Text';
 
 /**
  * The budget amount, set the way an alarm is set.
@@ -62,7 +63,9 @@ export function BudgetAmountDial({ value, onChange, autoFocusKeypad = false }: P
 
   return (
     <View className="items-center">
-      <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>How much per cycle?</Text>
+      <Text variant="body" tone="muted">
+        How much per cycle?
+      </Text>
 
       <View className="mt-4">
         <AmountDial
@@ -80,7 +83,9 @@ export function BudgetAmountDial({ value, onChange, autoFocusKeypad = false }: P
         >
           {typing ? (
             <View className="flex-row items-center justify-center">
-              <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 26, marginRight: 2 }}>₹</Text>
+              <Text weight="semibold" size={26} tone="primary" style={{ marginRight: 2 }}>
+                ₹
+              </Text>
               <TextInput
                 autoFocus
                 value={draft}
@@ -94,8 +99,7 @@ export function BudgetAmountDial({ value, onChange, autoFocusKeypad = false }: P
                 selectionColor={colors.primary}
                 style={{
                   color: colors.foreground,
-                  fontFamily: fonts.bold,
-                  fontSize: 34,
+                  ...font('bold', 34),
                   letterSpacing: -1,
                   minWidth: 90,
                   paddingVertical: 0,
@@ -111,8 +115,7 @@ export function BudgetAmountDial({ value, onChange, autoFocusKeypad = false }: P
               adjustsFontSizeToFit
               style={{
                 color: colors.foreground,
-                fontFamily: fonts.bold,
-                fontSize: 34,
+                ...font('bold', 34),
                 letterSpacing: -1,
                 fontVariant: ['tabular-nums'],
               }}
@@ -131,13 +134,17 @@ export function BudgetAmountDial({ value, onChange, autoFocusKeypad = false }: P
           style={{ backgroundColor: colors.primarySoft, borderWidth: 1, borderColor: colors.primaryBorder }}
         >
           <Check size={14} color={colors.primary} />
-          <Text style={{ color: colors.primary, fontFamily: fonts.semibold, fontSize: 13 }}>Done</Text>
+          <Text weight="semibold" size={13} tone="primary">
+            Done
+          </Text>
         </PressableScale>
       ) : (
         <>
           {/* Scale: what one full turn is worth. */}
           <View className="mt-4 flex-row items-center gap-2">
-            <Text style={{ color: colors.subtle, fontFamily: fonts.medium, fontSize: 11 }}>One turn</Text>
+            <Text weight="medium" size={11} tone="subtle">
+              One turn
+            </Text>
             {DIAL_SCALES.map((s) => {
               const on = s.maxPaise === scale.maxPaise;
               return (
@@ -159,7 +166,7 @@ export function BudgetAmountDial({ value, onChange, autoFocusKeypad = false }: P
                     backgroundColor: on ? colors.primarySoft : 'transparent',
                   }}
                 >
-                  <Text style={{ color: on ? colors.primary : colors.muted, fontFamily: fonts.semibold, fontSize: 12 }}>
+                  <Text weight="semibold" size={12} tone={on ? 'primary' : 'muted'}>
                     {s.label}
                   </Text>
                 </PressableScale>
@@ -183,14 +190,7 @@ export function BudgetAmountDial({ value, onChange, autoFocusKeypad = false }: P
                     backgroundColor: on ? colors.primarySoft : colors.card,
                   }}
                 >
-                  <Text
-                    style={{
-                      color: on ? colors.primary : colors.muted,
-                      fontFamily: fonts.medium,
-                      fontSize: 12,
-                      fontVariant: ['tabular-nums'],
-                    }}
-                  >
+                  <Text variant="small" tone={on ? 'primary' : 'muted'} style={{ fontVariant: ['tabular-nums'] }}>
                     {formatINR(p, { whole: true })}
                   </Text>
                 </PressableScale>
@@ -198,7 +198,7 @@ export function BudgetAmountDial({ value, onChange, autoFocusKeypad = false }: P
             })}
           </View>
 
-          <Text className="mt-3" style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 11 }}>
+          <Text weight="regular" size={11} tone="subtle" className="mt-3">
             Drag around the dial · each notch is {formatINR(scale.stepPaise, { whole: true })}
           </Text>
         </>

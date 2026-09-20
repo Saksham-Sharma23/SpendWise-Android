@@ -1,11 +1,12 @@
 import { DatabaseBackup, FileSpreadsheet, Plus, ShieldCheck, type LucideIcon } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { fonts, useColors, withAlpha } from '@/lib/theme';
+import { useColors, withAlpha } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { Card } from '../ui/Card';
 import { PressableScale } from '../ui/PressableScale';
+import { Text } from '@/components/ui/Text';
 
 interface Props {
   onAdd: () => void;
@@ -31,18 +32,10 @@ export function Welcome({ onAdd, onImport, onRestore, onSkip }: Props) {
           >
             <ShieldCheck size={28} color={colors.primary} />
           </View>
-          <Text
-            style={{
-              color: colors.foreground,
-              fontFamily: fonts.bold,
-              fontSize: 24,
-              letterSpacing: -0.5,
-              marginTop: 16,
-            }}
-          >
+          <Text weight="bold" size={24} tone="default" style={{ letterSpacing: -0.5, marginTop: 16 }}>
             Welcome to SpendWise
           </Text>
-          <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, marginTop: 6 }}>
+          <Text weight="regular" size={14} tone="muted" style={{ lineHeight: 20, marginTop: 6 }}>
             Everything you add stays on this phone. No account, no servers — so let's give it something to show you.
           </Text>
         </Card>
@@ -76,7 +69,9 @@ export function Welcome({ onAdd, onImport, onRestore, onSkip }: Props) {
 
       <Animated.View entering={rise(320)} className="items-center">
         <PressableScale accessibilityRole="button" onPress={onSkip} className="px-4 py-3">
-          <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 13 }}>Skip for now</Text>
+          <Text variant="body" tone="muted">
+            Skip for now
+          </Text>
         </PressableScale>
       </Animated.View>
     </View>
@@ -119,16 +114,12 @@ function Door({
           <Icon size={22} color={primary ? colors.onPrimary : tint} strokeWidth={2.3} />
         </View>
         <View className="flex-1">
-          <Text style={{ color: primary ? colors.onPrimary : colors.foreground, fontFamily: fonts.bold, fontSize: 16 }}>
+          <Text weight="bold" size={16} tone={primary ? 'onPrimary' : 'default'}>
             {title}
           </Text>
           <Text
-            style={{
-              color: primary ? withAlpha(colors.onPrimary, 0.7) : colors.muted,
-              fontFamily: fonts.regular,
-              fontSize: 12,
-              marginTop: 2,
-            }}
+            variant="caption"
+            style={{ color: primary ? withAlpha(colors.onPrimary, 0.7) : colors.muted, marginTop: 2 }}
           >
             {hint}
           </Text>

@@ -22,6 +22,10 @@ describe('withBackupRules', () => {
       expect(xml).toContain('path="SQLite/spendwise.db-wal"');
       expect(xml).toContain('path="SQLite/spendwise.db-shm"');
       expect(xml).toContain('path="snapshots/"');
+      // Phase 7: whole copies of the database. Backing them up would multiply
+      // every auto-backup by the number of exports kept, into the 25 MB cap.
+      expect(xml).toContain('path="backups/"');
+      expect(xml).toContain('path="SQLite/restore-staging.db"');
       expect(xml).toContain('path="legacy/"');
       expect(xml).toContain('path="unreadable/"');
       expect(xml).toContain('domain="sharedpref" path="SecureStore.xml"');

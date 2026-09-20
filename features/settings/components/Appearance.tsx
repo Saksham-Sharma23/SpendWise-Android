@@ -1,12 +1,13 @@
 import { Check, Moon, Smartphone, Sun } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { Card } from '@/components/ui/Card';
 import { PressableScale } from '@/components/ui/PressableScale';
-import { fonts, PALETTES, useColors, withAlpha, type ThemeName } from '@/lib/theme';
+import { PALETTES, useColors, withAlpha, type ThemeName } from '@/lib/theme';
 import { useThemeStore, type ThemePreference } from '@/lib/themeStore';
 import { appear } from '@/lib/motion';
+import { Text } from '@/components/ui/Text';
 
 /**
  * The appearance chooser: System, Light or Dark.
@@ -24,22 +25,13 @@ const OPTIONS: { value: ThemePreference; label: string; hint: string }[] = [
 ];
 
 export function Appearance() {
-  const colors = useColors();
   const preference = useThemeStore((s) => s.preference);
   const resolved = useThemeStore((s) => s.resolved);
   const setPreference = useThemeStore((s) => s.setPreference);
 
   return (
     <View className="gap-3">
-      <Text
-        style={{
-          color: colors.muted,
-          fontFamily: fonts.semibold,
-          fontSize: 12,
-          letterSpacing: 0.8,
-          textTransform: 'uppercase',
-        }}
-      >
+      <Text variant="label" tone="muted">
         Appearance
       </Text>
 
@@ -56,7 +48,7 @@ export function Appearance() {
         </View>
       </Card>
 
-      <Text style={{ color: colors.subtle, fontFamily: fonts.regular, fontSize: 12 }}>
+      <Text variant="caption" tone="subtle">
         {preference === 'system'
           ? `Following your phone, which is ${resolved} right now.`
           : `Always ${preference}, whatever the phone is set to.`}
@@ -100,13 +92,7 @@ function ThemeChoice({
         ) : (
           <Icon size={12} color={colors.muted} />
         )}
-        <Text
-          style={{
-            color: selected ? colors.primary : colors.foreground,
-            fontFamily: selected ? fonts.semibold : fonts.medium,
-            fontSize: 13,
-          }}
-        >
+        <Text weight={selected ? 'semibold' : 'medium'} size={13} tone={selected ? 'primary' : 'default'}>
           {option.label}
         </Text>
       </View>
