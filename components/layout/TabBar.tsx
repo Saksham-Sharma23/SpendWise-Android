@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { useGlassEnabled } from '@/lib/glassStore';
 import { springs, useColors, useThemeName, withAlpha } from '@/lib/theme';
 import { PressableScale } from '../ui/PressableScale';
 import { BLUR_AVAILABLE, GlassBlur } from './glass';
@@ -284,9 +285,66 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
   );
 }
 
-/** The glass recipe per theme. Every value here is a tuning knob. */
+/**
+ * The glass recipe per theme. Every value here is a tuning knob.
+ *
+ * Two variants, chosen in Settings (`lib/glassStore.ts`):
+ *
+ * - **glass** — the thinner centre. Apple's Liquid Glass reads as glass
+ *   because content LENSES at the rim: displacement is near zero across the
+ *   middle and rises steeply in the last few px, following a squircle
+ *   profile. A shader sampling the native view is the only way to do that
+ *   literally, so this approximates the cue that carries the effect — a
+ *   bright compressed rim band, light that falls off from the top, and an
+ *   inner shadow giving the edge thickness.
+ *
+ *   The centre is ~25% thinner than the solid variant, but NOT uniform: a
+ *   vertical ramp keeps it densest across the label row. That is the part
+ *   legibility actually depends on, and it is what lets the rest thin out.
+ *   Apple's own answer to a busy backdrop is adaptive dimming rather than
+ *   uniform transparency (WWDC25 "Meet Liquid Glass"), for the same reason.
+ *
+ * - **solid** — the previous recipe, kept intact. Over a dense ledger or a
+ *   bright wallpaper the glass variant can cost contrast, and that judgement
+ *   belongs to whoever is reading the screen.
+ */
 function useGlassRecipe() {
   const isLight = useThemeName() === 'light';
+  const glassy = useGlassEnabled();
+  const base = useSolidRecipe(isLight);
+  if (!glassy) return { ...base, lens: 0, innerShadow: 0, topFall: 0, ramp: 0 };
+  return isLight
+    ? {
+        ...base,
+        // Thinner centre, carried by the rim instead.
+        tint: BLUR_AVAILABLE ? 'rgba(255, 255, 255, 0.06)' : 'rgba(250, 252, 249, 0.72)',
+        blurRadius: 18,
+        // The compressed bright band that reads as a thick lens edge.
+        lens: 0.5,
+        // Depth just inside the rim; without it the band looks painted on.
+        innerShadow: 0.1,
+        // Light from above: the top edge is bright, the bottom nearly bare.
+        topFall: 0.85,
+        // Extra tint across the label row, where contrast is spent.
+        ramp: 0.07,
+        specular: 1,
+        edgeGlow: 0.3,
+      }
+    : {
+        ...base,
+        tint: BLUR_AVAILABLE ? 'rgba(255, 255, 255, 0.032)' : 'rgba(26, 27, 33, 0.7)',
+        blurRadius: 18,
+        lens: 0.36,
+        innerShadow: 0.3,
+        topFall: 0.8,
+        ramp: 0.06,
+        specular: 0.72,
+        edgeGlow: 0.13,
+      };
+}
+
+/** The original recipe: a denser capsule, no lensing. */
+function useSolidRecipe(isLight: boolean) {
   return isLight
     ? {
         // Between liquid and frosted. Radius 6 left content too sharp — text
@@ -310,6 +368,13 @@ function useGlassRecipe() {
         hairline: '#1B2A1F',
         hairlineOpacity: 0.1,
         shadow: 0.075,
+        // White on a light page, black on a dark one: the ramp DEEPENS the
+        // existing tint rather than introducing a second colour.
+        rampColor: '#ffffff',
+        lens: 0,
+        innerShadow: 0,
+        topFall: 0,
+        ramp: 0,
       }
     : {
         blurRadius: 14,
@@ -323,6 +388,11 @@ function useGlassRecipe() {
         hairline: '#000000',
         hairlineOpacity: 0.35,
         shadow: 0.3,
+        rampColor: '#000000',
+        lens: 0,
+        innerShadow: 0,
+        topFall: 0,
+        ramp: 0,
       };
 }
 
@@ -377,6 +447,16 @@ function GlassShadow({ radius, width, height }: { radius: number; width: number;
 const EDGE_BANDS = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5];
 
 /**
+ * The lens rim: tight to the edge, where a squircle refraction profile puts
+ * nearly all of its displacement. Half-pixel steps because the band is only
+ * ~3px wide and whole pixels would band visibly.
+ */
+const LENS_BANDS = [0.5, 1, 1.5, 2, 2.5, 3];
+
+/** The inner face of that rim, a little further in. */
+const INNER_BANDS = [3.5, 4.5, 5.5];
+
+/**
  * Liquid glass, built in layers from the back:
  *   1. a medium backdrop blur under a thin native tint — the content behind
  *      the bar shows through as soft shapes and colour
@@ -403,6 +483,27 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
               <Stop offset="0.5" stopColor="#fff" stopOpacity={0} />
             </LinearGradient>
             {/*
+              The label row sits in the lower half of the capsule, so the tint
+              is thickest there and thins toward the top. This is what pays for
+              the thinner overall centre: contrast is spent where the text is,
+              not spread evenly over glass nobody is reading through.
+            */}
+            <LinearGradient id="ramp" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={g.rampColor} stopOpacity={0} />
+              <Stop offset="0.45" stopColor={g.rampColor} stopOpacity={g.ramp * 0.5} />
+              <Stop offset="1" stopColor={g.rampColor} stopOpacity={g.ramp} />
+            </LinearGradient>
+            {/*
+              Light from above. Apple's highlight layer defines the silhouette
+              by where light lands, not by an even outline: the top edge is
+              bright, the sides fall away, the bottom is nearly bare.
+            */}
+            <LinearGradient id="topLight" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#fff" stopOpacity={g.topFall} />
+              <Stop offset="0.35" stopColor="#fff" stopOpacity={g.topFall * 0.25} />
+              <Stop offset="1" stopColor="#fff" stopOpacity={0} />
+            </LinearGradient>
+            {/*
               Diagonal in bounding-box units, so on a wide capsule the bright
               stops cover the left cap plus the first stretch of the top edge,
               and mirror on the bottom-right: two crescents, like light
@@ -418,6 +519,7 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
             </LinearGradient>
           </Defs>
           <Rect width={width} height={height} fill="url(#sheen)" />
+          {g.ramp > 0 ? <Rect width={width} height={height} fill="url(#ramp)" /> : null}
           {EDGE_BANDS.map((k, i) => {
             const fall = 1 - i / EDGE_BANDS.length;
             return (
@@ -435,6 +537,69 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
               />
             );
           })}
+          {/*
+            The lens rim. Where the flat EDGE_BANDS above fade evenly inward,
+            these are tight to the edge and rise QUARTICALLY — the squircle
+            refraction profile, which is near flat across the middle and climbs
+            steeply in the last few px. That concentration is what the eye reads
+            as thickness; spread the same light evenly and it reads as a border.
+          */}
+          {g.lens > 0
+            ? LENS_BANDS.map((k, i) => {
+                const t = 1 - i / LENS_BANDS.length;
+                return (
+                  <Rect
+                    key={`lens-${k}`}
+                    x={k}
+                    y={k}
+                    width={width - k * 2}
+                    height={height - k * 2}
+                    rx={radius - k}
+                    fill="none"
+                    stroke="#fff"
+                    strokeOpacity={g.lens * t * t * t * t}
+                    strokeWidth={1}
+                  />
+                );
+              })
+            : null}
+          {/*
+            Depth just inside the rim. Without it the bright band sits ON the
+            surface; with it the edge has a near and a far face, which is the
+            difference between a lit outline and a piece of glass.
+          */}
+          {g.innerShadow > 0
+            ? INNER_BANDS.map((k, i) => {
+                const t = 1 - i / INNER_BANDS.length;
+                return (
+                  <Rect
+                    key={`inner-${k}`}
+                    x={k}
+                    y={k}
+                    width={width - k * 2}
+                    height={height - k * 2}
+                    rx={radius - k}
+                    fill="none"
+                    stroke="#000"
+                    strokeOpacity={g.innerShadow * t * t}
+                    strokeWidth={1}
+                  />
+                );
+              })
+            : null}
+          {/* Light from above, over the rim rather than the whole face. */}
+          {g.topFall > 0 ? (
+            <Rect
+              x={0.75}
+              y={0.75}
+              width={width - 1.5}
+              height={height - 1.5}
+              rx={radius - 0.75}
+              fill="none"
+              stroke="url(#topLight)"
+              strokeWidth={1.5}
+            />
+          ) : null}
           <Rect
             x={0.5}
             y={0.5}

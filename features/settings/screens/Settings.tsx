@@ -9,6 +9,7 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { useColors, withAlpha } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { Appearance } from '../components/Appearance';
+import { GlassToggle } from '../components/GlassToggle';
 import { Storage } from '../components/Storage';
 import { RETENTION_DAYS } from '../data/retention';
 import { Text } from '@/components/ui/Text';
@@ -22,6 +23,10 @@ export function Settings() {
       <View className="gap-6 px-5">
         <Animated.View entering={rise()}>
           <Appearance />
+        </Animated.View>
+
+        <Animated.View entering={rise(15)}>
+          <GlassToggle />
         </Animated.View>
 
         <Animated.View entering={rise(30)} className="gap-3">
