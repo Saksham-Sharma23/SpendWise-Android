@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { useGlassEnabled } from '@/lib/glassStore';
@@ -76,6 +76,7 @@ const TRAIL = { dampingRatio: 1, duration: 380 } as const;
  */
 export function TabBar({ state, navigation }: BottomTabBarProps) {
   const colors = useColors();
+  const glassy = useGlassEnabled();
   const { bottom } = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
 
@@ -228,9 +229,15 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                   // squashed height, so it is deliberately not set here.
                   overflow: 'hidden',
                   // Accent glass: a light tint, a gloss on top, a lit rim.
-                  backgroundColor: withAlpha(colors.primary, 0.14),
+                  //
+                  // Thin, because the droplet sits ON the bar's own glass and
+                  // the two tints compound. At the old 0.14 it read as a solid
+                  // chip pasted onto a transparent surface — the one opaque
+                  // thing in a bar built to be seen through. The rim carries
+                  // it instead, the same way the capsule's does.
+                  backgroundColor: withAlpha(colors.primary, glassy ? 0.07 : 0.14),
                   borderWidth: 1,
-                  borderColor: withAlpha(colors.primary, 0.36),
+                  borderColor: withAlpha(colors.primary, glassy ? 0.44 : 0.36),
                 },
                 droplet,
               ]}
@@ -316,9 +323,22 @@ function useGlassRecipe() {
   return isLight
     ? {
         ...base,
+        // expo-blur paints its OWN sheet from `intensity`, on top of this
+        // tint. Leaving it at the solid recipe's value put back most of the
+        // opacity the thinner tint removed, so it drops too.
+        // expo-blur paints its OWN sheet from `intensity`, on top of this
+        // tint, and that sheet carried MORE of the opacity than the tint did.
+        // At 0.05 it is ~4% white: present enough to stop the glass turning
+        // into a hole, thin enough to see through properly. The blur radius is
+        // solved separately (see GlassBlur), so lowering this does not also
+        // sharpen what is behind.
+        blurOverlay: 0.05,
         // Thinner centre, carried by the rim instead.
-        tint: BLUR_AVAILABLE ? 'rgba(255, 255, 255, 0.06)' : 'rgba(250, 252, 249, 0.72)',
-        blurRadius: 18,
+        tint: BLUR_AVAILABLE ? 'rgba(255, 255, 255, 0.018)' : 'rgba(250, 252, 249, 0.52)',
+        // A lighter blur leaves the shapes behind the bar recognisable, which
+        // is what makes it read as something you are looking THROUGH rather
+        // than a frosted panel with a picture printed on it.
+        blurRadius: 11,
         // The compressed bright band that reads as a thick lens edge.
         lens: 0.5,
         // Depth just inside the rim; without it the band looks painted on.
@@ -326,20 +346,30 @@ function useGlassRecipe() {
         // Light from above: the top edge is bright, the bottom nearly bare.
         topFall: 0.85,
         // Extra tint across the label row, where contrast is spent.
-        ramp: 0.07,
+        ramp: 0.16,
+        // A soft pool of light across the face, so the middle is not a flat
+        // sheet between two decorated edges.
+        faceLight: 0.05,
+        // The off-centre light pools that give the surface curvature. The flat
+        // face wash above is deliberately small: a linear ramp and a pool in
+        // the same place cancel into an even sheet, which is the flat look.
+        pool: 0.34,
         specular: 1,
-        edgeGlow: 0.3,
+        edgeGlow: 0.16,
       }
     : {
         ...base,
-        tint: BLUR_AVAILABLE ? 'rgba(255, 255, 255, 0.032)' : 'rgba(26, 27, 33, 0.7)',
-        blurRadius: 18,
+        tint: BLUR_AVAILABLE ? 'rgba(255, 255, 255, 0.007)' : 'rgba(26, 27, 33, 0.48)',
+        blurOverlay: 0.04,
+        blurRadius: 11,
         lens: 0.36,
         innerShadow: 0.3,
         topFall: 0.8,
-        ramp: 0.06,
+        ramp: 0.15,
+        faceLight: 0.022,
+        pool: 0.2,
         specular: 0.72,
-        edgeGlow: 0.13,
+        edgeGlow: 0.07,
       };
 }
 
@@ -371,6 +401,8 @@ function useSolidRecipe(isLight: boolean) {
         // White on a light page, black on a dark one: the ramp DEEPENS the
         // existing tint rather than introducing a second colour.
         rampColor: '#ffffff',
+        faceLight: 0,
+        pool: 0,
         lens: 0,
         innerShadow: 0,
         topFall: 0,
@@ -389,6 +421,8 @@ function useSolidRecipe(isLight: boolean) {
         hairlineOpacity: 0.35,
         shadow: 0.3,
         rampColor: '#000000',
+        faceLight: 0,
+        pool: 0,
         lens: 0,
         innerShadow: 0,
         topFall: 0,
@@ -504,6 +538,49 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
               <Stop offset="1" stopColor="#fff" stopOpacity={0} />
             </LinearGradient>
             {/*
+              The rim's OWN falloff. Painting the lens bands a flat white and
+              then laying a gradient over the top still leaves a bright even
+              ring underneath — the eye reads the ring, not the gradient. So
+              the bands are stroked with this instead: bright across the top,
+              a quarter of that down the sides, nearly gone along the bottom,
+              where a lens lit from above has no light to gather.
+            */}
+            <LinearGradient id="rimFall" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#fff" stopOpacity={1} />
+              <Stop offset="0.28" stopColor="#fff" stopOpacity={0.5} />
+              <Stop offset="0.62" stopColor="#fff" stopOpacity={0.1} />
+              <Stop offset="1" stopColor="#fff" stopOpacity={0} />
+            </LinearGradient>
+            {/*
+              A wide, soft pool of light in the upper half of the FACE. Without
+              it everything interesting sits at the border and the middle reads
+              as a flat grey sheet.
+            */}
+            <LinearGradient id="faceLight" x1="0.1" y1="0" x2="0.9" y2="1">
+              <Stop offset="0" stopColor="#fff" stopOpacity={g.faceLight} />
+              <Stop offset="0.45" stopColor="#fff" stopOpacity={g.faceLight * 0.22} />
+              <Stop offset="1" stopColor="#fff" stopOpacity={0} />
+            </LinearGradient>
+            {/*
+              What makes it read as LIQUID rather than a flat pane: light on a
+              curved surface pools, it does not ramp evenly from one edge to
+              the other. Two soft off-centre pools with a quick falloff — the
+              larger one drawn out along the upper left, a smaller one catching
+              the right end — give the surface an implied curvature that a
+              linear gradient cannot. Their softness is the point; a hard pool
+              would read as a painted spot.
+            */}
+            <RadialGradient id="pool" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
+              <Stop offset="0" stopColor="#fff" stopOpacity={g.pool} />
+              <Stop offset="0.45" stopColor="#fff" stopOpacity={g.pool * 0.35} />
+              <Stop offset="1" stopColor="#fff" stopOpacity={0} />
+            </RadialGradient>
+            <RadialGradient id="pool2" cx="0.5" cy="0.5" rx="0.5" ry="0.5">
+              <Stop offset="0" stopColor="#fff" stopOpacity={g.pool * 0.62} />
+              <Stop offset="0.5" stopColor="#fff" stopOpacity={g.pool * 0.18} />
+              <Stop offset="1" stopColor="#fff" stopOpacity={0} />
+            </RadialGradient>
+            {/*
               Diagonal in bounding-box units, so on a wide capsule the bright
               stops cover the left cap plus the first stretch of the top edge,
               and mirror on the bottom-right: two crescents, like light
@@ -519,8 +596,23 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
             </LinearGradient>
           </Defs>
           <Rect width={width} height={height} fill="url(#sheen)" />
+          {g.faceLight > 0 ? <Rect width={width} height={height} fill="url(#faceLight)" /> : null}
+          {/* The pools sit above the face wash and below the label ramp, so
+              they light the surface without lifting the text's backing. */}
+          {g.pool > 0 ? (
+            <>
+              <Ellipse cx={width * 0.3} cy={height * 0.3} rx={width * 0.34} ry={height * 0.62} fill="url(#pool)" />
+              <Ellipse cx={width * 0.83} cy={height * 0.36} rx={width * 0.16} ry={height * 0.5} fill="url(#pool2)" />
+            </>
+          ) : null}
           {g.ramp > 0 ? <Rect width={width} height={height} fill="url(#ramp)" /> : null}
-          {EDGE_BANDS.map((k, i) => {
+          {/*
+            The flat ring. In GLASS mode it is off: three overlapping ring
+            systems (this, the lens rim, the specular stroke) add up to a hard
+            continuous outline, and no amount of gradient on one of them wins
+            against the other two. The directional rim carries the edge alone.
+          */}
+          {(g.lens > 0 ? [] : EDGE_BANDS).map((k, i) => {
             const fall = 1 - i / EDGE_BANDS.length;
             return (
               <Rect
@@ -556,7 +648,7 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
                     height={height - k * 2}
                     rx={radius - k}
                     fill="none"
-                    stroke="#fff"
+                    stroke="url(#rimFall)"
                     strokeOpacity={g.lens * t * t * t * t}
                     strokeWidth={1}
                   />
@@ -611,6 +703,13 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
             strokeOpacity={g.hairlineOpacity}
             strokeWidth={1}
           />
+          {/*
+            The specular crescents. Its gradient runs DIAGONALLY, so it lights
+            the bottom-right as brightly as the top-left — fine over a flat
+            ring, but it fought the directional rim and put the outline back.
+            In glass mode it is thinner and weaker: a catch of light on the
+            caps, not a second outline.
+          */}
           <Rect
             x={1.25}
             y={1.25}
@@ -619,7 +718,8 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
             rx={radius - 1.25}
             fill="none"
             stroke="url(#specular)"
-            strokeWidth={1.5}
+            strokeWidth={g.lens > 0 ? 1 : 1.5}
+            strokeOpacity={g.lens > 0 ? 0.55 : 1}
           />
         </Svg>
       ) : null}
