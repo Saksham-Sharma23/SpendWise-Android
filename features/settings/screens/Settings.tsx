@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Bell, ChevronRight, Fingerprint, Info, Trash2 } from 'lucide-react-native';
+import { Bell, ChevronRight, CircleQuestionMark, Fingerprint, Info, Trash2 } from 'lucide-react-native';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
@@ -56,6 +56,36 @@ export function Settings() {
 
         <Animated.View entering={rise(60)}>
           <Storage />
+        </Animated.View>
+
+        <Animated.View entering={rise(75)} className="gap-3">
+          <Text variant="label" tone="muted">
+            Help
+          </Text>
+          <Card className="p-1">
+            <PressableScale
+              accessibilityRole="button"
+              onPress={() => router.push('/settings/help')}
+              scaleTo={0.98}
+              className="flex-row items-center gap-3 p-3"
+            >
+              <View
+                className="h-10 w-10 items-center justify-center rounded-xl"
+                style={{ backgroundColor: withAlpha(colors.primary, 0.14) }}
+              >
+                <CircleQuestionMark size={18} color={colors.primary} />
+              </View>
+              <View className="flex-1">
+                <Text weight="semibold" size={14} tone="default">
+                  How to use SpendWise
+                </Text>
+                <Text variant="caption" tone="muted" style={{ marginTop: 1 }}>
+                  What every screen does, and where to find it
+                </Text>
+              </View>
+              <ChevronRight size={18} color={colors.subtle} />
+            </PressableScale>
+          </Card>
         </Animated.View>
 
         <Animated.View entering={rise(90)} className="gap-3">
