@@ -17,7 +17,7 @@ describe('withBackupRules', () => {
     for (const xml of xmls) expect(xml).not.toMatch(/<include/);
   });
 
-  it('excludes the WAL side files, device-local copies and SecureStore — but not the database', () => {
+  it('excludes the WAL side files and every device-local copy — but not the database', () => {
     for (const xml of xmls) {
       expect(xml).toContain('path="SQLite/spendwise.db-wal"');
       expect(xml).toContain('path="SQLite/spendwise.db-shm"');
@@ -26,9 +26,11 @@ describe('withBackupRules', () => {
       // every auto-backup by the number of exports kept, into the 25 MB cap.
       expect(xml).toContain('path="backups/"');
       expect(xml).toContain('path="SQLite/restore-staging.db"');
-      expect(xml).toContain('path="legacy/"');
       expect(xml).toContain('path="unreadable/"');
-      expect(xml).toContain('domain="sharedpref" path="SecureStore.xml"');
+      // R6: the crash log describes the install that crashed. Carrying it to a
+      // restored install would attribute old crashes to a new phone, and it
+      // competes with the database for the 25 MB quota.
+      expect(xml).toContain('path="logs/"');
       expect(xml).not.toContain('path="SQLite/spendwise.db"');
       expect(xml).not.toContain('path="SQLite/"');
       expect(xml).not.toContain('sheets');

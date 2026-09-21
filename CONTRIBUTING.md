@@ -64,6 +64,9 @@ imports another feature**. If two features need the same thing, move it down int
 A schema change is the riskiest change in this app: a migration that fails on someone's phone can
 leave their data unreadable, and there is no server copy. Follow every step.
 
+**The full procedure, with the failure modes, is [`docs/runbooks/migrations.md`](docs/runbooks/migrations.md).**
+What follows is the summary.
+
 1. Edit `db/schema.ts`.
 2. `npm run db:generate`.
 3. **Read the generated SQL.** drizzle-kit 0.31 produces broken migrations in three known cases

@@ -1837,7 +1837,7 @@ above with real device numbers. "ledger summary (all)" scanning is expected, bec
 
 **Est:** 1 day.
 
-### ⬜ R6-1 — Local crash log
+### ✅ R6-1 — Local crash log _(done 2026-09-21)_
 
 **Ref:** T9 · **Priority:** P1 · **Est:** 4 h
 
@@ -1855,7 +1855,30 @@ notes, category names or person names.** Also record `bootDatabase` failures. Se
 
 **Done when:** a forced crash in a release build appears in the shared log.
 
-### ⬜ R6-2 — `docs/runbooks/release.md`
+**Shipped.** `lib/crashlog/` rather than one file: `redact.ts` is **pure**, so the privacy promise is tested in
+Node (~24 tests) rather than asserted in a comment, and `index.ts` holds the file and native bits. Differences
+from the card, all deliberate:
+
+- **`record()` is synchronous.** The card did not say; it matters. After a fatal error the JS context is torn
+  down and an awaited write does not land — the one entry worth having is the one that never gets written.
+- **Installed at module scope**, above `SplashScreen.preventAutoHideAsync()` and `bootDatabase()`. In an effect
+  it would miss every boot crash.
+- **Chains to the previous `ErrorUtils` handler** instead of replacing it, or the dev red box disappears —
+  hiding errors during development to log them for a release nobody is running.
+- **12 frames, not 20.** A React Native trace is ~60 frames of framework internals; the fault is at the top and
+  the rest makes a shared log too long to read.
+- **`db/boot.ts` records every non-`ready` outcome** through a thin wrapper around the old body, so future
+  failure paths are covered without anyone remembering to add a call.
+- Entries carry `app` (version) and `route`. A log without the version cannot be told from one describing a bug
+  already fixed; the route is redacted like everything else, since `/groups/<name>` carries a name.
+
+Redaction, in order (order is load-bearing — currency must run before bare digits, or `₹12,345` leaves the `₹`
+behind and the reader still knows money was involved): file/content URIs → currency in every shape
+`lib/money.ts` emits → ISO dates → quoted strings → runs of 4+ digits. `at Ledger.tsx:42:17` survives on
+purpose. `toEntry` takes `unknown`, because code throws strings, nulls and circular objects, and a crash logger
+that assumes `Error` crashes inside the crash handler.
+
+### ✅ R6-2 — `docs/runbooks/release.md` _(done 2026-09-21)_
 
 **Priority:** P2 · **Est:** 1 h
 **Content.** Version bump (`app.config.ts` version + `versionCode`) → changelog → `rm -rf android` →
@@ -1863,7 +1886,7 @@ notes, category names or person names.** Also record `bootDatabase` failures. Se
 migration drill on a copy of the phone DB → tag `vX.Y.Z` → upload.
 **Done when:** a release can be cut by following it without asking anyone.
 
-### ⬜ R6-3 — `docs/runbooks/migrations.md`
+### ✅ R6-3 — `docs/runbooks/migrations.md` _(done 2026-09-21)_
 
 **Priority:** P2 · **Est:** 1 h
 **Content.** Edit `db/schema.ts` → `npm run db:generate` → **read the SQL** against the three drizzle-kit
@@ -1874,7 +1897,7 @@ columns, so drop/re-add `transactions.month`; partial expression index emitted a
 hand-edit a generated migration.
 **Done when:** linked from CONTRIBUTING and CLAUDE.md.
 
-### ⬜ R6-4 — Remove `db/legacyEncryption.ts` and `expo-secure-store`
+### ✅ R6-4 — Remove `db/legacyEncryption.ts` and `expo-secure-store` _(done 2026-09-21)_
 
 **Priority:** P3 · **Est:** 1 h · **Depends on:** every installed build is past 2026-09-14
 **Problem.** One-time conversion code for pre-2026-09-14 Keystore-keyed databases.
@@ -1882,6 +1905,19 @@ hand-edit a generated migration.
 the `legacy` backup-rule exclusion (update its test), and the `convertedLegacy` field of the boot outcome.
 Native change → rebuild + `verify:apk`.
 **Done when:** grep for `legacyEncryption` and `secure-store` returns nothing.
+
+**Shipped.** The gate held: the only installed builds are the 2026-09-20 release APK and the dev build after
+it. One thing the card missed — **boot step 1 was doing two jobs.** The legacy module also answered "does this
+file read as SQLite at all?", which is what drives the boot-failure screen and has nothing to do with
+SQLCipher. That probe moved to `databaseReadable()` in `db/connection.ts`; it reads `sqlite_master` rather
+than trusting the open, because `openDatabaseSync` succeeds on a file it cannot actually read. Deleting the
+module wholesale would have removed the corrupt-database path with it.
+
+Also removed: `LEGACY_DIR`, the `legacy/`, `SQLite/spendwise.db.converting` and `sharedpref SecureStore.xml`
+backup exclusions and their assertions. `USE_BIOMETRIC`/`USE_FINGERPRINT` **stay blocked** — nothing depends on
+`androidx.biometric` now, so the block is a ratchet against a future dependency re-adding them silently, and
+P8-9 unblocks them deliberately. Grep returns only comments explaining why the block exists.
+**Still outstanding:** the rebuild + `verify:apk` that proves the two permissions actually left the artifact.
 
 ---
 

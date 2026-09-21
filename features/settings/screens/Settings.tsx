@@ -9,6 +9,7 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { useColors, withAlpha } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { Appearance } from '../components/Appearance';
+import { CrashLog } from '../components/CrashLog';
 import { Storage } from '../components/Storage';
 import { RETENTION_DAYS } from '../data/retention';
 import { Text } from '@/components/ui/Text';
@@ -56,6 +57,10 @@ export function Settings() {
 
         <Animated.View entering={rise(60)}>
           <Storage />
+        </Animated.View>
+
+        <Animated.View entering={rise(70)}>
+          <CrashLog />
         </Animated.View>
 
         <Animated.View entering={rise(75)} className="gap-3">

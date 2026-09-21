@@ -7,8 +7,6 @@ import { DATABASE_NAME } from './connection';
  *
  *   files/SQLite/spendwise.db   the live database (expo-sqlite's default directory)
  *   files/snapshots/            pre-migration copies           — excluded from auto-backup
- *   files/legacy/               encrypted originals after the  — excluded from auto-backup
- *                               one-time SQLCipher conversion
  *   files/unreadable/           databases moved aside by       — excluded from auto-backup
  *                               "Start fresh", and the copies
  *                               the boot-failure screen shares
@@ -27,7 +25,6 @@ import { DATABASE_NAME } from './connection';
  */
 
 export const SNAPSHOTS_DIR = 'snapshots';
-export const LEGACY_DIR = 'legacy';
 export const UNREADABLE_DIR = 'unreadable';
 export const BACKUPS_DIR = 'backups';
 

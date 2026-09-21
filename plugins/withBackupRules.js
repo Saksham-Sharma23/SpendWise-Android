@@ -12,7 +12,6 @@ const { withAndroidManifest, withDangerousMod } = require('expo/config-plugins')
  *   file  SQLite/spendwise.db-wal   the WAL is checkpointed into the main file when
  *   file  SQLite/spendwise.db-shm   the app backgrounds; copying these separately can
  *                                   produce a torn database
- *   file  SQLite/spendwise.db.converting        in-progress legacy conversion
  *   file  snapshots/                pre-migration copies (large, device-local safety net)
  *   file  backups/                  the user's own exports, and the pre-restore snapshot
  *                                   (Phase 7). Whole copies of the database, so including
@@ -20,8 +19,10 @@ const { withAndroidManifest, withDangerousMod } = require('expo/config-plugins')
  *                                   exports are kept — straight into the 25 MB cap below.
  *                                   The point of an export is that it leaves the device
  *                                   anyway, through the share sheet
- *   file  legacy/                   encrypted originals kept for one launch after conversion
  *   file  unreadable/               databases moved aside by "Start fresh"
+ *   file  logs/                     the local crash log (lib/crashlog). Diagnostics about the
+ *                                   install that crashed, worthless on a restored one, and
+ *                                   it competes with the database for the 25 MB below
  *   file  SQLite/restore-staging.db a half-built restore; never a database to back up
  *   file  DevLauncherApp-….js       the dev-launcher's JS bundle: ~15 MB, dev builds only,
  *                                   and re-downloaded from Metro on demand. It does not
@@ -31,8 +32,6 @@ const { withAndroidManifest, withDangerousMod } = require('expo/config-plugins')
  *                                   NOTHING was backed up (measured on the dev phone,
  *                                   2026-09-15). Excluding it makes the backup drill
  *                                   meaningful on the build we actually test with.
- *   sharedpref SecureStore.xml      Keystore-wrapped values cannot be decrypted on another
- *                                   device; restoring them only produces DecryptException
  *
  * Keep in step with db/files.ts. Sheet templates (files/sheets/, Phase 6A) are
  * backed up by default because nothing excludes them.
@@ -46,18 +45,16 @@ const { withAndroidManifest, withDangerousMod } = require('expo/config-plugins')
 const EXCLUDES = [
   ['file', 'SQLite/spendwise.db-wal'],
   ['file', 'SQLite/spendwise.db-shm'],
-  ['file', 'SQLite/spendwise.db.converting'],
   ['file', 'snapshots/'],
   ['file', 'backups/'],
-  ['file', 'legacy/'],
   ['file', 'unreadable/'],
+  ['file', 'logs/'],
   ['file', 'SQLite/restore-staging.db'],
   ['file', 'SQLite/restore-staging.db-wal'],
   ['file', 'SQLite/restore-staging.db-shm'],
   // Dev-build only (expo-dev-launcher); see the quota note above.
   ['file', 'DevLauncherApp-BridgelessReactNativeDevBundle.js'],
   ['file', 'DevLauncherApp-ReactNativeDevBundle.js'],
-  ['sharedpref', 'SecureStore.xml'],
 ];
 
 const BACKUP_RULES = 'spendwise_backup_rules';

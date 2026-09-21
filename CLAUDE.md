@@ -12,6 +12,7 @@
 > | [`docs/architecture-review-2026-09-17.md`](docs/architecture-review-2026-09-17.md) | Known bugs (`B1`…), architecture problems (`A1`…) and the **target architecture**            |
 > | [`docs/design/`](docs/design/)                                                     | Designs for unbuilt phases: Sheets (6A/6B), Backup & native layer (7/8)                      |
 > | [`docs/run-on-phone.md`](docs/run-on-phone.md)                                     | Getting a dev build running on the phone, with troubleshooting                               |
+> | [`docs/runbooks/`](docs/runbooks/)                                                 | Step-by-step for the two dangerous operations: cutting a release, changing the schema        |
 > | [`docs/history/`](docs/history/)                                                   | Archived trackers: the _why_ behind code that looks unusual                                  |
 > | [`pcref/CLAUDE.md`](pcref/CLAUDE.md)                                               | The web app's context. **Design and domain reference only.** Never call its API              |
 >
@@ -78,13 +79,12 @@
 | Toasts · Icons · Font  | `sonner-native` · `lucide-react-native` · Plus Jakarta Sans                                            | Same as the web app                                                                                                      |
 | Files                  | `expo-file-system`, `expo-sharing`                                                                     | CSV export, boot recovery sharing                                                                                        |
 | Declared, not yet used | `expo-notifications` (config plugin only)                                                              | Phase 8                                                                                                                  |
-| Legacy, to remove      | `expo-secure-store`                                                                                    | Only for `db/legacyEncryption.ts` (R6)                                                                                   |
 | Removed in R0          | `date-fns`, `@gorhom/bottom-sheet`, `expo-crypto`, `expo-document-picker`, `expo-local-authentication` | Unused. Re-add in the phase that needs one: 6A document picker, 7 crypto (if hashing), 8 local auth                      |
 | Planned                | SheetJS (vendor tarball) + papaparse + ExcelJS (6A, after a spike) · `react-native-android-widget` (8) | Not installed                                                                                                            |
 | Tests                  | Jest 30 + ts-jest, Node environment, `better-sqlite3` running the real migrations                      | No component tests. `tsconfig.test.json` type-checks them; `tsconfig.jest.json` runs them                                |
 | Tooling                | ESLint 9 (flat) + `eslint-plugin-boundaries`, Prettier, GitHub Actions                                 | `npm run verify` runs everything CI runs                                                                                 |
 
-**Crash reporting:** none in release builds. Sentry is ruled out (it needs `INTERNET`); a local crash log is planned (R6).
+**Crash reporting:** a **local** crash log only (`lib/crashlog`, R6). Sentry and every alternative are ruled out by the no-`INTERNET` rule. A global `ErrorUtils` handler installed at module scope in `app/_layout.tsx` — before the database boot, so a boot crash is caught — appends redacted entries to `files/logs/crash.log` (last 200). **Redaction is the feature**: no amounts, notes, category names, dates or file URIs, proved by `lib/__tests__/crashlog.test.ts`. Settings shows a Share/Clear card only once something has crashed. `files/logs/` is excluded from auto-backup.
 
 ---
 
@@ -153,7 +153,7 @@ db/                          the database itself — nothing app-level
   boot.ts                    readable? → pragmas → snapshot → migrate (FKs off) → integrity → seed → purge
   migrate.ts                 FK-safe migration, user-data probe, integrity flag (pure, tested)
   seed.ts · seedCore.ts · seedData.ts   system categories: binding · reconciliation · the list itself
-  retention.ts · files.ts · encryptedCopy.ts (passphrase backup copies) · legacyEncryption.ts (remove in R6)
+  retention.ts · files.ts · encryptedCopy.ts (passphrase backup copies)
   backup/                    Phase 7: tables.ts + json.ts (what a JSON backup holds) · validate.ts, naming.ts,
                              history.ts, size.ts, version.ts (all PURE and tested) · export.ts (VACUUM INTO /
                              sqlcipher_export / share / SAF picker / footprint) · restore.ts (stage → validate →
@@ -161,8 +161,9 @@ db/                          the database itself — nothing app-level
   dev/                       devSeed.ts · benchmark.ts — dev harness only; lint blocks production imports
   migrations/                generated by drizzle-kit. NEVER hand-edit; custom SQL via `--custom`
 lib/
-  money.ts dates.ts calendar.ts today.ts heap.ts identity.ts insight.ts renewals.ts dedupe.ts icons.ts
+  money.ts dates.ts calendar.ts today.ts heap.ts identity.ts insight.ts subscriptions.ts dedupe.ts icons.ts
   categoryColor.ts theme.ts themeCss.ts themeStore.ts motion.ts
+  crashlog/                  redact.ts (PURE and tested: the promise that the log is safe to share) · index.ts (runtime)
   db/                        useDbQuery · changeHub · latestOnly · safeWrite · errors (UserFacingError)
 lint-fixtures/               deliberate violations; `npm run lint:selftest` proves each rule still fires
 plugins/withBackupRules.js   auto-backup exclusions (exclude-only; tested)
@@ -190,7 +191,7 @@ complete examples. Build screens from the `components/ui` kit; a new form is a `
 9. **Writes return `WriteResult` via `safeWrite`.** Rule violations throw `UserFacingError` (shown verbatim). On `ok: false` the form stays open; `safeWrite` has already toasted.
 10. **Soft delete via `deleted_at`**; every read filters it; unique indexes are partial. Undo is a toast action. Deleted transactions are purged after 30 days, except import-batch rows (`db/retention.ts`).
 11. **Every `category_id` / `person_id` reference must be handled by merge/delete/restore paths.** When you add a table with such an FK, update `features/categories/mutations.ts` and its test (see B4).
-12. **Schema changes:** edit `db/schema.ts` → `npx drizzle-kit generate` → **read the SQL** (three known generator bugs, see Gotchas) → `db/__tests__/migrations.test.ts` on the populated fixture → run on a copy of the phone's database. Data fixes go in `drizzle-kit generate --custom`. Never hand-edit a generated migration.
+12. **Schema changes:** edit `db/schema.ts` → `npx drizzle-kit generate` → **read the SQL** (three known generator bugs, see Gotchas) → `db/__tests__/migrations.test.ts` on the populated fixture → run on a copy of the phone's database. Data fixes go in `drizzle-kit generate --custom`. Never hand-edit a generated migration. Full procedure: [`docs/runbooks/migrations.md`](docs/runbooks/migrations.md).
 13. **Colours come from tokens.** `useColors()` in components (`colors` only where a hook can't run). No hex literals in charts or screens (`components/charts/__tests__/tokens.test.ts`). Change a palette → `npm run theme:css`.
 14. **Use `useToday()` for "today" in anything rendered**, never `todayISO()` at render. Date presets are stored as names and resolved at query time.
 15. **Restore backs up before it overwrites** (Phase 7): validate against a STAGING copy — opened on its OWN connection, so a broken database can still be restored over from the boot-failure screen — snapshot the live database with `VACUUM INTO`, then swap; if the restored file does not boot, put the snapshot back. Nothing live is touched until `applyRestore`. Backup file names carry their kind (`spendwise-`, `spendwise-before-restore-`, `spendwise-failed-restore-`), because pruning must never delete a safety copy. **A restore fires no change event** (the file is replaced, not written), so it must call `notifyDatabaseReplaced()` or every mounted query keeps showing the old data.
@@ -261,7 +262,7 @@ npm run db:generate                   # after editing db/schema.ts, then READ th
 - **Local native builds:** arm64 only, Kotlin in-process, `--max-workers=2`, and **never start Metro until the APK is built** (8 GB RAM). Redirect Gradle to a log and grep `BUILD SUCCESSFUL`; never pipe it through `tail`.
 - **A schema change is not a native change.** Migrations are bundled JS. Adding a native package or editing `app.config.ts`/`plugins/` is.
 - **Inspect the database:** background the app (checkpoints the WAL) → `npm run db:pull` → `npm run db:studio`. The dev harness (More → Dev harness) seeds 50k rows, benchmarks the shipped builders (median + TEMP B-TREE/SCAN flags) and round-trips an encrypted backup file.
-- **Release check:** `rm -rf android` → prebuild → `npm run build:release-apk` (runs `verify:apk`: `aapt2 dump permissions` on the artifact).
+- **Release check:** `rm -rf android` → prebuild → `npm run build:release-apk` (runs `verify:apk`: `aapt2 dump permissions` on the artifact). Cutting an actual release: [`docs/runbooks/release.md`](docs/runbooks/release.md).
 
 ---
 
@@ -281,7 +282,7 @@ npm run db:generate                   # after editing db/schema.ts, then READ th
 **Android and build**
 
 - **Verify permissions on the built APK, never on `expo config` or the manifest.** `android.permissions` only _adds_; library manifests contribute more; a stale `android/` keeps the old policy. Only `blockedPermissions` removes, and only `aapt2 dump permissions` on the artifact tells the truth.
-- **A library's own dependencies add permissions too, and so does Expo's template.** `expo-secure-store` → `androidx.biometric` brought `USE_BIOMETRIC`/`USE_FINGERPRINT`; the prebuild template writes `SYSTEM_ALERT_WINDOW` into the _main_ manifest. So `verify:apk` is an **allowlist** (it checks the release APK by default). To find where a permission came from, read `android/app/build/intermediates/manifest_merge_blame_file/*/manifest-merger-blame-*-report.txt`.
+- **A library's own dependencies add permissions too, and so does Expo's template.** `expo-secure-store` → `androidx.biometric` brought `USE_BIOMETRIC`/`USE_FINGERPRINT` (removed in R6-4, but both stay in `blockedPermissions` as a ratchet); the prebuild template writes `SYSTEM_ALERT_WINDOW` into the _main_ manifest. So `verify:apk` is an **allowlist** (it checks the release APK by default). To find where a permission came from, read `android/app/build/intermediates/manifest_merge_blame_file/*/manifest-merger-blame-*-report.txt`.
 - **`expo-notifications` drags in FCM, Install Referrer and ~18 OEM badge permissions.** All are blocked in `app.config.ts`. `WAKE_LOCK` is kept for scheduled notifications.
 - **Auto-backup has a 25 MB quota and fails silently.** Backup rules are exclude-only (any `<include>` narrows the backup), have no wildcards, and exclude WAL/SHM, snapshots, legacy, unreadable and the dev-launcher bundle.
 - **A Keystore-keyed database cannot survive auto-backup.** If on-device encryption ever returns, the key must be recoverable by the user (a recovery code), never Keystore-only.

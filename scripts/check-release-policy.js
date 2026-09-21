@@ -7,7 +7,8 @@
  *   2. allowBackup is on. Android auto-backup is one of the three durability
  *      layers; turning it off silently would remove it.
  *   3. The permissions that arrive uninvited stay blocked: SYSTEM_ALERT_WINDOW
- *      (Expo's template) and USE_BIOMETRIC / USE_FINGERPRINT (expo-secure-store).
+ *      (Expo's template) and USE_BIOMETRIC / USE_FINGERPRINT (androidx.biometric,
+ *      which nothing depends on since R6-4 — the block is a ratchet).
  *
  * It evaluates app.config.ts exactly as a release build does: no dev-network
  * opt-in, so the check fails closed if someone reintroduces a rule like the old
@@ -54,8 +55,11 @@ const blocked = android.blockedPermissions ?? [];
 const MUST_BLOCK = [
   'android.permission.INTERNET',
   'android.permission.SYSTEM_ALERT_WINDOW', // Expo's prebuild template
-  'android.permission.USE_BIOMETRIC', // androidx.biometric, via expo-secure-store
-  'android.permission.USE_FINGERPRINT', // same
+  // androidx.biometric. Nothing depends on it since R6-4 removed
+  // expo-secure-store; kept blocked so a future dependency cannot re-add them
+  // without someone deciding to.
+  'android.permission.USE_BIOMETRIC',
+  'android.permission.USE_FINGERPRINT',
 ];
 for (const p of MUST_BLOCK) {
   if (!blocked.includes(p)) problems.push(`android.blockedPermissions does not include ${p}`);

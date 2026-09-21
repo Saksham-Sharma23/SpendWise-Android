@@ -54,13 +54,16 @@ const BLOCKED_ALWAYS = [
   'android.permission.READ_EXTERNAL_STORAGE',
   'android.permission.WRITE_EXTERNAL_STORAGE',
 
-  // --- Pulled in transitively by expo-secure-store --------------------
-  // It depends on androidx.biometric:biometric, whose manifest declares both.
-  // The app never shows a biometric prompt: its one SecureStore use
-  // (db/legacyEncryption.ts) reads and deletes a key that was stored with
-  // WHEN_UNLOCKED, never `requireAuthentication`. Found 2026-09-19, when
-  // removing expo-local-authentication (R0-4) did NOT drop them — the merge
-  // report traced them here. Unblock these when the Phase 8 app lock is built.
+  // --- androidx.biometric, whose manifest declares both ---------------
+  // The app never shows a biometric prompt. These arrived transitively from
+  // expo-secure-store, which R6-4 removed (2026-09-21) along with the legacy
+  // SQLCipher conversion that was its only user — so as of that commit nothing
+  // should pull them in at all. The block stays as a ratchet: any library
+  // added later that depends on androidx.biometric would otherwise put them
+  // back silently, and verify:apk would fail on the artifact instead of here.
+  // Found 2026-09-19, when removing expo-local-authentication (R0-4) did NOT
+  // drop them — the merge report traced them to secure-store.
+  // Unblock these when the Phase 8 app lock is built.
   'android.permission.USE_BIOMETRIC',
   'android.permission.USE_FINGERPRINT',
 

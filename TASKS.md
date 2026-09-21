@@ -19,24 +19,24 @@
 
 ## Status — 2026-09-19
 
-| #         | Phase                         | Est.  | Status                                          |
-| --------- | ----------------------------- | ----- | ----------------------------------------------- |
-| 0–5       | Foundations → Analytics       | —     | ✅ Code complete · 🟡 device checks open        |
-| G         | Groups — split expenses       | —     | ✅ Code complete · 🟡 device checks open        |
-| F0–F3, F5 | Fix phases (TASKS2)           | —     | ✅ Code complete · 🟡 device checks open        |
-| **R0**    | Stabilise the repo            | ½ d   | ✅ done 2026-09-20 (release APK verified)       |
-| **R1**    | Correctness bugs              | 1½ d  | ✅ done 2026-09-17 (550 tests)                  |
-| **R2**    | Guard rails: lint, format, CI | 1½ d  | ✅ done 2026-09-19 (568 tests)                  |
-| **R3**    | One data layer                | 3 d   | ✅ done 2026-09-19 (568 tests)                  |
-| **RF**    | Review fixes B21–B30 + motion | —     | ✅ code 2026-09-19 · 🟡 `verify` + phone checks |
-| **R4**    | UI kit and thin routes        | 3 d   | ✅ done 2026-09-20 (screens verified on phone)  |
-| **7**     | **Backup & restore**          | 3–4 d | ✅ done · 🟡 recovery path untested on phone    |
-| 8         | Native layer                  | 3–4 d | ⬜                                              |
-| R5        | Performance (was TASKS2 F4)   | 2 d   | ✅ done 2026-09-20 (indexes in 0009)            |
-| R6        | Observability and release ops | 1 d   | ⬜                                              |
-| 6A        | Sheets: import and workspaces | 7–8 d | ⬜ gated on the Sheets readiness gate           |
-| 6B        | Linked sheets                 | 4–5 d | ⬜                                              |
-| 9         | Hardening & Play Store        | 4–5 d | ⬜                                              |
+| #         | Phase                         | Est.  | Status                                           |
+| --------- | ----------------------------- | ----- | ------------------------------------------------ |
+| 0–5       | Foundations → Analytics       | —     | ✅ Code complete · 🟡 device checks open         |
+| G         | Groups — split expenses       | —     | ✅ Code complete · 🟡 device checks open         |
+| F0–F3, F5 | Fix phases (TASKS2)           | —     | ✅ Code complete · 🟡 device checks open         |
+| **R0**    | Stabilise the repo            | ½ d   | ✅ done 2026-09-20 (release APK verified)        |
+| **R1**    | Correctness bugs              | 1½ d  | ✅ done 2026-09-17 (550 tests)                   |
+| **R2**    | Guard rails: lint, format, CI | 1½ d  | ✅ done 2026-09-19 (568 tests)                   |
+| **R3**    | One data layer                | 3 d   | ✅ done 2026-09-19 (568 tests)                   |
+| **RF**    | Review fixes B21–B30 + motion | —     | ✅ code 2026-09-19 · 🟡 `verify` + phone checks  |
+| **R4**    | UI kit and thin routes        | 3 d   | ✅ done 2026-09-20 (screens verified on phone)   |
+| **7**     | **Backup & restore**          | 3–4 d | ✅ done · 🟡 recovery path untested on phone     |
+| 8         | Native layer                  | 3–4 d | ⬜                                               |
+| R5        | Performance (was TASKS2 F4)   | 2 d   | ✅ done 2026-09-20 (indexes in 0009)             |
+| R6        | Observability and release ops | 1 d   | 🟡 code done; rebuild + `verify:apk` outstanding |
+| 6A        | Sheets: import and workspaces | 7–8 d | ⬜ gated on the Sheets readiness gate            |
+| 6B        | Linked sheets                 | 4–5 d | ⬜                                               |
+| 9         | Hardening & Play Store        | 4–5 d | ⬜                                               |
 
 **Recommended order:** R0 → R1 → R2 → R3 → R4 → 7 → 8 → R5 → R6 → 6A → 6B → 9.
 _2026-09-19:_ the review fixes (RF) and most of R5 were done early, on branch `fix/review-b21-b28`.
@@ -422,7 +422,7 @@ native module and no rebuild; after the uninstall the app opened on an empty led
       one is the wrong thing to lead the other. `tx_cat_month_idx (category_id, type, month, amount_paise)`:
       `category_id` first **because the query groups by it**, so SQLite walks group by group
       (`ANY(category_id)`) with type and month as range constraints inside each. `tx_amount_idx
-  (type, amount_paise DESC, month)`: DESC lets `max()` read from the largest row and stop at the first one
+(type, amount_paise DESC, month)`: DESC lets `max()` read from the largest row and stop at the first one
       in range instead of visiting every match. Both partial on `deleted_at IS NULL`, like the indexes they
       sit beside. Node, 50k rows: top category **54 → 9 ms**, biggest expense **29 → 0.15 ms**, category donut
       1.24 → 0.34 ms, nothing else slower; 2,000 inserts cost 24 → 31 ms (~3.7 µs a row). The plans are
@@ -440,13 +440,38 @@ native module and no rebuild; after the uninstall the app opened on an empty led
 
 **Est:** 1 day.
 
-- [ ] **Local crash log** (`lib/crashlog.ts`): global error handler + unhandled rejections → rotating `files/logs/crash.log`, last 200 entries, **no amounts or notes**; Settings → "Share crash log" (T9)
+- [x] **Local crash log** (`lib/crashlog/`, 2026-09-21): `ErrorUtils` global handler + unhandled rejections → rotating
+      `files/logs/crash.log`, last 200 entries; Settings → Share / Clear, hidden until something crashes (T9).
       _Why:_ release builds have no crash reporting, and Sentry is ruled out by the no-`INTERNET` rule.
+      Installed at **module scope** in `app/_layout.tsx`, before `bootDatabase()` — a handler installed in an
+      effect is installed too late to catch the crash most worth having. It **chains** to the previous handler,
+      so the dev red box still appears. `record()` is deliberately **synchronous**: after a fatal error the JS
+      context goes away and an awaited write never lands. `db/boot.ts` records every non-`ready` outcome, which
+      is the one failure the user sees and we can least reproduce. Entries carry the app version and the route.
+      **Redaction is the feature** (`lib/crashlog/redact.ts`, pure, ~24 tests): amounts in every shape
+      `lib/money.ts` emits, quoted strings, ISO dates, 4+ digit runs and `file://`/`content://` URIs all go,
+      while `at Ledger.tsx:42:17` survives — a stack with every number stripped is not a stack. Order matters:
+      currency before bare digits, or `₹12,345` leaves a `₹` behind. `files/logs/` is excluded from auto-backup.
 - [x] **Release APK on GitHub** (`.github/workflows/release.yml`, 2026-09-19): push to `main` → clean prebuild → `assembleRelease` (arm64) → `verify-apk.sh` → artifact; a `v*` tag also publishes a GitHub Release. Re-signed with the release key when the `ANDROID_KEYSTORE_*` secrets are set, else the Expo debug key with a warning. **Not yet run on GitHub**
 - [ ] **Create the release keystore** and add the four `ANDROID_KEYSTORE_*` secrets; back the `.jks` up outside the repo (losing it means no update can ever install over the old app)
-- [ ] **`docs/runbooks/release.md`**: version bump, `rm -rf android` → prebuild → `build:release-apk` → `verify:apk` → backup drill → migration drill → tag
-- [ ] **`docs/runbooks/migrations.md`**: the drizzle-kit bug list, generate → read SQL → populated test → phone copy
-- [ ] **Remove `db/legacyEncryption.ts` and `expo-secure-store`** once no installed build can hold a keyed DB (all testers upgraded past 2026-09-14)
+      _Yours to do — it needs a password only you should hold._ Step by step, with the `keytool` command and the
+      PowerShell base64 one-liner: [`docs/runbooks/release.md`](docs/runbooks/release.md) § Creating the release keystore.
+- [x] **[`docs/runbooks/release.md`](docs/runbooks/release.md)** _(2026-09-21)_: decide what is in it → `npm run verify` → version bump (both files) →
+      build (GitHub, or locally with Metro off) → verify the APK against the exact expected permission list → signing →
+      backup / migration / auto-backup drills → tag. Plus the keystore appendix above.
+- [x] **[`docs/runbooks/migrations.md`](docs/runbooks/migrations.md)** _(2026-09-21)_: the three drizzle-kit 0.31 bugs with their fixes, the
+      three-file rename (`.sql` + `_journal.json` + `migrations.js` — miss one and the migration never runs on a
+      phone), why FKs must be off, what to add to the **populated** fixture, and the pull-and-compare on a copy of
+      the phone's database. Linked from `CLAUDE.md` #12 and `CONTRIBUTING.md`.
+- [x] **Removed `db/legacyEncryption.ts` and `expo-secure-store`** _(2026-09-21)_. The one-time SQLCipher→plain
+      conversion for databases keyed before 2026-09-14; the only installed builds are the 2026-09-20 release APK
+      and the dev build after it, both far past it. Boot step 1 still needs its **readability** probe, so that part
+      is not deleted but moved: `databaseReadable()` in `db/connection.ts` — `openDatabaseSync` succeeds on a file
+      it cannot read, so it reads `sqlite_master`. Also gone: `BootOutcome.convertedLegacy` (nothing consumed it),
+      `LEGACY_DIR`, and the `legacy/`, `spendwise.db.converting` and `SecureStore.xml` backup exclusions with their
+      assertions. `USE_BIOMETRIC`/`USE_FINGERPRINT` **stay** in `blockedPermissions` as a ratchet — nothing pulls in
+      `androidx.biometric` now, and nothing should re-add it without a decision. Native change: **needs a rebuild +
+      `verify:apk`** to confirm the two permissions actually left the artifact.
 
 ---
 

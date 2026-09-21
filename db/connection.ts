@@ -21,10 +21,10 @@ export const DATABASE_NAME = 'spendwise.db';
  * Every module imports `sqliteDb` (and `db`, built on it) once at load time,
  * so the handle itself can never change identity. But boot needs to close the
  * file and reopen it — to move an unreadable database aside ("Start fresh"),
- * and to swap in the converted file when a legacy SQLCipher database is
- * decrypted. `sqliteDb` is therefore a forwarding proxy over whichever
- * connection is currently open, and reopening is invisible to its users.
- * `closeConnection` closes both; each reopens on its next use.
+ * and a restore replaces the file underneath it entirely. `sqliteDb` is
+ * therefore a forwarding proxy over whichever connection is currently open,
+ * and reopening is invisible to its users. `closeConnection` closes both;
+ * each reopens on its next use.
  *
  * `enableChangeListener: true` (write connection only) feeds lib/db/changeHub:
  * every write reports its table, and live queries re-run from that.
@@ -38,6 +38,27 @@ export function openConnection(): SQLite.SQLiteDatabase {
     current = SQLite.openDatabaseSync(DATABASE_NAME, { enableChangeListener: true });
   }
   return current;
+}
+
+/**
+ * Does the file open and read as SQLite at all?
+ *
+ * The first question boot asks. A corrupt file, a truncated restore or a
+ * database still encrypted by a build from before 2026-09-14 all fail here,
+ * and all get the same answer: the boot-failure screen, with the original
+ * file left exactly where it is.
+ *
+ * `openDatabaseSync` succeeds on a file it cannot actually read — the header
+ * is not checked until a page is needed — so this reads `sqlite_master`
+ * rather than trusting the open.
+ */
+export function databaseReadable(): boolean {
+  try {
+    openConnection().getFirstSync('SELECT count(*) AS n FROM sqlite_master');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

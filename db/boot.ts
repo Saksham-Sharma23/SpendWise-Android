@@ -3,7 +3,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 import { db } from './client';
-import { applyConnectionPragmas, closeConnection, enableForeignKeys, sqliteDb } from './connection';
+import { applyConnectionPragmas, closeConnection, databaseReadable, enableForeignKeys, sqliteDb } from './connection';
 import {
   SNAPSHOTS_DIR,
   UNREADABLE_DIR,
@@ -15,7 +15,6 @@ import {
   sqlitePath,
   timestampForFile,
 } from './files';
-import { cleanUpLegacyEncryption, convertLegacyEncryptionIfNeeded, LegacyConversionError } from './legacyEncryption';
 import {
   existingTables,
   ForeignKeyViolationError,
@@ -35,11 +34,12 @@ import {
 import migrations from './migrations/migrations';
 import { purgeExpired } from './retention';
 import { seedIfNeeded } from './seed';
+import { record } from '@/lib/crashlog';
 
 /**
  * The launch sequence, as one function that returns a typed outcome.
  *
- *   1. Make sure the file reads as SQLite (converting a legacy SQLCipher file once).
+ *   1. Make sure the file opens and reads as SQLite at all.
  *   2. Pragmas (WAL, synchronous, busy timeout).
  *   3. If a migration is pending on a non-empty database: integrity check,
  *      then `VACUUM INTO` a snapshot, keeping the newest two.
@@ -54,7 +54,7 @@ import { seedIfNeeded } from './seed';
  */
 
 export type BootOutcome =
-  | { kind: 'ready'; convertedLegacy: boolean; snapshot: string | null }
+  | { kind: 'ready'; snapshot: string | null }
   | { kind: 'unreadable'; message: string }
   | { kind: 'migration-failed'; message: string; snapshot: string | null }
   | { kind: 'failed'; message: string };
@@ -94,22 +94,34 @@ function snapshotBeforeMigrating(pending: JournalEntry[]): string {
   return target.uri;
 }
 
+/**
+ * Boot, and write a failure down before showing it.
+ *
+ * A boot failure is the one error the user definitely notices and the one we
+ * have the least chance of reproducing: it happens before any screen exists,
+ * on their data, on their phone. The failure screen shows a sentence; the log
+ * keeps which step failed and what the underlying error said, so the person
+ * sharing it hands over something diagnosable rather than a screenshot.
+ */
 export async function bootDatabase(): Promise<BootOutcome> {
+  const outcome = await runBoot();
+  if (outcome.kind !== 'ready') {
+    const e = new Error(`${outcome.kind}: ${outcome.message}`);
+    e.name = 'BootFailure';
+    // No stack: it would point at this wrapper, not at the step that failed,
+    // and `outcome.kind` already names the step.
+    e.stack = undefined;
+    record(e, 'fatal');
+  }
+  return outcome;
+}
+
+async function runBoot(): Promise<BootOutcome> {
   // 1. Readable?
-  let convertedLegacy = false;
-  try {
-    const check = await convertLegacyEncryptionIfNeeded();
-    if (check === 'unreadable') {
-      return {
-        kind: 'unreadable',
-        message: 'This file is not a database SpendWise can open. It may be damaged, or encrypted by an older version.',
-      };
-    }
-    convertedLegacy = check === 'converted';
-  } catch (e) {
+  if (!databaseReadable()) {
     return {
       kind: 'unreadable',
-      message: e instanceof LegacyConversionError ? e.message : `Could not open your data: ${messageOf(e)}`,
+      message: 'This file is not a database SpendWise can open. It may be damaged, or encrypted by an older version.',
     };
   }
 
@@ -191,12 +203,7 @@ export async function bootDatabase(): Promise<BootOutcome> {
     if (__DEV__) console.warn('[boot] could not remove old share copies', e);
   }
 
-  // A previous launch converted a legacy database and this one booted cleanly: drop the kept original.
-  if (!convertedLegacy) {
-    void cleanUpLegacyEncryption();
-  }
-
-  return { kind: 'ready', convertedLegacy, snapshot };
+  return { kind: 'ready', snapshot };
 }
 
 // ---------------------------------------------------------------------------

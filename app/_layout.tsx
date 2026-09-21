@@ -2,7 +2,7 @@ import { BootFailure } from '@/features/boot';
 import '../global.css';
 
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
@@ -21,7 +21,15 @@ import {
 import { bootDatabase, type BootOutcome } from '@/db/boot';
 import { checkpointWal } from '@/db/connection';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
+import { installCrashHandler, noteRoute } from '@/lib/crashlog';
 import { useColors, useThemeName } from '@/lib/theme';
+
+// Before anything else, including the database boot: a crash during boot is
+// exactly the one worth having a record of, and a handler installed inside a
+// component effect is installed too late to catch it. Release builds have no
+// crash reporting at all (Sentry needs INTERNET), so this file is the only
+// account of what went wrong — redacted, local, and shared only on request.
+installCrashHandler();
 
 // Keep the splash up until the database is open, migrated and seeded. Flashing
 // an empty shell while the schema is still being created reads as broken.
@@ -86,6 +94,14 @@ function RootLayoutInner() {
     });
     return () => sub.remove();
   }, [ready]);
+
+  // Tell the crash log which screen we are on. A minified release stack often
+  // names no file of ours at all, and "it crashed" is a different report from
+  // "it crashed on the group totals screen".
+  const pathname = usePathname();
+  useEffect(() => {
+    noteRoute(pathname);
+  }, [pathname]);
 
   const onReady = useCallback(() => {
     void SplashScreen.hideAsync();
