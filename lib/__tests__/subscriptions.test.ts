@@ -9,6 +9,7 @@ import {
   type RenewalInput,
 } from '../subscriptions';
 import { daysBetween } from '../dates';
+import { deterministicColor, deterministicIcon } from '../identity';
 
 /**
  * The one renewal domain (A10). These tests used to live in two files —
@@ -189,5 +190,62 @@ describe('renewalCountdown', () => {
     expect(renewalCountdown(0)).toBe('Today');
     expect(renewalCountdown(1)).toBe('Tomorrow');
     expect(renewalCountdown(12)).toBe('in 12 days');
+  });
+});
+
+describe('enrich — one set of facts, under one set of names', () => {
+  const TODAY = '2026-03-15';
+
+  const row = (over: Partial<RenewalInput> = {}): RenewalInput => ({
+    name: 'Netflix',
+    amountPaise: 64900,
+    billingCycle: 'monthly',
+    status: 'active',
+    anchorDate: '2026-03-10',
+    categoryIcon: null,
+    categoryColor: null,
+    ...over,
+  });
+
+  it('carries the row through and adds every derived field', () => {
+    const e = enrich(row(), TODAY);
+    expect(e.name).toBe('Netflix');
+    expect(e.nextRenewal).toBe('2026-04-10');
+    expect(e.daysUntil).toBe(26);
+    expect(e.monthlyCostPaise).toBe(64900);
+    expect(e.yearlyCostPaise).toBe(64900 * 12);
+    expect(e.urgency).toBe('ok');
+  });
+
+  it('falls back to a NAME-derived icon and colour, not a generic one', () => {
+    // This is the drift A10 existed to remove: Home drew a generic violet
+    // `repeat` icon for every uncategorised subscription while the Tracker
+    // drew a name-derived one, so one row looked like two different things on
+    // two screens. One enricher cannot disagree with itself — but only if the
+    // fallback is the shared one, which is what this asserts.
+    const e = enrich(row(), TODAY);
+    expect(e.icon).toBe(deterministicIcon('Netflix'));
+    expect(e.color).toBe(deterministicColor('Netflix'));
+  });
+
+  it("prefers the category's own icon and colour when there is one", () => {
+    const e = enrich(row({ categoryIcon: 'film', categoryColor: '#ff0000' }), TODAY);
+    expect(e.icon).toBe('film');
+    expect(e.color).toBe('#ff0000');
+  });
+
+  it('takes the yearly cost from the charge, never x12 of the monthly (B3)', () => {
+    const e = enrich(row({ amountPaise: 119900, billingCycle: 'yearly' }), TODAY);
+    expect(e.yearlyCostPaise).toBe(119900);
+    expect(e.monthlyCostPaise).toBe(9992);
+    // 9992 x 12 = 119904. Four paise of rounding error, which is exactly why
+    // the yearly figure must come from the charge.
+    expect(e.monthlyCostPaise * 12).not.toBe(e.yearlyCostPaise);
+  });
+
+  it('bands urgency, and mutes anything that is not active', () => {
+    expect(enrich(row({ anchorDate: '2026-03-17' }), TODAY).urgency).toBe('soon');
+    expect(enrich(row({ anchorDate: '2026-03-17', status: 'paused' }), TODAY).urgency).toBe('muted');
+    expect(enrich(row({ status: 'cancelled' }), TODAY).urgency).toBe('muted');
   });
 });
