@@ -1,4 +1,5 @@
 import { db } from '@/db/client';
+import { readDb } from '@/db/read';
 import { META_KEYS, readMeta } from '@/data/meta';
 import { budgetSpend } from '@/data/ledger';
 import { budgetRatio, budgetState } from '@/data/ledger/budgetState';
@@ -28,6 +29,17 @@ import { budgetForAlertQuery, reminderSubscriptionsQuery } from './sql';
  * **Every entry point swallows its own errors.** A notification is a
  * courtesy; the write that triggered it is the product. A reminder that
  * cannot be scheduled must never surface as a failed save.
+ *
+ * **Which handle:** every aggregate and multi-row read goes through `readDb`,
+ * so it runs on expo-sqlite's native worker thread. `checkBudgetAfterWrite`
+ * runs after EVERY transaction write, and its join plus aggregate over
+ * `transactions` on the JS thread is exactly the freeze db/read.ts exists to
+ * remove. The sync `db` is kept only for `readMeta`, a one-row point read by
+ * primary key — the same split as `data/meta/hooks.ts`.
+ *
+ * The builders take `AnyDb`, so BOTH handles typecheck and `await` on a sync
+ * result resolves immediately: passing `db` here compiles and silently runs
+ * on the JS thread. Only the handle named at the call site prevents it.
  */
 
 export { forgetAllBudgetAlerts } from './memory';
@@ -45,7 +57,7 @@ export async function rescheduleAll(): Promise<number> {
     await ensureChannels();
     const today = todayISO();
 
-    const rows = await reminderSubscriptionsQuery(db);
+    const rows = await reminderSubscriptionsQuery(readDb);
     const subs = rows.map((r) => ({
       id: r.id,
       name: r.name,
@@ -91,12 +103,12 @@ export async function rescheduleAll(): Promise<number> {
 export async function checkBudgetAfterWrite(categoryId: number | null): Promise<boolean> {
   if (categoryId == null) return false;
   try {
-    const [budget] = await budgetForAlertQuery(db, categoryId);
+    const [budget] = await budgetForAlertQuery(readDb, categoryId);
     if (!budget || !budget.isActive) return false;
 
     const today = todayISO();
     const window = getCycleWindow(budget.resetDay, today);
-    const [spend] = await budgetSpend(db, [{ categoryId, start: window.start, end: window.end }]);
+    const [spend] = await budgetSpend(readDb, [{ categoryId, start: window.start, end: window.end }]);
     const spentPaise = spend?.spentPaise ?? 0;
 
     const ratio = budgetRatio(spentPaise, budget.limitPaise);
