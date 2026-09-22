@@ -1,5 +1,4 @@
 /** The transactions feature's public surface: what routes may import. */
-export { transactionBenchQueries } from './benchmark';
 export { Ledger } from './components/Ledger';
 export { RecentlyDeleted } from './components/RecentlyDeleted';
 export { FiltersSheet } from './screens/FiltersSheet';
