@@ -1,7 +1,8 @@
 import { requireOptionalNativeModule } from 'expo';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useRef, type ReactNode, type RefObject } from 'react';
+import { useCallback, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import {
+  findNodeHandle,
   Platform,
   StyleSheet,
   View,
@@ -17,6 +18,15 @@ import { create } from 'zustand';
 import { useGlassStore } from '@/lib/glassStore';
 import { usePerfFlags } from '@/lib/perfFlags';
 import { useColors, useThemeName, type GlassStyle } from '@/lib/theme';
+import {
+  LENS_AVAILABLE,
+  LENS_NEEDS_NEWER_ANDROID,
+  LensTargetView,
+  LensView,
+  type LensOptics,
+} from '@/modules/liquid-glass';
+
+export { LENS_AVAILABLE, LENS_NEEDS_NEWER_ANDROID, type LensOptics };
 
 /**
  * Real backdrop blur for the glass tab bar — when the native module exists.
@@ -173,22 +183,28 @@ const blur: BlurModule | null = BLUR_AVAILABLE ? (require('expo-blur') as BlurMo
 
 interface BlurTargetState {
   target: RefObject<View | null> | null;
-  setTarget: (target: RefObject<View | null>) => void;
+  /** The same screen's lens target (liquid glass, Android 13+); its ref stays empty elsewhere. */
+  lensTarget: RefObject<View | null> | null;
+  setTarget: (target: RefObject<View | null>, lensTarget: RefObject<View | null>) => void;
 }
 
 const useBlurTargetStore = create<BlurTargetState>((set) => ({
   target: null,
-  setTarget: (target) => set({ target }),
+  lensTarget: null,
+  setTarget: (target, lensTarget) => set({ target, lensTarget }),
 }));
 
-/** Wrap a tab screen's content so the glass bar can blur it. */
+const styles = StyleSheet.create({ fill: { flex: 1 } });
+
+/** Wrap a tab screen's content so the glass bar can blur it, and bend it. */
 export function BlurTarget({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const ref = useRef<View | null>(null);
+  const lensRef = useRef<View | null>(null);
   const setTarget = useBlurTargetStore((s) => s.setTarget);
 
   useFocusEffect(
     useCallback(() => {
-      if (BLUR_AVAILABLE) setTarget(ref);
+      if (BLUR_AVAILABLE) setTarget(ref, lensRef);
     }, [setTarget]),
   );
 
@@ -200,13 +216,62 @@ export function BlurTarget({ children, style }: { children: ReactNode; style?: S
   // the page had no content, the blur sampled nothing and fell back to the
   // window's dark background, so the glass turned grey/black over empty space.
   const { backgroundColor } = StyleSheet.flatten(style) ?? {};
+  const page =
+    backgroundColor != null ? (
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor }]} />
+    ) : null;
+
+  // Where the lens exists, the screen is recorded a second time for it, and
+  // the page colour goes inside that recording too, for the same reason as
+  // above. Nested whatever the style, so switching style in Settings never
+  // remounts the screens underneath.
+  const LensTarget = LensTargetView;
   return (
     <Target ref={ref} style={style}>
-      {backgroundColor != null ? (
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor }]} />
-      ) : null}
-      {children}
+      {page}
+      {LensTarget ? (
+        <LensTarget ref={lensRef} style={styles.fill}>
+          {page}
+          {children}
+        </LensTarget>
+      ) : (
+        children
+      )}
     </Target>
+  );
+}
+
+/**
+ * Liquid glass where the lens exists (Android 13+, a build with the module):
+ * the screen under the bar drawn through a lens, so it bends at the rim and
+ * swells in the middle (modules/liquid-glass). It takes GlassBlur's place —
+ * it blurs too, lightly, before it bends.
+ */
+export function GlassLens({ radius, optics }: { radius: number; optics: LensOptics }) {
+  const lensTarget = useBlurTargetStore((s) => s.lensTarget);
+  // Dev-only A/B for R5-4, as for the blur; always true in release.
+  const on = usePerfFlags((s) => s.blur);
+  // The native side finds the screen by its React tag. The ref is filled by
+  // the time a screen registers it: that happens on focus, after mount.
+  const targetId = useMemo(() => {
+    const node = lensTarget?.current;
+    return node ? findNodeHandle(node) : null;
+  }, [lensTarget]);
+
+  const Lens = LensView;
+  if (!Lens || !on) return null;
+  return (
+    <Lens
+      pointerEvents="none"
+      style={StyleSheet.absoluteFill}
+      targetId={targetId}
+      cornerRadius={radius}
+      blur={optics.blur}
+      bevel={optics.bevel}
+      bend={optics.bend}
+      zoom={optics.zoom}
+      dispersion={optics.dispersion}
+    />
   );
 }
 

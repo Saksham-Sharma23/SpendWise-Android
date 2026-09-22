@@ -2,7 +2,7 @@ import { Check, Droplet, Moon, Smartphone, Snowflake, Sun } from 'lucide-react-n
 import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { BLUR_RENDERS } from '@/components/layout/glass';
+import { BLUR_RENDERS, LENS_AVAILABLE, LENS_NEEDS_NEWER_ANDROID } from '@/components/layout/glass';
 import { Card } from '@/components/ui/Card';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useGlassStore } from '@/lib/glassStore';
@@ -110,7 +110,11 @@ function GlassEffect() {
         {!BLUR_RENDERS
           ? 'Liquid glass needs Android 12 or later, to blur what is behind the bar.'
           : shown === 'liquid'
-            ? 'Clear glass that bends light at its edges. What is behind the bar stays visible.'
+            ? LENS_AVAILABLE
+              ? 'Clear glass, like a lens: what is behind the bar swells in the middle and bends at the edges.'
+              : LENS_NEEDS_NEWER_ANDROID
+                ? 'Clear glass that bends light at its edges. The lens effect needs Android 13 or later.'
+                : 'Clear glass that bends light at its edges. What is behind the bar stays visible.'
             : 'A soft blur. The bar stays calm over busy screens.'}
       </Text>
     </View>

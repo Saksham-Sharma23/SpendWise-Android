@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(unzip -l GLASSEFFECT.zip)",
-      "Bash(python -c \"import zipfile;z=zipfile.ZipFile\\('GLASSEFFECT.zip'\\);[print\\(i.file_size, i.filename\\) for i in z.infolist\\(\\)]\")"
-    ]
-  }
-}

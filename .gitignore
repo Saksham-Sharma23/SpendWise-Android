@@ -9,6 +9,11 @@ expo-env.d.ts
 /android
 /ios
 
+# Local native modules ARE committed (modules/*/android is hand-written);
+# only Gradle's output inside them is not.
+modules/*/android/build/
+modules/*/android/.cxx/
+
 *.orig.*
 *.jks
 *.p8
@@ -40,3 +45,8 @@ emulator.log
 emu-out.log
 emu-err.log
 sdk-install.log
+
+# Local only
+GLASSEFFECT.zip
+.claude/
+*.stackdump

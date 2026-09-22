@@ -21,7 +21,15 @@ import { bevelRings, fresnelRings, glarePieces, type GlareParams, type RampParam
 import { useMotion } from '@/lib/motion';
 import { springs, useColors, useThemeName, withAlpha } from '@/lib/theme';
 import { PressableScale } from '../ui/PressableScale';
-import { BLUR_RENDERS, GlassBlur, glassScrollY, useGlassStyle } from './glass';
+import {
+  BLUR_RENDERS,
+  GlassBlur,
+  GlassLens,
+  glassScrollY,
+  LENS_AVAILABLE,
+  useGlassStyle,
+  type LensOptics,
+} from './glass';
 import { Text } from '@/components/ui/Text';
 
 // expo-router vendors react-navigation and does not re-export the tab bar
@@ -213,6 +221,8 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
   // Liquid glass swells a little more under the finger: it is the softer material.
   const swellY = liquid ? 0.14 : 0.1;
   const swellX = liquid ? 0.08 : 0.06;
+  // Where the real lens exists, the droplet is one too (DROPLET_LENS).
+  const dropletLens = liquid && LENS_AVAILABLE;
 
   /**
    * What each tab needs to be magnified by the droplet passing over it.
@@ -280,8 +290,16 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                   // Frosted: accent glass — a light tint, a gloss on top, a lit
                   // rim. Liquid: a clear lens with only a hint of accent (drawn
                   // in the Svg below), rimmed in light rather than colour.
-                  backgroundColor: liquid ? 'rgba(255, 255, 255, 0.05)' : withAlpha(colors.primary, 0.14),
-                  borderWidth: 1,
+                  // With the real lens it has no fill or border at all: the
+                  // lens covers any fill, and the border, concentric with the
+                  // bar's rim on the end caps, read as a second outline. Its
+                  // edge is the lens's own bend.
+                  backgroundColor: dropletLens
+                    ? 'transparent'
+                    : liquid
+                      ? 'rgba(255, 255, 255, 0.05)'
+                      : withAlpha(colors.primary, 0.14),
+                  borderWidth: dropletLens ? 0 : 1,
                   borderColor: liquid
                     ? isLight
                       ? withAlpha(colors.primary, 0.28)
@@ -291,6 +309,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                 droplet,
               ]}
             >
+              {dropletLens ? <GlassLens radius={PILL_HEIGHT / 2} optics={DROPLET_LENS} /> : null}
               {/*
                 Sized in FIXED PIXELS to the widest the droplet can ever be,
                 not in percentages.
@@ -438,6 +457,12 @@ interface GlassRecipe {
   /** Exactly one of these is set: the style's rim. */
   frost: FrostRim | null;
   optics: LiquidOptics | null;
+  /**
+   * Real refraction, in place of the blur, where the phone can (Android 13+,
+   * LENS_AVAILABLE). Elsewhere the same recipe falls back to its blur, so it
+   * still looks like liquid glass, only without the bend.
+   */
+  lens: LensOptics | null;
 }
 
 /**
@@ -450,6 +475,32 @@ const APPLE_GLARE: GlareParams = { factor: 0.85, convergence: 0.55, opposite: 0.
 const APPLE_GLARE_RAMP = { range: 26, hardness: 0.2 } as const;
 /** The preset's 22 px bevel is on a 120 px-tall shape; scaled to the 70 px bar. */
 const BEVEL_THICKNESS = 13;
+
+/**
+ * The lens, tuned from the thick glass pill the look is modelled on: swollen
+ * through the middle, with what is inside spread out around the rim.
+ *
+ * The bend is NEGATIVE: near the rim each pixel samples inward, so the content
+ * under the glass is stretched out to its edge and sweeps around the end caps,
+ * as the yellow bar does in the reference. A positive bend does the opposite,
+ * squeezing what lies past the glass into the rim, which only ever read as a
+ * thin band at the very edge, however strong it was made.
+ *
+ * The bevel covers most of the bar's 35 dp half-height, so the spread starts
+ * well inside and builds toward the rim. Right at the rim (the outer ~4 dp)
+ * the inward pull overtakes the swell and the image folds back on itself: a
+ * narrow mirrored band, as a thick glass edge shows. Blur is 1 dp, just enough
+ * that text under the labels softens; the colour fringe is a trace.
+ */
+const LENS_LIGHT: LensOptics = { blur: 1, bevel: 30, bend: -16, zoom: 1.12, dispersion: 0.04 };
+const LENS_DARK: LensOptics = { ...LENS_LIGHT, dispersion: 0.06 };
+
+/**
+ * The selection droplet is a lens of its own, over the bar's: smaller and
+ * rounder, so it magnifies more, a bead of glass sliding along the bar. Its
+ * content spreads to its rim the same way.
+ */
+const DROPLET_LENS: LensOptics = { blur: 0.75, bevel: 22, bend: -10, zoom: 1.25, dispersion: 0.04 };
 
 /**
  * The four recipes, style × theme. Every value is a tuning knob.
@@ -489,6 +540,7 @@ const RECIPES: Record<'frosted' | 'liquid', Record<'light' | 'dark', GlassRecipe
       // crescents on the top-left and bottom-right of the capsule.
       frost: { edgeGlow: 0.34, specular: 0.95 },
       optics: null,
+      lens: null,
     },
     dark: {
       blurRadius: 14,
@@ -505,6 +557,7 @@ const RECIPES: Record<'frosted' | 'liquid', Record<'light' | 'dark', GlassRecipe
       shadow: 0.3,
       frost: { edgeGlow: 0.14, specular: 0.6 },
       optics: null,
+      lens: null,
     },
   },
   liquid: {
@@ -534,6 +587,7 @@ const RECIPES: Record<'frosted' | 'liquid', Record<'light' | 'dark', GlassRecipe
         bevelThickness: BEVEL_THICKNESS,
         bevelStrength: 0.07,
       },
+      lens: LENS_LIGHT,
     },
     dark: {
       blurRadius: 3,
@@ -557,6 +611,7 @@ const RECIPES: Record<'frosted' | 'liquid', Record<'light' | 'dark', GlassRecipe
         bevelThickness: BEVEL_THICKNESS,
         bevelStrength: 0.05,
       },
+      lens: LENS_DARK,
     },
   },
 };
@@ -639,6 +694,9 @@ const DRIFT_PERIOD_PX = 1400;
  * eight even rings, and two diagonal specular crescents.
  *
  * Liquid (the reference shader's optics, lib/glassOptics):
+ *   - on Android 13+, a real lens in place of the blur (GlassLens): what is
+ *     behind swells through the middle and bends in at the rim. The layers
+ *     below are its light, drawn on top as everywhere else
  *   - the bevel — the curved band inside the rim, brightest at the edge
  *   - the Fresnel rim — a crisp, even line of grazing-angle light
  *   - a caustic — a faint dark line inside the underside, where a lens bends
@@ -654,21 +712,32 @@ const DRIFT_PERIOD_PX = 1400;
 function GlassSurface({ radius, width, height }: { radius: number; width: number; height: number }) {
   const g = useGlassRecipe();
   const { frost, optics } = g;
+  // Liquid glass on a phone with the real lens (Android 13+, a build with it).
+  const lensOn = g.lens != null && LENS_AVAILABLE;
   // Depend only on the recipe, a module constant, so this runs once per style and theme.
   const rings = useMemo(
     () =>
       optics
         ? {
-            bevel: bevelRings(optics.bevelThickness, optics.bevelStrength),
+            // The drawn bevel is a wide band of light standing in for a curved
+            // edge. With a real lens it only veils the spread at the rim, so
+            // the lens's own edge replaces it.
+            bevel: lensOn ? [] : bevelRings(optics.bevelThickness, optics.bevelStrength),
+            // The Fresnel line stays either way: the crisp thin rim that the
+            // reference has too. Without it the glass lost its edge on a dark page.
             fresnel: fresnelRings(optics.fresnel),
           }
         : null,
-    [optics],
+    [optics, lensOn],
   );
 
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: radius, overflow: 'hidden' }]}>
-      <GlassBlur radius={g.blurRadius} overlay={g.blurOverlay} />
+      {g.lens && lensOn ? (
+        <GlassLens radius={radius} optics={g.lens} />
+      ) : (
+        <GlassBlur radius={g.blurRadius} overlay={g.blurOverlay} />
+      )}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: g.tint }]} />
       {width > 0 ? (
         <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
@@ -770,7 +839,8 @@ function GlassSurface({ radius, width, height }: { radius: number; width: number
               strokeWidth={1.5}
             />
           ) : null}
-          {g.fringe > 0 ? (
+          {/* The lens disperses for real; a drawn fringe on top would double it. */}
+          {g.fringe > 0 && !lensOn ? (
             <>
               {/* Offset half a pixel apart: each shows only where the other doesn't. */}
               <Rect
@@ -955,8 +1025,10 @@ function Tab({
                   marginTop: 3,
                   // A soft halo in the page colour: the label keeps its own
                   // patch of calm over busy content without a panel behind it.
-                  textShadowColor: withAlpha(colors.background, 0.6),
-                  textShadowRadius: 6,
+                  // Strong, because the lens magnifies the text passing under
+                  // the labels (at 0.6 / 6 a line of it still showed through).
+                  textShadowColor: withAlpha(colors.background, 0.9),
+                  textShadowRadius: 8,
                   textShadowOffset: { width: 0, height: 0 },
                 }
               : { marginTop: 3 }

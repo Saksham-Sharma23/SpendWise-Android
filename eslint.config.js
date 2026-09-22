@@ -37,7 +37,7 @@ module.exports = defineConfig([
   {
     plugins: { boundaries },
     settings: {
-      'boundaries/include': ['app/**', 'features/**', 'data/**', 'components/**', 'db/**', 'lib/**'],
+      'boundaries/include': ['app/**', 'features/**', 'data/**', 'components/**', 'db/**', 'lib/**', 'modules/**'],
       // ORDER MATTERS: the first pattern that matches wins. `feature` comes
       // before `components` because features/groups/components/* is a
       // FEATURE's own UI, not the shared components/ layer.
@@ -49,6 +49,9 @@ module.exports = defineConfig([
         { type: 'components', pattern: 'components/**', partialMatch: false },
         { type: 'db', pattern: 'db/**', partialMatch: false },
         { type: 'lib', pattern: 'lib/**', partialMatch: false },
+        // Local native modules (autolinked from modules/): a native view's JS
+        // binding, used by the shared UI that wraps it.
+        { type: 'modules', pattern: 'modules/**', partialMatch: false },
       ],
     },
     rules: {
@@ -90,8 +93,14 @@ module.exports = defineConfig([
             },
             {
               from: [{ element: { type: 'components' } }],
-              allow: [{ to: { element: { type: 'components' } } }, { to: { element: { type: 'lib' } } }],
+              allow: [
+                { to: { element: { type: 'components' } } },
+                { to: { element: { type: 'lib' } } },
+                { to: { element: { type: 'modules' } } },
+              ],
             },
+            // A native binding depends on nothing in the app.
+            { from: [{ element: { type: 'modules' } }], allow: [{ to: { element: { type: 'modules' } } }] },
             {
               from: [{ element: { type: 'db' } }],
               allow: [{ to: { element: { type: 'db' } } }, { to: { element: { type: 'lib' } } }],

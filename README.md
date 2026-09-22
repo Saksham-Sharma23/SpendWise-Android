@@ -80,6 +80,11 @@ routes   screens,       presentational  shared    SQLite   pure utilities
 Imports only ever point right. ESLint enforces it — a feature cannot import a sibling, and a route
 reaches a feature only through its `index.ts`.
 
+`modules/` holds the app's own native code, autolinked by Expo: `modules/liquid-glass` is the lens
+behind the liquid glass tab bar (Android 13+), explained in
+[`docs/liquid-glass.md`](docs/liquid-glass.md). Only `components/` imports it. Changing anything under
+`modules/*/android` needs a new native build.
+
 Every feature has the same shape: `index.ts` (its public surface), `components/`, `data/`
 (`sql` · `writes` · `hooks` · `actions`), `domain/` (pure logic) and `schema.ts` (form validation).
 `features/budgets` and `features/tracker` are the smallest complete examples — copy one when you add

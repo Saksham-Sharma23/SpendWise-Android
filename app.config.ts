@@ -114,7 +114,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'SpendWise',
   slug: 'spendwise-android',
-  version: '1.0.0',
+  version: '1.5.0',
   orientation: 'portrait',
   scheme: 'spendwise',
   // 'automatic' since the light theme shipped (2026-09-15): the native shell —
@@ -129,6 +129,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: './assets/icon.png',
   android: {
     package: 'com.spendwise.android',
+    versionCode: 2,
     adaptiveIcon: {
       // Only a fallback: backgroundImage below wins wherever it is honoured.
       // Matches the mid-point of that image's gradient (#135B65 -> #012432),
