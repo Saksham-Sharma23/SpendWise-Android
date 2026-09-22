@@ -17,6 +17,7 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { Section } from '@/components/ui/Section';
 import { Segmented } from '@/components/ui/Segmented';
 import { Text, font } from '@/components/ui/Text';
+import { useDeferredFocus } from '@/components/ui/useDeferredFocus';
 import { useCategories } from '@/data/categories';
 import { addDays, formatDayMonth } from '@/lib/dates';
 import { paiseToDecimalString } from '@/lib/money';
@@ -44,8 +45,15 @@ import { emptyTransactionForm, toTransactionInput, transactionFormSchema, type T
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/** Each block rises 60 ms after the one above it. */
-const STAGGER = { base: 0, step: 60 };
+/**
+ * Each block rises 40 ms after the one above it.
+ *
+ * Tighter than the 60 ms elsewhere because this screen arrives as a modal:
+ * at 60 ms the last of five sections was still animating ~540 ms in, long
+ * after the slide had finished, so the form appeared to assemble itself after
+ * it had landed. At 40 ms the last block settles with the screen.
+ */
+const STAGGER = { base: 0, step: 40 };
 
 function dateLabel(date: string, today: string): string {
   if (date === today) return 'Today';
@@ -96,6 +104,9 @@ export function TransactionForm({ editingId }: { editingId: number | null }) {
   const isIncome = type === 'income';
   const tone = isIncome ? colors.income : colors.expense;
   const [pickingDate, setPickingDate] = useState(false);
+
+  // The keyboard waits for the modal to arrive, rather than racing it up.
+  const amountRef = useDeferredFocus<TextInput>(editingId == null);
 
   // Only categories that make sense for the chosen type: "Salary" has no
   // business on an expense (TASKS2 [U3]). `kind` comes from migration 0001.
@@ -182,7 +193,7 @@ export function TransactionForm({ editingId }: { editingId: number | null }) {
                 ₹
               </Text>
               <TextInput
-                autoFocus={editingId == null}
+                ref={amountRef}
                 value={field.value}
                 onChangeText={field.onChange}
                 onBlur={field.onBlur}
@@ -205,10 +216,38 @@ export function TransactionForm({ editingId }: { editingId: number | null }) {
         {errors.amount?.message ? <ErrorText>{errors.amount.message}</ErrorText> : null}
       </Section>
 
+      {/* Details — directly under the amount, so naming what it was for is the
+          next thing to hand rather than the last field on the screen. */}
+      <Section index={2} stagger={STAGGER} className="gap-3" label="Details">
+        <Controller
+          control={control}
+          name="note"
+          render={({ field }) => (
+            <View
+              className="flex-row items-center rounded-2xl border px-4"
+              style={{ backgroundColor: colors.card, borderColor: colors.border, minHeight: 52 }}
+            >
+              <StickyNote size={17} color={colors.muted} />
+              <TextInput
+                value={field.value ?? ''}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                placeholder="What was it for?"
+                placeholderTextColor={colors.subtle}
+                selectionColor={colors.primary}
+                className="ml-3 flex-1 py-3"
+                style={{ ...font('regular', 15), color: colors.foreground }}
+              />
+            </View>
+          )}
+        />
+        {errors.note?.message ? <ErrorText>{errors.note.message}</ErrorText> : null}
+      </Section>
+
       <Section
-        index={2}
+        index={3}
         stagger={STAGGER}
-        className=""
+        className="mt-6"
         label="Category"
         action={
           <Button
@@ -239,7 +278,7 @@ export function TransactionForm({ editingId }: { editingId: number | null }) {
         {errors.categoryId?.message ? <ErrorText>{errors.categoryId.message}</ErrorText> : null}
       </Section>
 
-      <Section index={3} stagger={STAGGER} className="mt-6" label="Date">
+      <Section index={4} stagger={STAGGER} className="mt-6" label="Date">
         <View
           className="flex-row items-center rounded-2xl border p-1.5"
           style={{ backgroundColor: colors.card, borderColor: colors.border }}
@@ -300,32 +339,6 @@ export function TransactionForm({ editingId }: { editingId: number | null }) {
           }}
           onClose={() => setPickingDate(false)}
         />
-      </Section>
-
-      <Section index={4} stagger={STAGGER} className="mt-6 gap-3" label="Details">
-        <Controller
-          control={control}
-          name="note"
-          render={({ field }) => (
-            <View
-              className="flex-row items-center rounded-2xl border px-4"
-              style={{ backgroundColor: colors.card, borderColor: colors.border, minHeight: 52 }}
-            >
-              <StickyNote size={17} color={colors.muted} />
-              <TextInput
-                value={field.value ?? ''}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                placeholder="What was it for?"
-                placeholderTextColor={colors.subtle}
-                selectionColor={colors.primary}
-                className="ml-3 flex-1 py-3"
-                style={{ ...font('regular', 15), color: colors.foreground }}
-              />
-            </View>
-          )}
-        />
-        {errors.note?.message ? <ErrorText>{errors.note.message}</ErrorText> : null}
       </Section>
     </FormModal>
   );

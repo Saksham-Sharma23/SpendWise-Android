@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
@@ -43,7 +43,14 @@ export function BudgetAmountDial({ value, onChange, autoFocusKeypad = false }: P
     if (!typing) setDraft(value);
   }, [value, typing]);
 
-  const setPaise = (next: number) => onChange(paiseToDecimalString(next));
+  /**
+   * Stable across renders, because the dial memoises its gesture on this
+   * identity. `onChange` is react-hook-form's `field.onChange`, which is
+   * itself stable; wrapping it without `useCallback` threw that away and made
+   * the dial rebuild and re-attach its pan handler on every keystroke of the
+   * drag.
+   */
+  const setPaise = useCallback((next: number) => onChange(paiseToDecimalString(next)), [onChange]);
 
   const commitTyped = () => {
     const parsed = parseAmountToPaise(draft);

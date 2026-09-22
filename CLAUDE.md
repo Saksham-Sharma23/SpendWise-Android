@@ -286,7 +286,8 @@ npm run db:generate                   # after editing db/schema.ts, then READ th
 - **`expo-notifications` drags in FCM, Install Referrer and ~18 OEM badge permissions.** All are blocked in `app.config.ts`. `WAKE_LOCK` is kept for scheduled notifications.
 - **Auto-backup has a 25 MB quota and fails silently.** Backup rules are exclude-only (any `<include>` narrows the backup), have no wildcards, and exclude WAL/SHM, snapshots, legacy, unreadable and the dev-launcher bundle.
 - **A Keystore-keyed database cannot survive auto-backup.** If on-device encryption ever returns, the key must be recoverable by the user (a recovery code), never Keystore-only.
-- **Edge-to-edge:** the tab bar grows by the bottom inset; `KeyboardAvoidingView behavior="padding"` is the one source of keyboard padding.
+- **Edge-to-edge:** the tab bar grows by the bottom inset; one `KeyboardAvoidingView` per screen is the single owner of keyboard layout — but it carries **no `behavior`**. The activity is `adjustResize` (Expo's default), so Android already shrinks the window to the space above the keyboard; `behavior="padding"` padded an already-shortened frame and the form visibly jumped as the keyboard rose.
+- **Never `autoFocus` inside a modal.** It asks for focus in the same frame the screen's `slide_from_bottom` starts, so the slide, the keyboard and the `adjustResize` relayout all run at once and the open reads as janky. Use `useDeferredFocus` (`components/ui/useDeferredFocus.ts`), which focuses after `InteractionManager.runAfterInteractions()`. Not a navigation `transitionEnd` listener: expo-router's forked native-stack does not reliably emit it.
 - **Splash colours** equal `background` in `lib/theme.ts`. A forced Light theme on a dark phone still gets the dark splash (drawn before JS runs).
 
 **React Native and UI**

@@ -63,7 +63,12 @@ export function FormModal({
 
   return (
     <KeyboardAvoidingView
-      behavior="padding"
+      // No `behavior` on Android. The activity is `adjustResize` (Expo's
+      // default), so the system already shrinks the window to the space above
+      // the keyboard; `behavior="padding"` then padded an ALREADY shortened
+      // frame, and the form visibly jumped as the keyboard came up. This view
+      // stays as the single owner of keyboard layout — it simply lets the
+      // system do the work on the one platform this app ships to.
       className="flex-1"
       style={{ paddingTop: insets.top, backgroundColor: colors.background }}
     >

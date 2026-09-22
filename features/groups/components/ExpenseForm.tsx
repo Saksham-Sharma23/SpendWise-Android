@@ -44,6 +44,7 @@ import {
 import { formatPercent } from '../domain/split';
 import { FormSheet } from './kit';
 import { Text, font } from '@/components/ui/Text';
+import { useDeferredFocus } from '@/components/ui/useDeferredFocus';
 import { IconButton } from '@/components/ui/IconButton';
 import { FieldLabel } from '@/components/ui/Section';
 import { Chip } from '@/components/ui/Chip';
@@ -123,13 +124,23 @@ export function ExpenseForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * The starting members, read ONCE.
+   *
+   * `membersFor` is a synchronous SQLite read, and three initialisers below
+   * needed the same answer for the same arguments. Three round trips landed
+   * on the JS thread in the frame the screen was sliding in; this is the same
+   * data, queried once.
+   */
+  const [initialMemberIds] = useState<number[]>(() => membersFor(initialTarget, selfId).map((m) => m.id));
+
   // An expense that names someone who has since left the group can't be
   // edited or deleted: either would move a balance onto a person who can no
   // longer settle it (B21). The write refuses too; this explains it up front.
   const [blocked] = useState<string | null>(() => {
     if (!existing) return null;
     if (!initialTarget) return 'That expense no longer exists';
-    const live = new Set(membersFor(initialTarget, selfId).map((m) => m.id));
+    const live = new Set(initialMemberIds);
     const gone = [...existing.payers, ...existing.shares].find((p) => !live.has(p.personId));
     if (!gone) return null;
     const name = getPersonName(gone.personId) ?? 'Someone';
@@ -147,17 +158,8 @@ export function ExpenseForm({
   const [note, setNote] = useState(existing?.note ?? '');
   const [draft, setDraft] = useState<Draft>(() =>
     existing
-      ? draftFromExpense(
-          existing,
-          membersFor(initialTarget, selfId).map((m) => m.id),
-          selfId,
-          paiseToDecimalString,
-          formatPercent,
-        )
-      : emptyDraft(
-          membersFor(initialTarget, selfId).map((m) => m.id),
-          selfId,
-        ),
+      ? draftFromExpense(existing, initialMemberIds, selfId, paiseToDecimalString, formatPercent)
+      : emptyDraft(initialMemberIds, selfId),
   );
   const [sheet, setSheet] = useState<SheetName>(initialTarget == null ? 'target' : null);
   const saving = useRef(false);
@@ -171,6 +173,14 @@ export function ExpenseForm({
       router.back();
     }
   }, [editingId, existing, blocked, router]);
+
+  /**
+   * The keyboard waits for the screen to arrive. Opened from the hub there is
+   * no target yet, so the sheet asks for one first and the description is
+   * focused once that closes — which is when it becomes the next thing to
+   * fill in.
+   */
+  const descriptionRef = useDeferredFocus<TextInput>(editingId == null && target != null && sheet == null);
 
   const result = useMemo(() => evaluate(draft, memberIds), [draft, memberIds]);
   const nameOf = (id: number) => (id === selfId ? 'you' : (members.find((m) => m.id === id)?.name ?? 'someone'));
@@ -259,7 +269,10 @@ export function ExpenseForm({
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <KeyboardAvoidingView behavior="padding" className="flex-1" style={{ paddingTop: insets.top }}>
+      {/* No `behavior`: the activity is `adjustResize`, so the system already
+          shrinks the window to fit above the keyboard. Padding on top of that
+          moved the form twice. Same reasoning as components/ui/FormModal. */}
+      <KeyboardAvoidingView className="flex-1" style={{ paddingTop: insets.top }}>
         <View className="flex-row items-center justify-between px-5 py-3">
           <IconButton size="lg" label="Close" onPress={() => router.back()}>
             <X size={19} color={colors.foreground} />
@@ -286,10 +299,10 @@ export function ExpenseForm({
           </Animated.View>
 
           {/* Description + amount */}
-          <Animated.View entering={rise(50)} className="mt-6 flex-row items-center gap-3">
+          <Animated.View entering={rise(35)} className="mt-6 flex-row items-center gap-3">
             <CategoryIcon icon={icon} color={tint} size={52} />
             <TextInput
-              autoFocus={editingId == null && target != null}
+              ref={descriptionRef}
               value={description}
               onChangeText={setDescription}
               placeholder="Enter a description"
@@ -303,7 +316,7 @@ export function ExpenseForm({
               }}
             />
           </Animated.View>
-          <Animated.View entering={rise(100)} className="mt-3 flex-row items-center gap-3">
+          <Animated.View entering={rise(70)} className="mt-3 flex-row items-center gap-3">
             <View style={{ width: 52 }} className="items-center">
               <Text variant="title" tone="primary">
                 ₹
@@ -329,7 +342,7 @@ export function ExpenseForm({
 
           {/* Paid by [x] and split [y] */}
           {target != null ? (
-            <Animated.View entering={rise(150)} className="mt-7 items-center">
+            <Animated.View entering={rise(105)} className="mt-7 items-center">
               <View className="flex-row flex-wrap items-center justify-center gap-2">
                 <Text weight="medium" size={15} tone="default">
                   Paid by
@@ -345,7 +358,7 @@ export function ExpenseForm({
           ) : null}
 
           {/* Date, category, note */}
-          <Animated.View entering={rise(200)} className="mt-8">
+          <Animated.View entering={rise(140)} className="mt-8">
             <FieldLabel>Date</FieldLabel>
             <View className="flex-row items-center gap-2">
               {[
@@ -389,7 +402,7 @@ export function ExpenseForm({
             />
           </Animated.View>
 
-          <Animated.View entering={rise(250)} className="mt-6">
+          <Animated.View entering={rise(175)} className="mt-6">
             <FieldLabel>Category (for group totals)</FieldLabel>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {categories.map((c) => {

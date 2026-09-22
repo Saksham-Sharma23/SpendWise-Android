@@ -96,60 +96,85 @@ export function AmountDial({
     step.value = stepPaise;
   }, [maxPaise, stepPaise, max, step]);
 
-  // Follow the value unless the thumb is down — otherwise the knob would
-  // fight the finger as state round-trips through React.
+  /**
+   * Follow the value unless the thumb is down — otherwise the knob would
+   * fight the finger as state round-trips through React.
+   *
+   * `emitted` is the de-duplication baseline for `onUpdate`: a frame crosses
+   * to JS only when the snapped amount differs from it. So a DRAG OWNS IT,
+   * and this must not touch it mid-gesture. It used to be assigned above the
+   * guard, which reset the baseline to whatever React echoed back. When that
+   * echo did not land exactly on the current step grid, the next frame saw a
+   * difference again, emitted the same number, re-rendered, reset the
+   * baseline — an unbounded emit → render → reset loop that React ended with
+   * "Maximum update depth exceeded".
+   */
   useEffect(() => {
-    emitted.value = valuePaise;
     if (dragging.value === 1) return;
+    emitted.value = valuePaise;
     turn.value = maxPaise > 0 ? (valuePaise / maxPaise) * TAU : 0;
   }, [valuePaise, maxPaise, turn, emitted, dragging]);
 
   const emit = useCallback((paise: number) => onChange(paise), [onChange]);
 
-  const pan = Gesture.Pan()
-    .minDistance(0)
-    .onBegin((e) => {
-      dragging.value = 1;
-      pressing.value = withSpring(1, springs.press);
-      lastAngle.value = Math.atan2(e.x - radius, -(e.y - radius));
-    })
-    .onUpdate((e) => {
-      const dx = e.x - radius;
-      const dy = e.y - radius;
-      // Ignore the very centre: there the angle is noise, and a stray twitch
-      // would send the amount flying.
-      if (Math.hypot(dx, dy) < 28) return;
+  /**
+   * Built once, not per render. A fresh `Gesture.Pan()` each render makes
+   * `GestureDetector` tear down and re-attach the handler mid-drag, which is
+   * what the shared-value mirrors above exist to avoid — they keep every
+   * current value reachable from the worklet, so nothing here needs a prop in
+   * its closure and the gesture never has to be rebuilt.
+   *
+   * Only `emit` and `radius` come from React scope; the rest are shared
+   * values, whose identities are stable for the component's lifetime.
+   */
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .minDistance(0)
+        .onBegin((e) => {
+          dragging.value = 1;
+          pressing.value = withSpring(1, springs.press);
+          lastAngle.value = Math.atan2(e.x - radius, -(e.y - radius));
+        })
+        .onUpdate((e) => {
+          const dx = e.x - radius;
+          const dy = e.y - radius;
+          // Ignore the very centre: there the angle is noise, and a stray twitch
+          // would send the amount flying.
+          if (Math.hypot(dx, dy) < 28) return;
 
-      const next = Math.atan2(dx, -dy);
+          const next = Math.atan2(dx, -dy);
 
-      // The short way round, so crossing twelve o'clock is the small step it
-      // looks like rather than a near-full turn backwards.
-      let delta = next - lastAngle.value;
-      if (delta > Math.PI) delta -= TAU;
-      else if (delta < -Math.PI) delta += TAU;
-      lastAngle.value = next;
+          // The short way round, so crossing twelve o'clock is the small step it
+          // looks like rather than a near-full turn backwards.
+          let delta = next - lastAngle.value;
+          if (delta > Math.PI) delta -= TAU;
+          else if (delta < -Math.PI) delta += TAU;
+          lastAngle.value = next;
 
-      // The knob tracks the thumb exactly — no rounding applied to the angle,
-      // so it never lags behind or springs away from where it was dropped.
-      turn.value = Math.max(0, turn.value + delta);
+          // The knob tracks the thumb exactly — no rounding applied to the angle,
+          // so it never lags behind or springs away from where it was dropped.
+          turn.value = Math.max(0, turn.value + delta);
 
-      const raw = (turn.value / TAU) * max.value;
-      const snapped = step.value > 0 ? Math.round(raw / step.value) * step.value : raw;
+          const raw = (turn.value / TAU) * max.value;
+          const snapped = step.value > 0 ? Math.round(raw / step.value) * step.value : raw;
 
-      if (snapped !== emitted.value) {
-        emitted.value = snapped;
-        // Cross to JS only when the number actually changes — roughly once
-        // per notch, not sixty times a second.
-        scheduleOnRN(emit, snapped);
-      }
-    })
-    .onFinalize(() => {
-      dragging.value = 0;
-      pressing.value = withSpring(0, springs.settle);
-      // Snap the knob onto the notch the amount landed on. It is at most half
-      // a notch away, so this is a tiny correction rather than a journey.
-      if (max.value > 0) turn.value = (emitted.value / max.value) * TAU;
-    });
+          if (snapped !== emitted.value) {
+            emitted.value = snapped;
+            // Cross to JS only when the number actually changes — roughly once
+            // per notch, not sixty times a second.
+            scheduleOnRN(emit, snapped);
+          }
+        })
+        .onFinalize(() => {
+          dragging.value = 0;
+          pressing.value = withSpring(0, springs.settle);
+          // Snap the knob onto the notch the amount landed on. It is at most half
+          // a notch away, so this is a tiny correction rather than a journey.
+          if (max.value > 0) turn.value = (emitted.value / max.value) * TAU;
+        }),
+    [emit, radius, dragging, pressing, lastAngle, turn, max, step, emitted],
+  );
 
   const progress = useDerivedValue(() => {
     const a = turn.value % TAU;
