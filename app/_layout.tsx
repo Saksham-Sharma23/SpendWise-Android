@@ -36,11 +36,18 @@ installCrashHandler();
 void SplashScreen.preventAutoHideAsync();
 
 /**
- * Full-screen forms rise from the bottom, as iOS modals do, rather than
- * pushing in from the side: a form is a task you step into and dismiss, not a
- * place further along. (The screen default is the sideways iOS push.)
+ * Full-screen forms rise from below rather than pushing in from the side: a
+ * form is a task you step into and dismiss, not a place further along. (The
+ * screen default is the sideways iOS push.)
+ *
+ * `fade_from_bottom`, not `slide_from_bottom`. On Android every stack
+ * animation is a fixed native one — `animationDuration` is iOS-only — and the
+ * full-height slide ran ~400 ms on a curve that cannot be tuned, so a form
+ * felt heavy and late to settle. This one rises 8% while fading in (350 ms,
+ * decelerate_quint) and looks settled at ~200 ms: still from below, lighter
+ * on its feet. The keyboard waits for it (components/ui/useDeferredFocus).
  */
-const MODAL = { presentation: 'modal', animation: 'slide_from_bottom' } as const;
+const MODAL = { presentation: 'modal', animation: 'fade_from_bottom' } as const;
 
 /**
  * The root. The ONE place in app/ allowed to touch db/ (CLAUDE.md #10 exception):
@@ -119,9 +126,10 @@ function RootLayoutInner() {
             headerShown: false,
             contentStyle: { backgroundColor: colors.background },
             // The iOS push: the new screen slides over from the right while the
-            // one beneath drifts left and dims, so you can see where you came
-            // from. Android's default fade-from-bottom read as screens
-            // appearing out of nowhere.
+            // one beneath drifts left, so you can see where you came from.
+            // (On Android it does not dim, as iOS does; react-native-screens'
+            // native version only moves it.) Android's default fade-from-bottom
+            // read as screens appearing out of nowhere.
             animation: 'ios_from_right',
           }}
         >

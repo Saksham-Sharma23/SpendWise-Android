@@ -9,6 +9,7 @@ import { toast } from 'sonner-native';
 
 import { useCategories } from '@/data/categories';
 import { Screen, TAB_BAR_CLEARANCE } from '@/components/layout/Screen';
+import { useGlassScrollListener } from '@/components/layout/glass';
 import { AnimatedAmount } from '@/components/ui/AnimatedAmount';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -76,6 +77,8 @@ export function Ledger() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // Liquid glass drifts its glare with this list's scroll; undefined otherwise.
+  const onGlassScroll = useGlassScrollListener();
   // Filters live in a store because the filter sheet is a separate ROUTE and
   // cannot share component state with this screen. Search stays local: it
   // changes on every keystroke, and routing that through a shared store would
@@ -403,6 +406,7 @@ export function Ledger() {
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE + insets.bottom }}
+          onScroll={onGlassScroll}
           renderItem={renderItem}
         />
       )}

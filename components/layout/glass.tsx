@@ -1,11 +1,22 @@
 import { requireOptionalNativeModule } from 'expo';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, type ReactNode, type RefObject } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import { makeMutable, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { create } from 'zustand';
 
+import { useGlassStore } from '@/lib/glassStore';
 import { usePerfFlags } from '@/lib/perfFlags';
-import { useThemeName } from '@/lib/theme';
+import { useColors, useThemeName, type GlassStyle } from '@/lib/theme';
 
 /**
  * Real backdrop blur for the glass tab bar — when the native module exists.
@@ -23,6 +34,136 @@ import { useThemeName } from '@/lib/theme';
  */
 
 export const BLUR_AVAILABLE = requireOptionalNativeModule('ExpoBlur') != null;
+
+/**
+ * Whether the blur actually RENDERS on this phone — a stricter question than
+ * whether the module exists.
+ *
+ * `GlassBlur` asks for `dimezisBlurViewSdk31Plus`, which expo-blur quietly
+ * turns into no blur at all below Android 12 (API 31): only its thin overlay
+ * sheet is painted. The app's minSdk is 24, so on Android 7–11 the bar had a
+ * near-clear tint chosen for a blur that was never there, and its labels sat
+ * on raw content. Every "is there a blur behind this glass?" decision asks
+ * this, not `BLUR_AVAILABLE`.
+ */
+export const BLUR_RENDERS =
+  BLUR_AVAILABLE && Platform.OS === 'android' && typeof Platform.Version === 'number' && Platform.Version >= 31;
+
+/**
+ * The glass style actually DRAWN: the one chosen in Settings, except that
+ * liquid glass needs a real blur behind it. Clear glass over raw content is
+ * unreadable, so without one the bar stays frosted whatever was chosen, and
+ * Settings says why.
+ */
+export function useGlassStyle(): GlassStyle {
+  const chosen = useGlassStore((s) => s.style);
+  return BLUR_RENDERS && chosen === 'liquid' ? 'liquid' : 'frosted';
+}
+
+// ---------------------------------------------------------------------------
+// The scroll under the glass
+// ---------------------------------------------------------------------------
+
+/**
+ * How far the tab screen under the bar has scrolled, in px. Liquid glass
+ * drifts its glare with it, so the light seems to move through the glass as
+ * the content passes beneath.
+ *
+ * One app-wide shared value, written by whichever tab screen is scrolling and
+ * read by the bar on the UI thread. Each screen remembers its own offset and
+ * hands it back on focus (easing over the tab cross-fade), so switching tabs
+ * never makes the light jump.
+ */
+export const glassScrollY = makeMutable(0);
+
+/** Matches the tab cross-fade (app/(tabs)/_layout.tsx). */
+const SCROLL_HANDOFF_MS = 180;
+
+/**
+ * For a tab screen's `Animated.ScrollView`: feeds `glassScrollY` from the UI
+ * thread, so scrolling costs the JS thread nothing. Returns undefined unless
+ * the bar is liquid glass — frosted glass does not use it.
+ *
+ * `enabled` is false for any screen that does not own the scrolling under the
+ * bar: a stack screen (no bar over it), or a tab whose list scrolls itself
+ * (the ledger, which uses `useGlassScrollListener`). Otherwise its focus
+ * handoff would write its own offset — always 0 — over the real one.
+ */
+export function useGlassScrollHandler(enabled: boolean) {
+  const liquid = useGlassStyle() === 'liquid';
+  const last = useSharedValue(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (enabled) glassScrollY.value = withTiming(last.value, { duration: SCROLL_HANDOFF_MS });
+    }, [enabled, last]),
+  );
+
+  const handler = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      last.value = e.contentOffset.y;
+      glassScrollY.value = e.contentOffset.y;
+    },
+  });
+  return liquid && enabled ? handler : undefined;
+}
+
+/**
+ * The same, for a list that reports scrolling to JS anyway (the ledger's
+ * FlashList, which reads every scroll event to virtualise its rows). One
+ * shared-value write per event, on top of work FlashList already does.
+ */
+export function useGlassScrollListener(): ((e: NativeSyntheticEvent<NativeScrollEvent>) => void) | undefined {
+  const liquid = useGlassStyle() === 'liquid';
+  const last = useRef(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      glassScrollY.value = withTiming(last.current, { duration: SCROLL_HANDOFF_MS });
+    }, []),
+  );
+
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    last.current = e.nativeEvent.contentOffset.y;
+    glassScrollY.value = last.current;
+  }, []);
+  return liquid ? onScroll : undefined;
+}
+
+/** How much of the page colour the fade reaches at the very bottom. */
+const EDGE_FADE_OPACITY = 0.55;
+
+/**
+ * Liquid glass only: the page softens as it runs under the bar.
+ *
+ * Clear glass hides less of what is behind it, so over the busiest content —
+ * a column of ledger amounts — the tab labels would compete with it. This
+ * dissolves the content toward the page colour in the band the bar sits in,
+ * the way iOS fades a scroll edge under its own glass.
+ *
+ * It must be drawn INSIDE the blur target (a tab screen's `Screen` puts it
+ * last), so the glass blurs the same softened content the page around the
+ * bar shows. Outside the target, the content seen through the glass would be
+ * sharper than the content beside it.
+ */
+export function ScrollEdgeFade({ height }: { height: number }) {
+  const liquid = useGlassStyle() === 'liquid';
+  const colors = useColors();
+  if (!liquid) return null;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height }}>
+      <Svg width="100%" height="100%">
+        <Defs>
+          <LinearGradient id="edgeFade" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={colors.background} stopOpacity={0} />
+            <Stop offset="1" stopColor={colors.background} stopOpacity={EDGE_FADE_OPACITY} />
+          </LinearGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#edgeFade)" />
+      </Svg>
+    </View>
+  );
+}
 
 type BlurModule = typeof import('expo-blur');
 // expo-blur must only be loaded when the native module is actually present,

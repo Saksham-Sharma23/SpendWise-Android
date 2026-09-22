@@ -5,6 +5,9 @@ doesn't connect. There is no emulator in this project: the phone is the test dev
 
 ---
 
+adb mdns services
+adb connect 192.168.29.205:41975; adb devices -l
+
 ## Before you start (one-time checks)
 
 | Check                                | How                                                                                                                                                                     |

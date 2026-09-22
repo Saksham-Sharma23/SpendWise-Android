@@ -1,14 +1,14 @@
 import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import type { ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useColors } from '@/lib/theme';
 import { rise } from '@/lib/motion';
 import { PressableScale } from '../ui/PressableScale';
-import { BlurTarget } from './glass';
+import { BlurTarget, ScrollEdgeFade, useGlassScrollHandler } from './glass';
 import { Text } from '@/components/ui/Text';
 
 interface ScreenProps {
@@ -76,19 +76,29 @@ export function Screen({ title, subtitle, eyebrow, children, scroll = true, righ
   // Stack screens (back=true) have no bar over them.
   const Root = back ? View : BlurTarget;
   const rootStyle = { flex: 1, paddingTop: insets.top, backgroundColor: colors.background };
+  // Last inside the blur target, over the content: see ScrollEdgeFade. It
+  // draws nothing unless the bar is liquid glass.
+  const edgeFade = back ? null : <ScrollEdgeFade height={TAB_BAR_CLEARANCE + insets.bottom} />;
+  // Liquid glass drifts its glare with the scroll under it. Only when this
+  // screen owns that scroll: a tab (a stack screen has no bar) that scrolls
+  // itself (a list screen's list reports its own). Undefined when frosted.
+  const glassScroll = useGlassScrollHandler(scroll && !back);
 
   // A scrolling screen scrolls its title away with the content; a list screen
   // keeps it pinned above the list, which owns its own scrolling.
   if (scroll) {
     return (
       <Root style={rootStyle}>
-        <ScrollView
+        <Animated.ScrollView
           contentContainerStyle={{ paddingBottom: (back ? 40 : TAB_BAR_CLEARANCE) + insets.bottom }}
           showsVerticalScrollIndicator={false}
+          onScroll={glassScroll}
+          scrollEventThrottle={16}
         >
           {header}
           {children}
-        </ScrollView>
+        </Animated.ScrollView>
+        {edgeFade}
       </Root>
     );
   }
@@ -97,6 +107,7 @@ export function Screen({ title, subtitle, eyebrow, children, scroll = true, righ
     <Root style={rootStyle}>
       {header}
       <View className="flex-1">{children}</View>
+      {edgeFade}
     </Root>
   );
 }

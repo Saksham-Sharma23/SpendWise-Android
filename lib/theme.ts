@@ -44,6 +44,24 @@ export function resolveTheme(preference: ThemePreference, system: ThemeName): Th
 }
 
 /**
+ * How the glass tab bar is drawn (Settings → Glass effect).
+ *
+ * - `frosted`: the original look — a soft blur that keeps the bar calm over
+ *   busy screens. The default, and what every install had before the option.
+ * - `liquid`: clearer glass defined by light at its edges rather than a fill.
+ */
+export type GlassStyle = 'frosted' | 'liquid';
+
+/**
+ * The stored glass style, whitelisted. Anything unrecognised — a missing key,
+ * a corrupt store, a value from some future version — is the original look,
+ * never a half-drawn one. Pure, for the same reason as `resolveTheme`.
+ */
+export function parseGlassStyle(raw: string | null | undefined): GlassStyle {
+  return raw === 'liquid' ? 'liquid' : 'frosted';
+}
+
+/**
  * The theme state and its two transitions — pure, so the rules are tested in
  * Node (lib/themeStore.ts applies them).
  *
